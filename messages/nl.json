@@ -201,7 +201,8 @@
     "maskedTag": "contactgegevens verborgen",
     "willBeMasked": "Let op: contactgegevens in dit bericht worden verborgen voor de ontvanger.",
     "inputPlaceholder": "Typ je bericht…",
-    "send": "Versturen"
+    "send": "Versturen",
+    "unlockedNotice": "Jullie zijn verbonden — contactgegevens zijn nu zichtbaar in de chat."
   },
   "account": {
     "title": "Account",
@@ -210,5 +211,22 @@
     "favourites": "Favorieten",
     "myAd": "Mijn advertentie",
     "loginSignup": "Inloggen of aanmelden"
+  },
+  "deal": {
+    "question": "Hebben jullie een deal?",
+    "explain": "Pas als jullie allebei bevestigen, start het abonnement van €14,95 per maand en worden contactgegevens zichtbaar. Geen deal? Dan betaal je niets.",
+    "yes": "Wij hebben een deal ✓",
+    "no": "Geen match",
+    "waitingOther": "Je bevestiging staat! Wachten op bevestiging van {name}…",
+    "simulateOther": "Simuleer bevestiging van {name} (demo)",
+    "activeTitle": "Jullie zijn verbonden! 🎉",
+    "activeText": "Contactgegevens zijn nu zichtbaar. Het abonnement van €14,95 per maand (incl. 21% btw) is gestart — opzeggen kan altijd, per einde van de lopende maand.",
+    "invoiceTitle": "Factuur {number}",
+    "invoiceNet": "Bedrag excl. btw",
+    "invoiceVat": "21% btw",
+    "invoiceTotal": "Totaal (incl. btw)",
+    "endConnection": "Verbinding beëindigen",
+    "endedNote": "Verbinding beëindigd — het abonnement stopt aan het einde van de lopende maand. Je kunt altijd een nieuwe schoonmaker zoeken.",
+    "noMatchNote": "Geen match — er is niets betaald. Zoek gerust verder naar een andere schoonmaker."
   }
 }

@@ -201,7 +201,8 @@
     "maskedTag": "contact details hidden",
     "willBeMasked": "Note: contact details in this message will be hidden from the recipient.",
     "inputPlaceholder": "Type your message…",
-    "send": "Send"
+    "send": "Send",
+    "unlockedNotice": "You are connected — contact details are now visible in the chat."
   },
   "account": {
     "title": "Account",
@@ -210,5 +211,22 @@
     "favourites": "Favourites",
     "myAd": "My ad",
     "loginSignup": "Log in or sign up"
+  },
+  "deal": {
+    "question": "Do you have a deal?",
+    "explain": "Only when you both confirm does the €14.95/month subscription start and contact details become visible. No deal? Then you pay nothing.",
+    "yes": "We have a deal ✓",
+    "no": "Not a match",
+    "waitingOther": "Your confirmation is in! Waiting for {name} to confirm…",
+    "simulateOther": "Simulate confirmation by {name} (demo)",
+    "activeTitle": "You are connected! 🎉",
+    "activeText": "Contact details are now visible. The €14.95/month subscription (incl. 21% VAT) has started — cancel any time, effective at the end of the current month.",
+    "invoiceTitle": "Invoice {number}",
+    "invoiceNet": "Amount excl. VAT",
+    "invoiceVat": "21% VAT",
+    "invoiceTotal": "Total (incl. VAT)",
+    "endConnection": "End connection",
+    "endedNote": "Connection ended — the subscription stops at the end of the current month. You can always look for a new cleaner.",
+    "noMatchNote": "Not a match — nothing was charged. Feel free to keep looking for another cleaner."
   }
 }

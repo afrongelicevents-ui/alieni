@@ -7,6 +7,7 @@ import { useConversations } from "@/lib/chat-store";
 import { maskContacts } from "@/lib/masking";
 import { getCleaner } from "@/lib/cleaners";
 import { formatHourlyRate } from "@/lib/money";
+import { DealPanel } from "./DealPanel";
 
 export function ChatThread({ conversationId }: { conversationId: string }) {
   const t = useTranslations("chat");
@@ -31,6 +32,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
   }
 
   const cleaner = getCleaner(conversation.cleanerId);
+  const connectionActive = conversation.connection?.status === "active";
   const draftPreview = maskContacts(draft);
 
   function submit(e: React.FormEvent) {
@@ -87,19 +89,34 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
         </div>
       ) : null}
 
-      {/* masking notice */}
-      <p className="mt-3 flex items-start gap-2 rounded-card bg-section px-4 py-3 text-xs text-ink/70">
-        <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-forest" fill="none" stroke="currentColor" aria-hidden="true">
-          <rect x="5" y="10" width="14" height="10" rx="2" strokeWidth="2" />
-          <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        {t("maskingNotice")}
-      </p>
+      {/* masking notice / unlocked notice */}
+      {connectionActive ? (
+        <p className="mt-3 flex items-start gap-2 rounded-card bg-mint px-4 py-3 text-xs font-semibold text-forest">
+          <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" strokeWidth="2" />
+            <path d="M8 10V7a4 4 0 0 1 7.5-2" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          {t("unlockedNotice")}
+        </p>
+      ) : (
+        <p className="mt-3 flex items-start gap-2 rounded-card bg-section px-4 py-3 text-xs text-ink/70">
+          <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0 text-forest" fill="none" stroke="currentColor" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" strokeWidth="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          {t("maskingNotice")}
+        </p>
+      )}
+
+      {/* deal confirmation / connection state */}
+      <DealPanel conversation={conversation} cleanerName={cleaner?.name ?? "—"} />
 
       {/* messages */}
       <ol className="mt-4 flex flex-col gap-2">
         {conversation.messages.map((message) => {
-          const { text, masked } = maskContacts(message.text);
+          const { text, masked } = connectionActive
+            ? { text: message.text, masked: false }
+            : maskContacts(message.text);
           const mine = message.from === "me";
           return (
             <li key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
@@ -122,7 +139,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
 
       {/* composer */}
       <form onSubmit={submit} className="sticky bottom-16 mt-4 md:bottom-4">
-        {draft && draftPreview.masked ? (
+        {draft && !connectionActive && draftPreview.masked ? (
           <p className="mb-2 rounded-xl bg-sun/30 px-3 py-2 text-xs font-medium text-ink/80">{t("willBeMasked")}</p>
         ) : null}
         <div className="flex items-end gap-2 rounded-card-lg border border-line bg-white p-2 shadow-lg shadow-forest/5">

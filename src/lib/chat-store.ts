@@ -18,6 +18,14 @@ export type LocalMessage = {
   at: string;
 };
 
+export type LocalConnection = {
+  status: "pending" | "active" | "ended" | "no_match";
+  householdConfirmedAt?: string;
+  cleanerConfirmedAt?: string;
+  invoiceNumber?: string;
+  endedAt?: string;
+};
+
 export type LocalConversation = {
   id: string;
   cleanerId: string;
@@ -27,6 +35,7 @@ export type LocalConversation = {
     block: DayBlockKey;
     status: "requested";
   };
+  connection?: LocalConnection;
   messages: LocalMessage[];
   createdAt: string;
 };
@@ -183,5 +192,64 @@ export function useConversations() {
     [],
   );
 
-  return { conversations, hydrated, sendMessage, requestMeeting };
+  /**
+   * Mutual deal confirmation (brief §3.7): the connection only becomes
+   * active — charging €14.95 and unmasking contact details — once BOTH
+   * sides confirmed. In the demo the cleaner side is simulated by a button.
+   */
+  const confirmDeal = useCallback((conversationId: string, side: "household" | "cleaner") => {
+    const current = getSnapshot();
+    write(
+      current.map((c) => {
+        if (c.id !== conversationId) return c;
+        const prev = c.connection ?? { status: "pending" as const };
+        const householdConfirmedAt =
+          side === "household" ? new Date().toISOString() : prev.householdConfirmedAt;
+        const cleanerConfirmedAt =
+          side === "cleaner" ? new Date().toISOString() : prev.cleanerConfirmedAt;
+        const bothConfirmed = Boolean(householdConfirmedAt && cleanerConfirmedAt);
+        const activeCount = current.filter((x) => x.connection?.invoiceNumber).length;
+        return {
+          ...c,
+          connection: {
+            status: bothConfirmed ? ("active" as const) : ("pending" as const),
+            householdConfirmedAt,
+            cleanerConfirmedAt,
+            invoiceNumber: bothConfirmed
+              ? prev.invoiceNumber ??
+                `ALI-${new Date().getFullYear()}-${String(activeCount + 1).padStart(4, "0")}`
+              : prev.invoiceNumber,
+          },
+        };
+      }),
+    );
+  }, []);
+
+  const noMatch = useCallback((conversationId: string) => {
+    const current = getSnapshot();
+    write(
+      current.map((c) =>
+        c.id === conversationId
+          ? { ...c, connection: { status: "no_match" as const } }
+          : c,
+      ),
+    );
+  }, []);
+
+  /** One-tap end (brief §3.9): subscription stops at end of current month. */
+  const endConnection = useCallback((conversationId: string) => {
+    const current = getSnapshot();
+    write(
+      current.map((c) =>
+        c.id === conversationId && c.connection
+          ? {
+              ...c,
+              connection: { ...c.connection, status: "ended" as const, endedAt: new Date().toISOString() },
+            }
+          : c,
+      ),
+    );
+  }, []);
+
+  return { conversations, hydrated, sendMessage, requestMeeting, confirmDeal, noMatch, endConnection };
 }
