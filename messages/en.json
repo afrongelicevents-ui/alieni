@@ -226,7 +226,8 @@
     "messages": "Messages",
     "favourites": "Favourites",
     "myAd": "My ad",
-    "loginSignup": "Log in or sign up"
+    "loginSignup": "Log in or sign up",
+    "mySlots": "My turnovers (checkout cleans)"
   },
   "deal": {
     "question": "Do you have a deal?",
@@ -455,5 +456,36 @@
     "cancelledNote": "Cancelled — stops at the end of the current month.",
     "invoicesTitle": "Invoices",
     "invoicesText": "At the end of each month your invoice (PDF) with VAT breakdown appears here. The amount is collected automatically. If a direct debit fails, we pause the connection and ask you to update your payment method."
+  },
+  "calendar": {
+    "title": "Calendar & checkout cleaning",
+    "introAirbnb": "Paste the iCal link from Airbnb, Booking.com or VRBO per listing. Alieni reads the bookings every 30 minutes and creates a cleaning slot at every checkout automatically.",
+    "introHotel": "Link an iCal feed or add room turnovers per day manually. Your connected cleaner sees the slots weeks ahead.",
+    "icalPlaceholder": "https://www.airbnb.com/calendar/ical/....ics",
+    "icalHint": "In Airbnb: Calendar → Availability → Sync calendars → Export calendar → copy the link.",
+    "link": "Link calendar",
+    "relink": "Update link",
+    "linked": "Linked — slots appear below (demo: sample bookings).",
+    "manualDate": "Date",
+    "manualCount": "Room turnovers",
+    "manualAdd": "Add",
+    "noSlots": "No slots yet. Link a calendar or add turnovers.",
+    "status_open": "open",
+    "status_reserved": "reserved",
+    "status_done": "done",
+    "status_cancelled": "cancelled",
+    "statusUrgent": "within 48h — nobody yet",
+    "syncNote": "Not reserved 48 hours before checkout? You and your cleaner get a reminder and the slot is also offered to other connected cleaners.",
+    "cleanerTitle": "My turnovers",
+    "cleanerIntro": "Checkout cleans at businesses you are connected with. Reserve slots weeks ahead and mark them done when finished.",
+    "cleanerEmpty": "No slots yet. Once you are connected with an Airbnb host or hotel, their checkouts appear here.",
+    "cleanerBrowse": "Browse jobs",
+    "until": "until",
+    "sourceIcal": "from calendar",
+    "sourceManual": "manual",
+    "reserve": "Reserve",
+    "photoOptional": "Photo (optional)",
+    "markDone": "Done ✓",
+    "doneAt": "Completed on"
   }
 }

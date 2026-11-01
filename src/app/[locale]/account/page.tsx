@@ -5,6 +5,7 @@ const items = [
   { href: "/messages", key: "messages" },
   { href: "/favourites", key: "favourites" },
   { href: "/cleaners/new", key: "myAd" },
+  { href: "/cleaners/slots", key: "mySlots" },
   { href: "/login", key: "loginSignup" },
 ] as const;
 

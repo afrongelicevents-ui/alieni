@@ -7,6 +7,7 @@ import { useBusinessAccount } from "@/lib/business-store";
 import { formatEuro } from "@/lib/money";
 import { ButtonLink } from "@/components/ui/Button";
 import { BusinessTypeIcon } from "./BusinessTypeCard";
+import { CalendarSync } from "./CalendarSync";
 
 export function BusinessDashboard() {
   const t = useTranslations("business");
@@ -93,6 +94,8 @@ export function BusinessDashboard() {
           </li>
         ))}
       </ul>
+
+      <CalendarSync />
 
       {/* my locations */}
       <section>

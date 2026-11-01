@@ -226,7 +226,8 @@
     "messages": "Berichten",
     "favourites": "Favorieten",
     "myAd": "Mijn advertentie",
-    "loginSignup": "Inloggen of aanmelden"
+    "loginSignup": "Inloggen of aanmelden",
+    "mySlots": "Mijn turnovers (checkout-schoonmaak)"
   },
   "deal": {
     "question": "Hebben jullie een deal?",
@@ -455,5 +456,36 @@
     "cancelledNote": "Opgezegd — stopt aan het einde van de lopende maand.",
     "invoicesTitle": "Facturen",
     "invoicesText": "Aan het einde van elke maand verschijnt hier je factuur (PDF) met BTW-specificatie. Het bedrag wordt automatisch geïncasseerd. Mislukt een incasso, dan pauzeren we de verbinding en vragen we je om je betaalmethode bij te werken."
+  },
+  "calendar": {
+    "title": "Kalender & checkout-schoonmaak",
+    "introAirbnb": "Plak de iCal-link van Airbnb, Booking.com of VRBO per listing. Alieni leest de boekingen elke 30 minuten en maakt bij elke checkout automatisch een schoonmaakslot aan.",
+    "introHotel": "Koppel een iCal-feed of voeg handmatig kamerwissels per dag toe. Je gekoppelde schoonmaker ziet de slots weken vooruit.",
+    "icalPlaceholder": "https://www.airbnb.com/calendar/ical/....ics",
+    "icalHint": "In Airbnb: Agenda → Beschikbaarheid → Agenda's synchroniseren → Agenda exporteren → kopieer de link.",
+    "link": "Koppel kalender",
+    "relink": "Link bijwerken",
+    "linked": "Gekoppeld — slots verschijnen hieronder (demo: voorbeeldboekingen).",
+    "manualDate": "Datum",
+    "manualCount": "Kamerwissels",
+    "manualAdd": "Toevoegen",
+    "noSlots": "Nog geen slots. Koppel een kalender of voeg wissels toe.",
+    "status_open": "open",
+    "status_reserved": "gereserveerd",
+    "status_done": "klaar",
+    "status_cancelled": "geannuleerd",
+    "statusUrgent": "binnen 48u — nog niemand",
+    "syncNote": "Niet gereserveerd 48 uur vóór checkout? Dan krijgen jij en je schoonmaker een herinnering en wordt het slot ook aan andere gekoppelde schoonmakers aangeboden.",
+    "cleanerTitle": "Mijn turnovers",
+    "cleanerIntro": "Checkout-schoonmaak bij bedrijven waarmee je verbonden bent. Reserveer slots weken vooruit en meld ze af als ze klaar zijn.",
+    "cleanerEmpty": "Nog geen slots. Zodra je verbonden bent met een Airbnb-host of hotel, verschijnen hun checkouts hier.",
+    "cleanerBrowse": "Bekijk klussen",
+    "until": "tot",
+    "sourceIcal": "uit kalender",
+    "sourceManual": "handmatig",
+    "reserve": "Reserveer",
+    "photoOptional": "Foto (optioneel)",
+    "markDone": "Klaar ✓",
+    "doneAt": "Afgerond op"
   }
 }
