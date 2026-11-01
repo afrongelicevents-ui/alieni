@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Turnstile } from "./Turnstile";
 
 /**
  * Login / signup form. Fully wired to Supabase Auth — until the project
@@ -15,6 +16,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("household");
+  const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent">("idle");
   const [message, setMessage] = useState("");
 
@@ -26,8 +28,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     setStatus("busy");
     const result =
       mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { data: { role } } });
+        ? await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
+        : await supabase.auth.signUp({ email, password, options: { data: { role }, captchaToken } });
     if (result.error) {
       setStatus("error");
       setMessage(result.error.message);
@@ -88,6 +90,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             className={`mt-1 ${inputCls}`}
           />
         </label>
+
+        <Turnstile onToken={setCaptchaToken} />
 
         {status === "error" ? <p className="text-sm font-semibold text-red-700">{message}</p> : null}
 

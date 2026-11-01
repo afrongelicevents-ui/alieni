@@ -12,12 +12,15 @@ const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
 
 const csp = [
   "default-src 'self'",
-  // Next.js requires 'unsafe-inline' for its style tags; no external scripts.
-  "script-src 'self' 'unsafe-inline'",
+  // 'unsafe-inline' is required by Next.js hydration on statically generated
+  // pages (nonce-based CSP would force every page dynamic — see SECURITY.md).
+  // challenges.cloudflare.com serves the Turnstile bot-protection widget.
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   `img-src 'self' blob: data:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
-  `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}` : ""}`,
+  `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}` : ""} https://challenges.cloudflare.com`,
+  "frame-src https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

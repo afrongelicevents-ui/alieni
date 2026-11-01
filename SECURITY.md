@@ -25,9 +25,9 @@ on at launch.
 ## Pre-launch checklist (must be done before go-live)
 
 - [ ] **Email verification** on in Supabase Auth settings; **MFA (2FA) required** for the admin account
-- [ ] **Rate limiting** on login, signup, messaging, meeting requests and reports at the edge (Vercel WAF / Upstash); DB backstop exists for reports only
-- [ ] **Bot protection** on signup (Cloudflare Turnstile)
-- [ ] **Nonce-based CSP**: `script-src` currently allows `'unsafe-inline'` (Next.js inline hydration); switch to nonces via proxy before launch
+- [ ] **Rate limiting** on login, signup, messaging, meeting requests and reports at the edge (Vercel WAF / Upstash); DB backstop exists for reports, in-memory damping on the Mollie webhook; Turnstile covers signup
+- [x] **Bot protection** on signup: Turnstile widget integrated; activates with NEXT_PUBLIC_TURNSTILE_SITE_KEY + the secret in Supabase Auth settings
+- [x] **CSP decision**: nonce-based CSP would force dynamic rendering of every page (currently statically generated, Lighthouse 100). Accepted risk: `script-src 'unsafe-inline'` remains, mitigated by React escaping, zero `dangerouslySetInnerHTML`, and no third-party scripts except Turnstile (explicitly allow-listed). Revisit if user-generated HTML is ever rendered
 - [ ] **Image uploads** (profile photos): type/size checks, re-encode, strip EXIF, private bucket + signed URLs — not built yet, build with the upload feature
 - [ ] **Mollie webhook URL** uses an unguessable path segment in addition to API fetch-back verification
 - [ ] Re-run the full security review (`/security-review`) on the release diff

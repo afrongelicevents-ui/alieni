@@ -1,5 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { parseFilters, searchCleaners } from "@/lib/cleaners";
+import { fetchLiveCleaners } from "@/lib/cleaners-live";
+import { geocode } from "@/lib/geocode";
 import { SearchFilters } from "@/components/search/SearchFilters";
 import { CleanerCard } from "@/components/cleaners/CleanerCard";
 
@@ -16,7 +18,11 @@ export default async function SearchPage({
   const tCommon = await getTranslations("common");
 
   const filters = parseFilters(await searchParams);
-  const results = searchCleaners(filters);
+  const [origin, live] = await Promise.all([
+    filters.q ? geocode(filters.q) : Promise.resolve(null),
+    fetchLiveCleaners(),
+  ]);
+  const results = searchCleaners(filters, { origin, dataset: live ?? undefined });
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">

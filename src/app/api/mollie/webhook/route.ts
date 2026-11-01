@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createMollieClient } from "@/lib/mollie";
+import { invoiceEmail, sendEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * Mollie webhook (brief §7: verify authenticity, handle idempotently,
@@ -12,6 +14,13 @@ import { createMollieClient } from "@/lib/mollie";
  * the unique mollie_payment_id column, so replays are harmless.
  */
 export async function POST(request: Request) {
+  // Abuse damping: each forged id still costs us a Mollie API lookup,
+  // so cap per-IP attempts (real Mollie retries stay far below this).
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!rateLimit(`mollie-webhook:${ip}`, 120, 60_000)) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
   const mollie = createMollieClient();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -103,15 +112,35 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!existing) {
       const net = Math.round(amountCents / 1.21);
-      await admin.from("invoices").insert({
-        household_id: paymentRow.household_id,
-        connection_id: paymentRow.connection_id,
-        payment_id: paymentRow.id,
-        net_cents: net,
-        btw_cents: amountCents - net,
-        gross_cents: amountCents,
-      });
-      // Invoice email (Resend) is sent from here in the launch config.
+      const { data: invoice } = await admin
+        .from("invoices")
+        .insert({
+          household_id: paymentRow.household_id,
+          connection_id: paymentRow.connection_id,
+          payment_id: paymentRow.id,
+          net_cents: net,
+          btw_cents: amountCents - net,
+          gross_cents: amountCents,
+        })
+        .select()
+        .single();
+
+      // Invoice email with btw breakdown (brief §3.7) — once per invoice,
+      // because the insert above runs only once per payment.
+      if (invoice) {
+        const { data: user } = await admin.auth.admin.getUserById(paymentRow.household_id);
+        if (user?.user?.email) {
+          const mail = invoiceEmail({
+            number: invoice.number,
+            netCents: invoice.net_cents,
+            btwCents: invoice.btw_cents,
+            grossCents: invoice.gross_cents,
+            issuedAt: invoice.issued_at,
+            description: "Alieni verbinding — maandbedrag",
+          });
+          await sendEmail(user.user.email, mail.subject, mail.text);
+        }
+      }
     }
   }
 

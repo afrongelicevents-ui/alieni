@@ -1,4 +1,4 @@
-import { distanceKm, postcodeToLatLng } from "./geo";
+import { distanceKm, postcodeToLatLng, type LatLng } from "./geo";
 import { SAMPLE_CLEANERS, type SampleCleaner, type Weekday } from "./sample-data";
 
 /**
@@ -18,12 +18,22 @@ export type CleanerFilters = {
 
 export type CleanerResult = SampleCleaner & { distanceKm: number | null };
 
-export function searchCleaners(filters: CleanerFilters): CleanerResult[] {
-  const origin = filters.q ? postcodeToLatLng(filters.q) : null;
+export function searchCleaners(
+  filters: CleanerFilters,
+  options: {
+    /** Precise origin from the PDOK geocoder; defaults to the region table. */
+    origin?: LatLng | null;
+    /** Live rows from Supabase; defaults to labelled sample data. */
+    dataset?: SampleCleaner[];
+  } = {},
+): CleanerResult[] {
+  const origin =
+    options.origin !== undefined ? options.origin : filters.q ? postcodeToLatLng(filters.q) : null;
+  const dataset = options.dataset ?? SAMPLE_CLEANERS;
   const qLower = filters.q?.trim().toLowerCase() ?? "";
   const isTownQuery = qLower !== "" && !/\d/.test(qLower);
 
-  let results: CleanerResult[] = SAMPLE_CLEANERS.map((c) => {
+  let results: CleanerResult[] = dataset.map((c) => {
     const loc = postcodeToLatLng(c.postcode);
     return {
       ...c,
@@ -31,7 +41,7 @@ export function searchCleaners(filters: CleanerFilters): CleanerResult[] {
     };
   });
 
-  if (isTownQuery) {
+  if (isTownQuery && !origin) {
     results = results.filter((c) => c.city.toLowerCase().includes(qLower));
   } else if (origin) {
     // Within the cleaner's own travel radius (+ small tolerance for the

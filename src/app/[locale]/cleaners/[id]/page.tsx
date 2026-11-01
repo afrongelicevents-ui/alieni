@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { getCleaner } from "@/lib/cleaners";
+import { fetchLiveCleaner } from "@/lib/cleaners-live";
 import { formatHourlyRate } from "@/lib/money";
 import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { AvailabilityGrid } from "@/components/cleaners/AvailabilityGrid";
@@ -20,7 +21,7 @@ export default async function CleanerProfilePage({
   const tCommon = await getTranslations("common");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
 
-  const cleaner = getCleaner(id);
+  const cleaner = (await fetchLiveCleaner(id)) ?? getCleaner(id);
   if (!cleaner) notFound();
 
   return (
