@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/*
+ * Alieni design tokens — see design brief §9.
+ * Brand: ALIENI · Connect · Clean · Thrive
+ */
+@theme {
+  /* Colours */
+  --color-forest: #0e4a2c; /* primary */
+  --color-forest-dark: #0a3820;
+  --color-ink: #0b2617; /* text */
+  --color-sun: #f7c21b; /* CTAs/accents — always with dark text */
+  --color-sun-dark: #e0ae0d;
+  --color-mint: #eef6f0; /* cards */
+  --color-section: #f4f7f5; /* section backgrounds */
+  --color-line: #e1e8e3; /* borders */
+
+  /* Typography */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* Radii — rounded cards 16–24px, pill buttons */
+  --radius-card: 1rem;
+  --radius-card-lg: 1.5rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Headlines: weight 800, tight letter-spacing (brief §9) */
+.headline {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+/* Yellow swoosh underline for hero accent words */
+.swoosh {
+  position: relative;
+  display: inline-block;
+}
+.swoosh > svg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.28em;
+  width: 100%;
+  height: 0.32em;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 3px solid var(--color-forest);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

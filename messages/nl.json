@@ -1,0 +1,73 @@
+{
+  "brand": {
+    "name": "Alieni",
+    "tagline": "Connect · Clean · Thrive"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Zoeken",
+    "jobs": "Klussen",
+    "favourites": "Favorieten",
+    "account": "Account",
+    "login": "Inloggen",
+    "signup": "Aanmelden",
+    "menu": "Menu openen"
+  },
+  "home": {
+    "heroTitlePre": "Vind betrouwbare schoonmakers of schoonmaakklussen ",
+    "heroTitleAccent": "bij jou in de buurt.",
+    "heroSubtitle": "Alieni verbindt huishoudens en bedrijven met zelfstandige schoonmakers, en schoonmakers met flexibel werk.",
+    "searchPlaceholder": "Postcode of plaats",
+    "searchButton": "Zoeken",
+    "searchLabel": "Zoek op postcode of plaats",
+    "householdsTitle": "Voor huishoudens",
+    "householdsText": "Vind snel en makkelijk een betrouwbare schoonmaker.",
+    "householdsCta": "Vind een schoonmaker",
+    "cleanersTitle": "Voor schoonmakers",
+    "cleanersText": "Vind schoonmaakklussen bij jou in de buurt.",
+    "cleanersCta": "Vind een klus",
+    "businessesTitle": "Voor bedrijven",
+    "businessesText": "Plaats een schoonmaakklus voor je kantoor, winkel of verhuur.",
+    "businessesCta": "Plaats een klus",
+    "trustSafe": "Veilig & beschermd",
+    "trustReviews": "Echte klantreviews",
+    "trustFlexible": "Flexibel werk",
+    "featuredTitle": "Uitgelichte schoonmakers",
+    "viewProfile": "Bekijk profiel",
+    "reviewsCount": "{count} reviews",
+    "perHour": "/uur",
+    "bannerTitle": "Boek met vertrouwen",
+    "bannerText": "Echte reviews van bevestigde matches.",
+    "bannerCta": "Aan de slag",
+    "howTitle": "Hoe het werkt",
+    "howStep1Title": "Zoek",
+    "howStep1Text": "Blader gratis door profielen van schoonmakers bij jou in de buurt.",
+    "howStep2Title": "Maak kennis",
+    "howStep2Text": "Plan een kennismaking, chat veilig en bespreek wat je nodig hebt.",
+    "howStep3Title": "Match",
+    "howStep3Text": "Deal? Pas dan betaal je €14,95 per maand per actieve verbinding — opzeggen kan altijd.",
+    "sampleDataNotice": "Voorbeeldgegevens — echte profielen volgen bij lancering."
+  },
+  "common": {
+    "favourite": "Opslaan als favoriet",
+    "comingSoon": "Binnenkort beschikbaar",
+    "comingSoonText": "Dit onderdeel is in aanbouw. Kom snel terug!",
+    "backHome": "Terug naar home"
+  },
+  "footer": {
+    "forHouseholds": "Voor huishoudens",
+    "forCleaners": "Voor schoonmakers",
+    "forBusinesses": "Voor bedrijven",
+    "terms": "Gebruiksvoorwaarden",
+    "privacy": "Privacybeleid",
+    "contact": "Contact",
+    "notice": "Alieni is een advertentieplatform. Schoonmakers zijn zelfstandig en niet in dienst van Alieni; gebruikers maken onderling afspraken.",
+    "pricing": "Prijzen voor huishoudens zijn inclusief 21% btw."
+  },
+  "auth": {
+    "loginTitle": "Inloggen",
+    "signupTitle": "Maak een account",
+    "email": "E-mailadres",
+    "password": "Wachtwoord"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "brand": {
+    "name": "Alieni",
+    "tagline": "Connect · Clean · Thrive"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "jobs": "Jobs",
+    "favourites": "Favourites",
+    "account": "Account",
+    "login": "Log in",
+    "signup": "Sign up",
+    "menu": "Open menu"
+  },
+  "home": {
+    "heroTitlePre": "Find trusted cleaners or cleaning jobs ",
+    "heroTitleAccent": "near you.",
+    "heroSubtitle": "Alieni connects households and businesses with independent cleaners, and cleaners with flexible work.",
+    "searchPlaceholder": "Enter postcode or town",
+    "searchButton": "Search",
+    "searchLabel": "Search by postcode or town",
+    "householdsTitle": "For households",
+    "householdsText": "Find reliable cleaners quickly and easily.",
+    "householdsCta": "Find a cleaner",
+    "cleanersTitle": "For cleaners",
+    "cleanersText": "Get cleaning jobs in your area.",
+    "cleanersCta": "Find a job",
+    "businessesTitle": "For businesses",
+    "businessesText": "Post a cleaning job for your office, shop or rental.",
+    "businessesCta": "Post a job",
+    "trustSafe": "Safe & secure",
+    "trustReviews": "Real client reviews",
+    "trustFlexible": "Flexible work",
+    "featuredTitle": "Featured cleaners",
+    "viewProfile": "View profile",
+    "reviewsCount": "{count} reviews",
+    "perHour": "/hr",
+    "bannerTitle": "Book with confidence",
+    "bannerText": "Real reviews from confirmed matches.",
+    "bannerCta": "Get started",
+    "howTitle": "How it works",
+    "howStep1Title": "Search",
+    "howStep1Text": "Browse profiles of cleaners near you, free of charge.",
+    "howStep2Title": "Meet",
+    "howStep2Text": "Plan a meeting, chat safely and discuss what you need.",
+    "howStep3Title": "Match",
+    "howStep3Text": "Got a deal? Only then you pay €14.95 per month per active connection — cancel any time.",
+    "sampleDataNotice": "Sample data — real profiles arrive at launch."
+  },
+  "common": {
+    "favourite": "Save as favourite",
+    "comingSoon": "Coming soon",
+    "comingSoonText": "This part is under construction. Check back soon!",
+    "backHome": "Back to home"
+  },
+  "footer": {
+    "forHouseholds": "For households",
+    "forCleaners": "For cleaners",
+    "forBusinesses": "For businesses",
+    "terms": "Terms of use",
+    "privacy": "Privacy policy",
+    "contact": "Contact",
+    "notice": "Alieni is an advertising marketplace. Cleaners are independent and not employed by Alieni; users make their own arrangements.",
+    "pricing": "Household prices include 21% VAT (btw)."
+  },
+  "auth": {
+    "loginTitle": "Log in",
+    "signupTitle": "Create an account",
+    "email": "Email address",
+    "password": "Password"
+  }
+}

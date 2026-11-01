@@ -1,0 +1,53 @@
+# Alieni
+
+**Connect · Clean · Thrive**
+
+Alieni is a two-sided advertising marketplace (mobile-first, PWA-ready) that connects
+households and businesses in the Netherlands with independent cleaners. Alieni is not
+a cleaning company and does not employ cleaners — it only connects the two sides.
+
+## Stack
+
+- [Next.js](https://nextjs.org) (App Router, TypeScript) + Tailwind CSS v4
+- [Supabase](https://supabase.com) — EU-hosted Postgres, Auth, Storage, Realtime (row-level security)
+- [Mollie](https://mollie.com) — iDEAL, SEPA mandates, recurring subscriptions
+- i18n with next-intl — Dutch (default) and English
+
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local   # fill in Supabase keys (app runs on labelled sample data without them)
+npm run dev
+```
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript (`tsc --noEmit`) — run `npm run build` first to generate route types |
+| `npm test` | Unit tests (Vitest) |
+
+## Project conventions
+
+- All money amounts are **integer euro cents** (`src/lib/money.ts`). Household prices
+  are always shown including 21% btw; business prices excluding btw.
+- Minimum hourly rate for cleaners is €15/hour by default (`src/lib/validation.ts`),
+  admin-configurable, enforced in UI **and** server-side.
+- No "Verified"/"Vetted" claims anywhere until verification is defined
+  (decision 2026-11-01) — we say "Real client reviews" instead.
+- Sample data (`src/lib/sample-data.ts`) must always be clearly labelled in the UI.
+- Security headers (CSP, HSTS, etc.) live in `next.config.ts`.
+
+## Build phases
+
+1. ✅ Foundation: setup, design tokens, i18n, security headers, CI with tests
+2. ⏳ Marketplace MVP: homepage ✅, cleaner ad wizard, search + filters, profiles, favourites, reports
+3. Meetings & chat (realtime, contact masking)
+4. Payments (Mollie mandates, mutual deal confirmation, subscriptions, invoices)
+5. Business side (job posts, responses, configurable pricing)
+6. Admin dashboard + automations
+7. Launch hardening (security review, legal pages, accessibility audit)
