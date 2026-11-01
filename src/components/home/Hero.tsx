@@ -20,7 +20,7 @@ export function Hero() {
         <div>
           <h1 className="headline text-4xl text-ink sm:text-5xl lg:text-[3.4rem]">
             {t("heroTitlePre")}
-            <span className="swoosh text-sun-dark">
+            <span className="swoosh text-sun-text">
               {t("heroTitleAccent")}
               <svg viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true">
                 <path

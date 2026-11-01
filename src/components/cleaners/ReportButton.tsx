@@ -44,7 +44,7 @@ export function ReportButton({ subjectId }: { subjectId: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink/60 underline-offset-2 hover:underline"
+        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink/70 underline-offset-2 hover:underline"
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" aria-hidden="true">
           <path d="M5 21V4m0 1h13l-2.5 4L18 13H5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

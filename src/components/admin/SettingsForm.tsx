@@ -74,7 +74,7 @@ export function SettingsForm() {
             onChange={(e) => update({ householdPriceEuro: e.target.value })}
             className={`mt-1 ${inputCls}`}
           />
-          <p className="mt-1 text-xs font-medium text-ink/60">{t("settingHouseholdPriceHint")}</p>
+          <p className="mt-1 text-xs font-medium text-ink/70">{t("settingHouseholdPriceHint")}</p>
         </label>
 
         <fieldset>
@@ -84,7 +84,7 @@ export function SettingsForm() {
               <label
                 key={model}
                 className={`flex min-h-11 cursor-pointer items-center justify-center rounded-full border-2 px-4 text-sm font-bold ${
-                  settings.businessModel === model ? "border-forest bg-mint text-forest" : "border-line text-ink/60"
+                  settings.businessModel === model ? "border-forest bg-mint text-forest" : "border-line text-ink/70"
                 }`}
               >
                 <input
@@ -107,7 +107,7 @@ export function SettingsForm() {
               onChange={(e) => update({ businessPriceEuro: e.target.value })}
               className={`mt-1 ${inputCls}`}
             />
-            <p className="mt-1 text-xs font-medium text-ink/60">{t("settingBusinessPriceHint")}</p>
+            <p className="mt-1 text-xs font-medium text-ink/70">{t("settingBusinessPriceHint")}</p>
           </label>
         </fieldset>
 
@@ -120,7 +120,7 @@ export function SettingsForm() {
             onChange={(e) => update({ rateFloorEuro: e.target.value })}
             className={`mt-1 ${inputCls}`}
           />
-          <p className="mt-1 text-xs font-medium text-ink/60">{t("settingRateFloorHint")}</p>
+          <p className="mt-1 text-xs font-medium text-ink/70">{t("settingRateFloorHint")}</p>
         </label>
 
         <label className="text-sm font-semibold text-ink/80">

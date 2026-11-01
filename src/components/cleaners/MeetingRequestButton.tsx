@@ -57,7 +57,7 @@ export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
         >
           {t("cta")}
         </button>
-        <p className="text-center text-xs text-ink/60">{t("freeNote")}</p>
+        <p className="text-center text-xs text-ink/70">{t("freeNote")}</p>
       </div>
     );
   }
@@ -73,7 +73,7 @@ export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
             <label
               key={option}
               className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full border-2 px-4 text-sm font-bold ${
-                type === option ? "border-forest bg-white text-forest" : "border-line bg-white text-ink/60"
+                type === option ? "border-forest bg-white text-forest" : "border-line bg-white text-ink/70"
               }`}
             >
               <input
@@ -93,7 +93,7 @@ export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
       <fieldset className="mt-4">
         <legend className="text-sm font-semibold text-ink/80">{t("slotLabel")}</legend>
         {slots.length === 0 ? (
-          <p className="mt-2 text-sm text-ink/60">{t("noSlots")}</p>
+          <p className="mt-2 text-sm text-ink/70">{t("noSlots")}</p>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {slots.map(({ weekday, block }) => {

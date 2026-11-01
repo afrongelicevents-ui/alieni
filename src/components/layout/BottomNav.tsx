@@ -59,7 +59,7 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${
-                  active ? "text-forest" : "text-ink/60"
+                  active ? "text-forest" : "text-ink/70"
                 }`}
               >
                 <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" aria-hidden="true">

@@ -65,7 +65,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
             <span className="font-extrabold text-ink">—</span>
           )}
           {cleaner ? (
-            <span className="block text-xs text-ink/60">
+            <span className="block text-xs text-ink/70">
               {formatHourlyRate(cleaner.rateCents, locale)}/
               {locale === "nl" ? "uur" : "hr"} · {cleaner.city}
             </span>
@@ -127,7 +127,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
               >
                 <p className="whitespace-pre-wrap break-words">{text}</p>
                 {masked ? (
-                  <p className={`mt-1 text-[11px] font-semibold ${mine ? "text-white/70" : "text-ink/50"}`}>
+                  <p className={`mt-1 text-[11px] font-semibold ${mine ? "text-white/85" : "text-ink/70"}`}>
                     🔒 {t("maskedTag")}
                   </p>
                 ) : null}

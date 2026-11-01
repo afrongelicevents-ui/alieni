@@ -14,7 +14,7 @@ export function FeaturedCleaners() {
       </div>
 
       {/* Sample-data notice (brief §12: sample data must be clearly labelled) */}
-      <p className="mt-2 text-center text-xs font-medium text-ink/50">{t("sampleDataNotice")}</p>
+      <p className="mt-2 text-center text-xs font-medium text-ink/70">{t("sampleDataNotice")}</p>
 
       <ul className="mt-6 grid gap-4 md:grid-cols-3">
         {SAMPLE_FEATURED_CLEANERS.map((cleaner) => (

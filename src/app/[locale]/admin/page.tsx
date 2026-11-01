@@ -52,13 +52,13 @@ export default async function AdminDashboardPage({
       <dl className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         {cards.map((card) => (
           <div key={card.label} className="rounded-card-lg border border-line bg-white p-4">
-            <dt className="text-xs font-semibold text-ink/60">{card.label}</dt>
+            <dt className="text-xs font-semibold text-ink/70">{card.label}</dt>
             <dd className="mt-1 text-2xl font-extrabold text-ink">{card.value}</dd>
           </div>
         ))}
       </dl>
 
-      <p className="mt-6 text-xs text-ink/50">{t("autoNote")}</p>
+      <p className="mt-6 text-xs text-ink/70">{t("autoNote")}</p>
     </div>
   );
 }

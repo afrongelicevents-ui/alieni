@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LogoLockup } from "@/components/brand/Logo";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 export function Footer() {
   const t = useTranslations();
@@ -9,8 +10,11 @@ export function Footer() {
     <footer className="border-t border-line bg-section pb-24 md:pb-10">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
         <div>
-          <LogoLockup className="h-14 w-auto" />
+          <LogoLockup size="lg" />
           <p className="mt-4 max-w-xs text-sm text-ink/70">{t("footer.notice")}</p>
+          <div className="mt-4">
+            <LocaleSwitcher />
+          </div>
         </div>
         <nav aria-label="Footer" className="text-sm font-semibold text-forest">
           <ul className="space-y-2">

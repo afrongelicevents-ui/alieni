@@ -36,10 +36,10 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
           </p>
           <p className="text-sm font-bold text-forest">
             {formatHourlyRate(cleaner.rateCents, locale)}
-            <span className="font-medium text-ink/60">{t("perHour")}</span>
-            <span className="ml-2 font-medium text-ink/60">· {cleaner.city}</span>
+            <span className="font-medium text-ink/70">{t("perHour")}</span>
+            <span className="ml-2 font-medium text-ink/70">· {cleaner.city}</span>
             {typeof distanceKm === "number" ? (
-              <span className="ml-2 font-medium text-ink/60">
+              <span className="ml-2 font-medium text-ink/70">
                 · {tSearch("distanceAway", { km: distanceKm })}
               </span>
             ) : null}
@@ -53,7 +53,7 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
             {SERVICE_LABELS[service]?.[locale] ?? service}
           </li>
         ))}
-        <li className="rounded-full bg-section px-3 py-1 text-xs font-semibold text-ink/60">
+        <li className="rounded-full bg-section px-3 py-1 text-xs font-semibold text-ink/70">
           {tSearch("minHoursShort", { hours: cleaner.minHours })}
         </li>
       </ul>

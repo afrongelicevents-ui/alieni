@@ -29,7 +29,7 @@ export function ReportQueue() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="font-extrabold text-ink">{report.subject}</h3>
-            <p className="mt-0.5 text-xs text-ink/60">
+            <p className="mt-0.5 text-xs text-ink/70">
               {t(`reason_${report.reason}` as "reason_scam")} · {report.reporter} ·{" "}
               {new Date(report.createdAt).toLocaleDateString("nl-NL")}
             </p>
@@ -40,7 +40,7 @@ export function ReportQueue() {
                 ? "bg-sun/30 text-ink"
                 : report.status === "removed"
                   ? "bg-red-100 text-red-800"
-                  : "bg-section text-ink/60"
+                  : "bg-section text-ink/70"
             }`}
           >
             {t(`status_${report.status}` as "status_open")}
@@ -86,7 +86,7 @@ export function ReportQueue() {
         </>
       ) : null}
 
-      <p className="mt-6 text-xs text-ink/50">{t("reporterUpdateNote")}</p>
+      <p className="mt-6 text-xs text-ink/70">{t("reporterUpdateNote")}</p>
     </div>
   );
 }

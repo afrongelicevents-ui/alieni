@@ -143,12 +143,12 @@ export function AdWizard() {
             <span
               aria-current={i === step ? "step" : undefined}
               className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${
-                i < step ? "bg-forest text-white" : i === step ? "bg-sun text-ink" : "bg-section text-ink/50"
+                i < step ? "bg-forest text-white" : i === step ? "bg-sun text-ink" : "bg-section text-ink/70"
               }`}
             >
               {i + 1}
             </span>
-            <span className={`text-center text-xs font-semibold ${i === step ? "text-ink" : "text-ink/50"}`}>
+            <span className={`text-center text-xs font-semibold ${i === step ? "text-ink" : "text-ink/70"}`}>
               {title}
             </span>
           </li>
@@ -190,7 +190,7 @@ export function AdWizard() {
                 className={`mt-1 ${inputCls}`}
               />
             </label>
-            <p className="rounded-xl bg-section p-3 text-xs text-ink/60">{t("photoNote")}</p>
+            <p className="rounded-xl bg-section p-3 text-xs text-ink/70">{t("photoNote")}</p>
           </div>
         ) : null}
 
@@ -224,7 +224,7 @@ export function AdWizard() {
                   onChange={(e) => persist({ ...draft, rateEuro: e.target.value })}
                   className={`mt-1 ${inputCls}`}
                 />
-                <p className="mt-1 text-xs font-medium text-ink/60">{t("rateHint")}</p>
+                <p className="mt-1 text-xs font-medium text-ink/70">{t("rateHint")}</p>
                 {errors.rate ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.rate}</p> : null}
               </label>
               <label className="text-sm font-semibold text-ink/80">

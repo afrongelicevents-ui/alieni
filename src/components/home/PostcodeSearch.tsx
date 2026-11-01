@@ -28,7 +28,7 @@ export function PostcodeSearch() {
         autoComplete="postal-code"
         aria-label={t("searchLabel")}
         placeholder={t("searchPlaceholder")}
-        className="min-h-11 w-full min-w-0 bg-transparent px-2 text-base text-ink placeholder:text-ink/50 focus:outline-none"
+        className="min-h-11 w-full min-w-0 bg-transparent px-2 text-base text-ink placeholder:text-ink/70 focus:outline-none"
       />
       <button
         type="submit"

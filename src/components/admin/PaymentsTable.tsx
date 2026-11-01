@@ -74,7 +74,7 @@ export function PaymentsTable() {
                         ? "bg-mint text-forest"
                         : p.status === "pending"
                           ? "bg-sun/30 text-ink"
-                          : "bg-section text-ink/60"
+                          : "bg-section text-ink/70"
                     }`}
                   >
                     {t(`pay_${p.status}` as "pay_paid")}

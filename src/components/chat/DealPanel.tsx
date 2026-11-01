@@ -83,7 +83,7 @@ export function DealPanel({ conversation, cleanerName }: { conversation: LocalCo
   return (
     <div className="mt-3 rounded-card-lg border border-line bg-white p-4">
       <h3 className="text-sm font-extrabold text-ink">{t("question")}</h3>
-      <p className="mt-1 text-xs text-ink/60">{t("explain")}</p>
+      <p className="mt-1 text-xs text-ink/70">{t("explain")}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"

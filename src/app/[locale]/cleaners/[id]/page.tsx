@@ -47,7 +47,7 @@ export default async function CleanerProfilePage({
             </p>
             <p className="mt-1 text-xl font-extrabold text-forest">
               {formatHourlyRate(cleaner.rateCents, lang)}
-              <span className="text-sm font-medium text-ink/60">{tHome("perHour")}</span>
+              <span className="text-sm font-medium text-ink/70">{tHome("perHour")}</span>
             </p>
             <p className="text-sm text-ink/70">
               {t("minHours", { hours: cleaner.minHours })} · {t("travels", { km: cleaner.radiusKm, postcode: cleaner.postcode })}
@@ -101,7 +101,7 @@ export default async function CleanerProfilePage({
       {/* reviews */}
       <section className="mt-6">
         <h2 className="headline text-xl text-ink">{t("reviewsTitle")}</h2>
-        <p className="mt-1 text-xs text-ink/60">{t("reviewsNote")}</p>
+        <p className="mt-1 text-xs text-ink/70">{t("reviewsNote")}</p>
         {cleaner.reviews.length === 0 ? (
           <p className="mt-3 text-ink/70">{t("noReviews")}</p>
         ) : (
@@ -118,7 +118,7 @@ export default async function CleanerProfilePage({
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-ink/80">{review.text[lang]}</p>
-                <p className="mt-1 text-xs text-ink/50">{review.date}</p>
+                <p className="mt-1 text-xs text-ink/70">{review.date}</p>
               </li>
             ))}
           </ul>

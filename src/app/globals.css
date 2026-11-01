@@ -11,6 +11,7 @@
   --color-ink: #0b2617; /* text */
   --color-sun: #f7c21b; /* CTAs/accents — always with dark text */
   --color-sun-dark: #e0ae0d;
+  --color-sun-text: #a47b00; /* yellow accent as TEXT on white — WCAG AA (large) */
   --color-mint: #eef6f0; /* cards */
   --color-section: #f4f7f5; /* section backgrounds */
   --color-line: #e1e8e3; /* borders */

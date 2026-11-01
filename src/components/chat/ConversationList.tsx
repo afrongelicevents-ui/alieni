@@ -50,7 +50,7 @@ export function ConversationList() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold text-ink">{cleaner?.name ?? "—"}</span>
-                <span className="block truncate text-sm text-ink/60">{preview}</span>
+                <span className="block truncate text-sm text-ink/70">{preview}</span>
               </span>
               <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0 text-ink/40" fill="none" stroke="currentColor" aria-hidden="true">
                 <path d="m6 3 5 5-5 5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
