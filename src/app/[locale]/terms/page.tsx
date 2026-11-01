@@ -35,7 +35,8 @@ const nl = {
       h: "4. Kosten",
       p: [
         "Zoeken, chatten en kennismaken is gratis. Pas wanneer een huishouden en een schoonmaker allebei een deal bevestigen, start voor het huishouden een abonnement van €14,95 per maand (inclusief 21% btw) per actieve verbinding.",
-        "Opzeggen kan op elk moment met één druk op de knop; het abonnement stopt dan aan het einde van de lopende maand. Voor schoonmakers is Alieni altijd gratis. Prijzen voor bedrijven worden apart gepubliceerd en zijn exclusief btw.",
+        "Opzeggen kan op elk moment met één druk op de knop; het abonnement stopt dan aan het einde van de lopende maand. Voor schoonmakers is Alieni altijd gratis — zij houden 100% van hun tarief, er is geen commissie.",
+        "Bedrijven betalen een vast maandbedrag per eenheid (listing, kamer, locatie of vestiging), exclusief btw, dat pas start bij de eerste bevestigde deal. Facturatie vindt achteraf plaats aan het einde van elke maand en wordt via SEPA-incasso geïnd; de eerste maand naar rato. Wijzigingen in het aantal eenheden gelden vanaf de volgende maand. Opzeggen kan altijd per einde van de lopende maand.",
       ],
     },
     {
@@ -88,7 +89,8 @@ const en = {
       h: "4. Fees",
       p: [
         "Searching, chatting and meeting is free. Only when a household and a cleaner both confirm a deal does a subscription of €14.95 per month (including 21% VAT) per active connection start for the household.",
-        "You can cancel at any time with one tap; the subscription then stops at the end of the current month. For cleaners, Alieni is always free. Business pricing is published separately and excludes VAT.",
+        "You can cancel at any time with one tap; the subscription then stops at the end of the current month. For cleaners, Alieni is always free — they keep 100% of their rate, there is no commission.",
+        "Businesses pay a fixed monthly fee per unit (listing, room, location or site), excluding VAT, which only starts at the first confirmed deal. Invoicing happens in arrears at the end of each month and is collected by SEPA direct debit; the first month is pro-rated. Changes to the number of units apply from the next month. Cancel any time, effective at the end of the current month.",
       ],
     },
     {

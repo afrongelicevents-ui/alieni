@@ -1,15 +1,13 @@
 /**
- * Business jobs (brief §4). Pricing decision 2026-11-01: €9.95 excl. btw
- * per job post, configurable in admin settings.
+ * Business jobs (brief §4). Posting is FREE (business v2): businesses pay a
+ * fixed monthly fee per unit, invoiced month-end — never per post.
  *
  * Data minimisation: a job carries a postcode AREA only, never a street
  * address — the exact location is shared between the parties themselves.
  */
 
-export const JOB_POST_PRICE_EXCL_BTW_CENTS = 995;
-
 export type SpaceType = "office" | "shop" | "airbnb" | "hospitality" | "other";
-export type Frequency = "once" | "weekly" | "biweekly" | "monthly";
+export type Frequency = "once" | "daily" | "weekly" | "biweekly" | "monthly" | "per_checkout";
 
 export type SampleJob = {
   id: string;
@@ -35,9 +33,11 @@ export const SPACE_TYPE_LABELS: Record<SpaceType, { nl: string; en: string }> = 
 
 export const FREQUENCY_LABELS: Record<Frequency, { nl: string; en: string }> = {
   once: { nl: "Eenmalig", en: "One-off" },
+  daily: { nl: "Dagelijks", en: "Daily" },
   weekly: { nl: "Wekelijks", en: "Weekly" },
   biweekly: { nl: "Om de week", en: "Every two weeks" },
   monthly: { nl: "Maandelijks", en: "Monthly" },
+  per_checkout: { nl: "Per checkout", en: "Per checkout" },
 };
 
 /** SAMPLE DATA — labelled placeholder jobs until Supabase is connected. */

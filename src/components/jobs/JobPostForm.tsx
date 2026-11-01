@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { FREQUENCY_LABELS, JOB_POST_PRICE_EXCL_BTW_CENTS, SPACE_TYPE_LABELS, type Frequency, type SpaceType } from "@/lib/jobs";
+import { FREQUENCY_LABELS, SPACE_TYPE_LABELS, type Frequency, type SpaceType } from "@/lib/jobs";
+import { useBusinessAccount } from "@/lib/business-store";
 import { useJobsStore } from "@/lib/jobs-store";
 import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
-import { formatEuro } from "@/lib/money";
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
@@ -14,6 +14,8 @@ export function JobPostForm() {
   const t = useTranslations("jobs");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const { postJob } = useJobsStore();
+  const { account } = useBusinessAccount();
+  const [unitId, setUnitId] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [spaceType, setSpaceType] = useState<SpaceType>("office");
@@ -30,21 +32,22 @@ export function JobPostForm() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const next: Record<string, string> = {};
-    if (!companyName.trim()) next.companyName = t("requiredError");
+    if (!companyName.trim() && !account) next.companyName = t("requiredError");
     const postcodeParsed = dutchPostcodeSchema.safeParse(postcode);
-    if (!postcodeParsed.success) next.postcode = t("postcodeError");
+    if (!unitId && !postcodeParsed.success) next.postcode = t("postcodeError");
     if (description.trim().length < 10) next.description = t("descriptionError");
     const budgetCents = Math.round(Number(budget.replace(",", ".")) * 100);
     if (!Number.isFinite(budgetCents) || budgetCents < DEFAULT_RATE_FLOOR_CENTS) next.budget = t("rateError");
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
+    const unit = account?.units.find((u) => u.id === unitId);
     postJob({
-      companyName: companyName.trim(),
+      companyName: (companyName.trim() || account?.companyName || "").trim(),
       spaceType,
       sizeM2: sizeM2 ? Math.max(1, Math.round(Number(sizeM2))) : null,
-      postcode: postcodeParsed.success ? postcodeParsed.data : postcode,
-      city: city.trim(),
+      postcode: unit ? unit.postcode : postcodeParsed.success ? postcodeParsed.data : postcode,
+      city: unit ? unit.city : city.trim(),
       frequency,
       scheduleNote: scheduleNote.trim() || null,
       description: description.trim(),
@@ -96,6 +99,18 @@ export function JobPostForm() {
         </label>
       </div>
 
+      {account && account.units.length > 0 ? (
+        <label className="text-sm font-semibold text-ink/80">
+          {t("unitLabel")}
+          <select value={unitId} onChange={(e) => setUnitId(e.target.value)} className={`mt-1 ${inputCls}`}>
+            <option value="">{t("unitAny")}</option>
+            {account.units.map((u) => (
+              <option key={u.id} value={u.id}>{u.name || u.addressLine} — {u.city}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-semibold text-ink/80">
           {t("postcodeLabel")}
@@ -145,15 +160,13 @@ export function JobPostForm() {
         {err("description")}
       </label>
 
-      <p className="rounded-xl bg-sun/25 p-3 text-xs text-ink/80">
-        {t("payNote", { price: formatEuro(JOB_POST_PRICE_EXCL_BTW_CENTS, lang) })}
-      </p>
+      <p className="rounded-xl bg-mint p-3 text-xs text-ink/80">{t("payNote")}</p>
 
       <button
         type="submit"
         className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark"
       >
-        {t("submit", { price: formatEuro(JOB_POST_PRICE_EXCL_BTW_CENTS, lang) })}
+        {t("submit")}
       </button>
     </form>
   );

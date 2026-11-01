@@ -20,7 +20,7 @@ export function Footer() {
           <ul className="space-y-2">
             <li><Link href="/search" className="hover:underline">{t("footer.forHouseholds")}</Link></li>
             <li><Link href="/signup" className="hover:underline">{t("footer.forCleaners")}</Link></li>
-            <li><Link href="/jobs" className="hover:underline">{t("footer.forBusinesses")}</Link></li>
+            <li><Link href="/business" className="hover:underline">{t("footer.forBusinesses")}</Link></li>
           </ul>
         </nav>
         <div className="text-sm text-ink/70">
