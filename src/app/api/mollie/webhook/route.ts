@@ -39,7 +39,19 @@ export async function POST(request: Request) {
     auth: { persistSession: false },
   });
 
-  // 2. Idempotent upsert of the payment row.
+  // 2. Resolve the household behind the Mollie customer. An unmatched
+  // customer (e.g. deleted account) is acknowledged with 200 so Mollie
+  // does not retry forever — the payment is simply not recorded.
+  const { data: household } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("mollie_customer_id", payment.customerId ?? "")
+    .maybeSingle();
+  if (!household) {
+    return NextResponse.json({ ok: false, reason: "unknown_customer" }, { status: 200 });
+  }
+
+  // 3. Idempotent upsert of the payment row.
   const amountCents = Math.round(Number(payment.amount.value) * 100);
   const { data: paymentRow, error } = await admin
     .from("payments")
@@ -50,13 +62,7 @@ export async function POST(request: Request) {
         status: payment.status,
         amount_cents: amountCents,
         paid_at: payment.paidAt ?? null,
-        household_id: (
-          await admin
-            .from("profiles")
-            .select("id")
-            .eq("mollie_customer_id", payment.customerId ?? "")
-            .single()
-        ).data?.id,
+        household_id: household.id,
       },
       { onConflict: "mollie_payment_id" },
     )
