@@ -44,7 +44,7 @@ export default async function BusinessLandingPage({
         <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {BUSINESS_TYPE_KEYS.map((type) => (
             <li key={type}>
-              <Link href={`/business/signup?type=${type}`} className="block h-full">
+              <Link href={`/business/${type}`} className="block h-full">
                 <BusinessTypeCard type={type} />
               </Link>
             </li>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 /**
@@ -9,8 +10,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
  * Triggered by Vercel Cron (vercel.json); protected by CRON_SECRET.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 

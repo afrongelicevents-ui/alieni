@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { computeCleaningSlots, needsReminder, parseIcal } from "@/lib/ical";
 import { sendEmail } from "@/lib/email";
+import { isSafeIcalUrl } from "@/lib/url-safety";
 
 /**
  * Calendar sync (brief v2 §6), every 30 minutes (Vercel Pro cron):
@@ -11,8 +13,7 @@ import { sendEmail } from "@/lib/email";
  *     cleaner(s) once and open the slot to other connected cleaners
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
   let synced = 0;
   for (const unit of units ?? []) {
     try {
+      if (!isSafeIcalUrl(unit.ical_url)) throw new Error("unsupported calendar URL (https on a known provider only)");
       const res = await fetch(unit.ical_url, { signal: AbortSignal.timeout(10_000), headers: { Accept: "text/calendar" } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const bookings = parseIcal(await res.text());

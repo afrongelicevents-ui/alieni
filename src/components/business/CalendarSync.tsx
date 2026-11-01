@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useBusinessAccount } from "@/lib/business-store";
 import { useSlots } from "@/lib/slots-store";
 import { needsReminder } from "@/lib/ical";
+import { isSafeIcalUrl } from "@/lib/url-safety";
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
@@ -39,8 +40,9 @@ export function CalendarSync() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const url = urls[unit.id] ?? "";
-                  if (url.trim()) linkIcal(unit.id, url);
+                  const url = (urls[unit.id] ?? "").trim();
+                  if (url && isSafeIcalUrl(url)) linkIcal(unit.id, url);
+                  else if (url) window.alert(t("icalUnsafe"));
                 }}
                 className="mt-3 flex flex-col gap-2 sm:flex-row"
               >

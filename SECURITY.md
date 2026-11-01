@@ -22,6 +22,18 @@ on at launch.
 | Input validation with Zod + integer-cent money (no float drift) | `src/lib/validation.ts`, `src/lib/money.ts` |
 | No `dangerouslySetInnerHTML` / `eval`; user content rendered via React escaping | verified in review |
 
+## Business v2 review (M1–M7) — findings fixed in `0013_security_v2.sql`
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Server-only RPC functions (`businesses_due_for_billing`, `checkin_candidates`, `next_invoice_number`, `expire_emergency_requests`, `has_active_connection`) executable by any user — leaked Mollie customer ids, allowed burning invoice numbers | High | Execute revoked from `public/anon/authenticated`, granted to `service_role` only |
+| SSRF: iCal cron fetched any URL a business pasted (incl. cloud metadata / internal hosts) | High | `isSafeIcalUrl`: https only, allow-list of calendar providers, no IP literals/localhost/credentials; enforced in cron and dashboard; tested |
+| Connected cleaner could edit any open slot's times or mark it done without reserving | Medium | Trigger restricts cleaners to open→reserved (self) and reserved(self)→done; all other fields read-only |
+| Emergency request spam | Low | Trigger: max 3 requests per user per 24h |
+| Cron secret compared with `!==` | Low | Constant-time comparison (`lib/cron-auth.ts`) on every cron route |
+
+Reviewed and found sound: VOG storage policies (owner upload, admin-only read, file deleted on review), emergency address exposure (view hides the street address until acceptance), slot visibility limited to connected cleaners, invoice PDF/CSV scoped by RLS, business signup never persists the password locally, webhook business path idempotent on payment id.
+
 ## Pre-launch checklist (must be done before go-live)
 
 - [ ] **Email verification** on in Supabase Auth settings; **MFA (2FA) required** for the admin account
@@ -30,7 +42,7 @@ on at launch.
 - [x] **CSP decision**: nonce-based CSP would force dynamic rendering of every page (currently statically generated, Lighthouse 100). Accepted risk: `script-src 'unsafe-inline'` remains, mitigated by React escaping, zero `dangerouslySetInnerHTML`, and no third-party scripts except Turnstile (explicitly allow-listed). Revisit if user-generated HTML is ever rendered
 - [ ] **Image uploads** (profile photos): type/size checks, re-encode, strip EXIF, private bucket + signed URLs — not built yet, build with the upload feature
 - [ ] **Mollie webhook URL** uses an unguessable path segment in addition to API fetch-back verification
-- [ ] Re-run the full security review (`/security-review`) on the release diff
+- [x] Business v2 security review completed (see above); re-run on the final release diff
 - [ ] Server-side contact masking also at the edge function that sends notification emails (do not leak raw message bodies into email)
 
 ## Reporting

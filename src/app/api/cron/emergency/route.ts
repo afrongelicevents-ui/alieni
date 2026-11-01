@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 /**
@@ -7,8 +8,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
  * 7 days after the job. Runs every 10 minutes on Vercel Pro.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -482,7 +482,9 @@
     "cancelBilling": "Opzeggen per einde maand",
     "cancelledNote": "Opgezegd — stopt aan het einde van de lopende maand.",
     "invoicesTitle": "Facturen",
-    "invoicesText": "Aan het einde van elke maand verschijnt hier je factuur (PDF) met BTW-specificatie. Het bedrag wordt automatisch geïncasseerd. Mislukt een incasso, dan pauzeren we de verbinding en vragen we je om je betaalmethode bij te werken."
+    "invoicesText": "Aan het einde van elke maand verschijnt hier je factuur (PDF) met BTW-specificatie. Het bedrag wordt automatisch geïncasseerd. Mislukt een incasso, dan pauzeren we de verbinding en vragen we je om je betaalmethode bij te werken.",
+    "demoTitle": "Zo ziet het eruit",
+    "demoBadge": "Voorbeeldgegevens"
   },
   "calendar": {
     "title": "Kalender & checkout-schoonmaak",
@@ -513,7 +515,8 @@
     "reserve": "Reserveer",
     "photoOptional": "Foto (optioneel)",
     "markDone": "Klaar ✓",
-    "doneAt": "Afgerond op"
+    "doneAt": "Afgerond op",
+    "icalUnsafe": "Alleen https-links van bekende kalenderaanbieders (Airbnb, Booking.com, VRBO, Google Agenda, …) worden ondersteund."
   },
   "emergency": {
     "title": "Ik heb vandaag een schoonmaker nodig",
@@ -554,5 +557,72 @@
     "accept": "Accepteer deze klus",
     "mineTitle": "Door jou geaccepteerd",
     "acceptedByYou": "Geaccepteerd — de klant is op de hoogte."
+  },
+  "businessPages": {
+    "airbnb": {
+      "heroTitle": "Elke checkout automatisch schoongemaakt.",
+      "heroText": "Plak je Airbnb-, Booking.com- of VRBO-kalender. Bij elke checkout verschijnt een schoonmaakslot dat je vaste schoonmaker weken vooruit reserveert. Geen appjes meer op zondagavond.",
+      "example": "Voorbeeld: {units} listings = {fee} per maand excl. BTW.",
+      "benefit1Title": "Kalender-sync",
+      "benefit1Text": "Elke 30 minuten lezen we je boekingen. Wisseldagen worden vanzelf schoonmaakslots.",
+      "benefit2Title": "Vaste schoonmaker",
+      "benefit2Text": "Jouw gekoppelde schoonmaker reserveert slots vooruit; 48 uur vóór checkout nog niemand? Dan krijg je een seintje en bieden we het slot ook aan anderen aan.",
+      "benefit3Title": "Vaste prijs",
+      "benefit3Text": "Per listing per maand, geen commissie op de schoonmaak. Je betaalt de schoonmaker rechtstreeks.",
+      "demoHeading": "Appartement Jordaan — komende checkouts",
+      "demoCaption": "Zo ziet je dashboard eruit na het koppelen van een kalender."
+    },
+    "hotel": {
+      "heroTitle": "Kamerwissels geregeld, per kamer een paar euro.",
+      "heroText": "Koppel je kanaalbeheer via iCal of voer dagelijks je verwachte wissels in. Je schoonmakers zien weken vooruit wat er komt en melden elke kamer af als die klaar is.",
+      "example": "Voorbeeld: {units} kamers = {fee} per maand excl. BTW.",
+      "benefit1Title": "Per kamer, per maand",
+      "benefit1Text": "Een vaste prijs per gastenkamer. Kleine B&B of 60 kamers: het schaalt mee.",
+      "benefit2Title": "Handmatig of automatisch",
+      "benefit2Text": "Geen iCal? Voer per dag het aantal wissels in — klaar in 10 seconden.",
+      "benefit3Title": "Afmelden met foto",
+      "benefit3Text": "Je schoonmaker meldt elke wissel af, optioneel met een foto van de opgemaakte kamer.",
+      "demoHeading": "Hotel De Linde — wissels deze week",
+      "demoCaption": "Zo ziet je dashboard eruit: iCal-slots en handmatige wissels naast elkaar."
+    },
+    "restaurant": {
+      "heroTitle": "Schoon vóór de eerste gast. Elke dag.",
+      "heroText": "Plaats een klus met je sluitingstijden; schoonmakers die horeca accepteren reageren met hun tarief. Jij kiest, maakt kennis en bevestigt de deal in de app.",
+      "example": "Voorbeeld: {units} locatie = {fee} per maand excl. BTW.",
+      "benefit1Title": "Buiten openingstijden",
+      "benefit1Text": "Dagelijks, wekelijks of eenmalig — vóór opening of na sluiting, jij bepaalt de tijden.",
+      "benefit2Title": "Reacties met tarief",
+      "benefit2Text": "Schoonmakers reageren met hun zakelijke uurtarief (meestal €25–35). Geen verrassingen.",
+      "benefit3Title": "Eén vaste prijs per locatie",
+      "benefit3Text": "Geen commissie, geen contract: opzeggen kan altijd per einde van de maand.",
+      "demoHeading": "Brasserie Zuid — reacties op je klus",
+      "demoCaption": "Zo ziet een geplaatste klus met reacties eruit."
+    },
+    "office": {
+      "heroTitle": "Een vaste schoonmaker voor je kantoor, winkel of praktijk.",
+      "heroText": "Omschrijf wat er moet gebeuren en wanneer. Schoonmakers met een KvK-nummer reageren; na de kennismaking bevestig je samen de deal. Daarna loopt alles automatisch.",
+      "example": "Voorbeeld: {units} locatie = {fee} per maand excl. BTW.",
+      "benefit1Title": "Zelfstandige schoonmakers",
+      "benefit1Text": "Elke zakelijke schoonmaker op Alieni werkt met een KvK-nummer en houdt 100% van het tarief.",
+      "benefit2Title": "Factuur per maand",
+      "benefit2Text": "Eén factuur aan het einde van de maand met BTW-specificatie, PDF en CSV voor je boekhouding.",
+      "benefit3Title": "Meerdere locaties",
+      "benefit3Text": "Winkelketen of meerdere praktijken? Voeg locaties toe; de prijs is per locatie.",
+      "demoHeading": "Kapsalon Glans — reacties op je klus",
+      "demoCaption": "Zo ziet een geplaatste klus met reacties eruit."
+    },
+    "school": {
+      "heroTitle": "Alleen schoonmakers met een goedgekeurde VOG.",
+      "heroText": "Scholen en kinderopvang zien uitsluitend schoonmakers van wie Alieni de VOG heeft gecontroleerd en goedgekeurd — en die niet ouder is dan 12 maanden. Het document zelf blijft privé.",
+      "example": "Voorbeeld: {units} vestiging = {fee} per maand excl. BTW.",
+      "benefit1Title": "VOG-controle door Alieni",
+      "benefit1Text": "Schoonmakers uploaden hun VOG; wij beoordelen hem. Jij ziet alleen het badge.",
+      "benefit2Title": "Vaste tijden, vaste gezichten",
+      "benefit2Text": "Plaats klussen voor na schooltijd of in de vakanties en bouw een vaste relatie op.",
+      "benefit3Title": "Per vestiging",
+      "benefit3Text": "Eén vaste prijs per vestiging per maand. Facturatie achteraf, met BTW-specificatie.",
+      "demoHeading": "Basisschool De Wissel — zoekresultaten",
+      "demoCaption": "Zo ziet zoeken eruit voor scholen: alleen VOG-gecontroleerde schoonmakers."
+    }
   }
 }

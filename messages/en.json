@@ -482,7 +482,9 @@
     "cancelBilling": "Cancel at end of month",
     "cancelledNote": "Cancelled — stops at the end of the current month.",
     "invoicesTitle": "Invoices",
-    "invoicesText": "At the end of each month your invoice (PDF) with VAT breakdown appears here. The amount is collected automatically. If a direct debit fails, we pause the connection and ask you to update your payment method."
+    "invoicesText": "At the end of each month your invoice (PDF) with VAT breakdown appears here. The amount is collected automatically. If a direct debit fails, we pause the connection and ask you to update your payment method.",
+    "demoTitle": "What it looks like",
+    "demoBadge": "Sample data"
   },
   "calendar": {
     "title": "Calendar & checkout cleaning",
@@ -513,7 +515,8 @@
     "reserve": "Reserve",
     "photoOptional": "Photo (optional)",
     "markDone": "Done ✓",
-    "doneAt": "Completed on"
+    "doneAt": "Completed on",
+    "icalUnsafe": "Only https links from known calendar providers (Airbnb, Booking.com, VRBO, Google Calendar, …) are supported."
   },
   "emergency": {
     "title": "I need a cleaner today",
@@ -554,5 +557,72 @@
     "accept": "Accept this job",
     "mineTitle": "Accepted by you",
     "acceptedByYou": "Accepted — the client has been notified."
+  },
+  "businessPages": {
+    "airbnb": {
+      "heroTitle": "Every checkout cleaned, automatically.",
+      "heroText": "Paste your Airbnb, Booking.com or VRBO calendar. Every checkout becomes a cleaning slot your regular cleaner reserves weeks ahead. No more Sunday-night messages.",
+      "example": "Example: {units} listings = {fee} per month excl. VAT.",
+      "benefit1Title": "Calendar sync",
+      "benefit1Text": "We read your bookings every 30 minutes. Turnover days become cleaning slots by themselves.",
+      "benefit2Title": "Your regular cleaner",
+      "benefit2Text": "Your connected cleaner reserves slots ahead; nobody 48 hours before checkout? You get a heads-up and we offer the slot to others.",
+      "benefit3Title": "Fixed price",
+      "benefit3Text": "Per listing per month, no commission on the cleaning. You pay the cleaner directly.",
+      "demoHeading": "Jordaan apartment — upcoming checkouts",
+      "demoCaption": "Your dashboard after linking a calendar."
+    },
+    "hotel": {
+      "heroTitle": "Room turnovers handled, a few euros per room.",
+      "heroText": "Link your channel manager via iCal or enter expected turnovers daily. Your cleaners see weeks ahead and mark each room done.",
+      "example": "Example: {units} rooms = {fee} per month excl. VAT.",
+      "benefit1Title": "Per room, per month",
+      "benefit1Text": "A fixed price per guest room. Small B&B or 60 rooms: it scales with you.",
+      "benefit2Title": "Manual or automatic",
+      "benefit2Text": "No iCal? Enter the number of turnovers per day — done in 10 seconds.",
+      "benefit3Title": "Done, with photo",
+      "benefit3Text": "Your cleaner marks each turnover done, optionally with a photo of the made-up room.",
+      "demoHeading": "Hotel De Linde — turnovers this week",
+      "demoCaption": "Your dashboard: iCal slots and manual turnovers side by side."
+    },
+    "restaurant": {
+      "heroTitle": "Clean before the first guest. Every day.",
+      "heroText": "Post a job with your closing hours; cleaners who accept hospitality respond with their rate. You choose, meet, and confirm the deal in the app.",
+      "example": "Example: {units} location = {fee} per month excl. VAT.",
+      "benefit1Title": "Outside opening hours",
+      "benefit1Text": "Daily, weekly or one-off — before opening or after closing, you set the times.",
+      "benefit2Title": "Responses with rates",
+      "benefit2Text": "Cleaners respond with their business hourly rate (typically €25–35). No surprises.",
+      "benefit3Title": "One fixed price per location",
+      "benefit3Text": "No commission, no contract: cancel any time at the end of the month.",
+      "demoHeading": "Brasserie Zuid — responses to your job",
+      "demoCaption": "What a posted job with responses looks like."
+    },
+    "office": {
+      "heroTitle": "A regular cleaner for your office, shop or practice.",
+      "heroText": "Describe what needs doing and when. Cleaners with a KvK number respond; after meeting you confirm the deal together. Then everything runs automatically.",
+      "example": "Example: {units} location = {fee} per month excl. VAT.",
+      "benefit1Title": "Independent cleaners",
+      "benefit1Text": "Every business cleaner on Alieni works with a KvK number and keeps 100% of the rate.",
+      "benefit2Title": "Monthly invoice",
+      "benefit2Text": "One invoice at the end of the month with VAT breakdown, PDF and CSV for your bookkeeping.",
+      "benefit3Title": "Multiple locations",
+      "benefit3Text": "Chain of shops or several practices? Add locations; the price is per location.",
+      "demoHeading": "Kapsalon Glans — responses to your job",
+      "demoCaption": "What a posted job with responses looks like."
+    },
+    "school": {
+      "heroTitle": "Only cleaners with an approved VOG.",
+      "heroText": "Schools and childcare centres see only cleaners whose VOG Alieni has checked and approved — no older than 12 months. The document itself stays private.",
+      "example": "Example: {units} site = {fee} per month excl. VAT.",
+      "benefit1Title": "VOG checked by Alieni",
+      "benefit1Text": "Cleaners upload their VOG; we review it. You only see the badge.",
+      "benefit2Title": "Fixed times, familiar faces",
+      "benefit2Text": "Post jobs for after school hours or holidays and build a lasting relationship.",
+      "benefit3Title": "Per site",
+      "benefit3Text": "One fixed price per site per month. Billed in arrears, with VAT breakdown.",
+      "demoHeading": "Basisschool De Wissel — search results",
+      "demoCaption": "What search looks like for schools: only VOG-checked cleaners."
+    }
   }
 }

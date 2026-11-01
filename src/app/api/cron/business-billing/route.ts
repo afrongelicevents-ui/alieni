@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createMollieClient } from "@/lib/mollie";
 import { computeBillingPeriod } from "@/lib/business";
@@ -16,8 +17,7 @@ import { invoiceEmail, sendEmail } from "@/lib/email";
  * Runs daily via Vercel Cron; does nothing on other days (use ?force=1 to test).
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const url = new URL(request.url);
