@@ -1,7 +1,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { getPathname } from "@/i18n/navigation";
 import type { CleanerFilters } from "@/lib/cleaners";
-import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
+import { JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type JobType } from "@/lib/sample-data";
 
 const selectCls =
   "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
@@ -16,7 +16,7 @@ export function SearchFilters({ filters }: { filters: CleanerFilters }) {
   return (
     <form action={action} method="get" className="rounded-card-lg border border-line bg-section p-4">
       <h2 className="sr-only">{t("filters")}</h2>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
         <label className="col-span-2 flex flex-col gap-1 text-xs font-semibold text-ink/70">
           {tHome("searchLabel")}
           <input
@@ -64,6 +64,18 @@ export function SearchFilters({ filters }: { filters: CleanerFilters }) {
             {[0, 1, 2, 3, 4, 5, 6].map((d) => (
               <option key={d} value={d}>
                 {tCommon(`day${d}` as "day0")}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-semibold text-ink/70">
+          {t("jobType")}
+          <select name="jobType" defaultValue={filters.jobType ?? ""} className={selectCls}>
+            <option value="">{t("any")}</option>
+            {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((key) => (
+              <option key={key} value={key}>
+                {JOB_TYPE_LABELS[key][locale]}
               </option>
             ))}
           </select>

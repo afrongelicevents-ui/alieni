@@ -65,7 +65,8 @@
     "results": "{count, plural, =0 {No cleaners found} one {# cleaner found} other {# cleaners found}}",
     "noResults": "No cleaners found. Try another postcode or fewer filters.",
     "distanceAway": "±{km} km",
-    "minHoursShort": "min. {hours} hrs"
+    "minHoursShort": "min. {hours} hrs",
+    "jobType": "Job type"
   },
   "profile": {
     "notFound": "This ad does not exist (anymore).",
@@ -127,7 +128,22 @@
     "savedTitle": "Your ad is ready! 🎉",
     "savedText": "Accounts are not active yet. Your ad is safely stored on this device and will be published once we go live.",
     "editAgain": "Edit ad",
-    "languagesLabel": "Which languages do you speak?"
+    "languagesLabel": "Which languages do you speak?",
+    "jobTypesLabel": "Who do you want to work for?",
+    "jobTypesError": "Pick at least one job type.",
+    "kvkLabel": "KvK number (required for business jobs)",
+    "kvkHint": "For businesses you work self-employed or as a company. 8 digits, not verified by Alieni.",
+    "kvkError": "A KvK number has 8 digits.",
+    "vogLabel": "VOG for schools",
+    "vogIntro": "Schools only see cleaners with an approved VOG (certificate of conduct). Upload your VOG; Alieni reviews it.",
+    "vogFile": "VOG (PDF or photo)",
+    "vogIssuedAt": "Issue date",
+    "vogPrivacy": "Only Alieni sees your document; schools only see the 'VOG ✓' badge. After review the file is deleted; we keep only the outcome and the date.",
+    "vogError": "Upload your VOG and enter the issue date.",
+    "emergencyRateLabel": "Your emergency rate (€ per hour)",
+    "emergencyRateHint": "At least 1.5× your normal rate. Emergency jobs are same-day.",
+    "emergencyRateError": "Your emergency rate must be at least 1.5× your normal rate.",
+    "rateHintBusiness": "Business cleaners in NL typically charge €25–35/hour."
   },
   "auth": {
     "loginTitle": "Log in",
@@ -313,7 +329,20 @@
     "settingLinenPrice": "Price per listing/room per month (€, excl. VAT)",
     "settingLinenHint": "Delivered by an external linen partner. Off by default.",
     "settingVogMaxAge": "VOG maximum age (months)",
-    "settingVogMaxAgeHint": "Schools only see cleaners with an approved VOG no older than this."
+    "settingVogMaxAgeHint": "Schools only see cleaners with an approved VOG no older than this.",
+    "tabVog": "VOG",
+    "vogTitle": "VOG review",
+    "vogIntro": "Only approved VOGs no older than {months} months earn the 'VOG ✓' badge and access to school jobs. After your decision the file is deleted automatically.",
+    "vogIssued": "Issued",
+    "vogTooOld": "too old",
+    "vogView": "View document",
+    "vogViewHint": "Available once storage is live (private bucket, admin only).",
+    "vogApprove": "Approve",
+    "vogReject": "Reject",
+    "vogFileDeleted": "Reviewed: document deleted, only outcome and date kept.",
+    "vog_pending": "awaiting review",
+    "vog_approved": "approved",
+    "vog_rejected": "rejected"
   },
   "jobs": {
     "title": "Cleaning jobs",

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { DEFAULT_RATE_FLOOR_CENTS, dutchPostcodeSchema } from "@/lib/validation";
-import { LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type Weekday } from "@/lib/sample-data";
+import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type JobType, type Weekday } from "@/lib/sample-data";
 
 /**
  * 3-step cleaner ad wizard (brief §5). Drafts are stored locally and map
@@ -17,6 +17,12 @@ type Draft = {
   about: string;
   services: string[];
   languages: string[];
+  jobTypes: JobType[];
+  kvkNumber: string;
+  vogFileName: string;
+  vogIssuedAt: string;
+  emergencyOptIn: boolean;
+  emergencyRateEuro: string;
   rateEuro: string;
   minHours: number;
   postcode: string;
@@ -30,6 +36,12 @@ const EMPTY: Draft = {
   about: "",
   services: [],
   languages: ["nl"],
+  jobTypes: ["household"],
+  kvkNumber: "",
+  vogFileName: "",
+  vogIssuedAt: "",
+  emergencyOptIn: false,
+  emergencyRateEuro: "",
   rateEuro: "17,50",
   minHours: 2,
   postcode: "",
@@ -102,6 +114,14 @@ export function AdWizard() {
       if (draft.services.length === 0) e.services = t("servicesError");
       const cents = parseRateCents(draft.rateEuro);
       if (cents === null || cents < DEFAULT_RATE_FLOOR_CENTS) e.rate = t("rateError");
+      if (draft.jobTypes.length === 0) e.jobTypes = t("jobTypesError");
+      const wantsBusiness = draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j));
+      if (wantsBusiness && !/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvk = t("kvkError");
+      if (draft.jobTypes.includes("school") && (!draft.vogFileName || !draft.vogIssuedAt)) e.vog = t("vogError");
+      if (draft.jobTypes.includes("emergency")) {
+        const em = parseRateCents(draft.emergencyRateEuro);
+        if (em === null || cents === null || em < Math.ceil(cents * 1.5)) e.emergency = t("emergencyRateError");
+      }
     }
     if (s === 2) {
       if (!dutchPostcodeSchema.safeParse(draft.postcode).success) e.postcode = t("postcodeError");
@@ -214,6 +234,62 @@ export function AdWizard() {
               {errors.services ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.services}</p> : null}
             </fieldset>
 
+            <fieldset>
+              <legend className="text-sm font-semibold text-ink/80">{t("jobTypesLabel")}</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={draft.jobTypes.includes(key)}
+                    onClick={() => persist({ ...draft, jobTypes: toggleIn(draft.jobTypes, key) })}
+                    className={chipCls(draft.jobTypes.includes(key))}
+                  >
+                    {JOB_TYPE_LABELS[key][locale]}
+                  </button>
+                ))}
+              </div>
+              {errors.jobTypes ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.jobTypes}</p> : null}
+            </fieldset>
+
+            {draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j)) ? (
+              <label className="text-sm font-semibold text-ink/80">
+                {t("kvkLabel")}
+                <input type="text" inputMode="numeric" value={draft.kvkNumber} onChange={(e) => persist({ ...draft, kvkNumber: e.target.value })} placeholder="12345678" className={`mt-1 ${inputCls}`} />
+                <p className="mt-1 text-xs font-medium text-ink/70">{t("kvkHint")}</p>
+                {errors.kvk ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.kvk}</p> : null}
+              </label>
+            ) : null}
+
+            {draft.jobTypes.includes("school") ? (
+              <fieldset className="rounded-xl border border-forest/30 bg-mint p-4">
+                <legend className="px-1 text-sm font-extrabold text-ink">{t("vogLabel")}</legend>
+                <p className="text-xs text-ink/70">{t("vogIntro")}</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="text-xs font-semibold text-ink/80">
+                    {t("vogFile")}
+                    <input type="file" accept="application/pdf,image/*" onChange={(e) => persist({ ...draft, vogFileName: e.target.files?.[0]?.name ?? "" })} className="mt-1 block w-full text-sm" />
+                    {draft.vogFileName ? <span className="mt-1 block text-xs text-forest">✓ {draft.vogFileName}</span> : null}
+                  </label>
+                  <label className="text-xs font-semibold text-ink/80">
+                    {t("vogIssuedAt")}
+                    <input type="date" value={draft.vogIssuedAt} onChange={(e) => persist({ ...draft, vogIssuedAt: e.target.value })} className={`mt-1 ${inputCls}`} />
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-ink/70">{t("vogPrivacy")}</p>
+                {errors.vog ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.vog}</p> : null}
+              </fieldset>
+            ) : null}
+
+            {draft.jobTypes.includes("emergency") ? (
+              <label className="text-sm font-semibold text-ink/80">
+                {t("emergencyRateLabel")}
+                <input type="text" inputMode="decimal" value={draft.emergencyRateEuro} onChange={(e) => persist({ ...draft, emergencyRateEuro: e.target.value, emergencyOptIn: true })} className={`mt-1 ${inputCls}`} />
+                <p className="mt-1 text-xs font-medium text-ink/70">{t("emergencyRateHint")}</p>
+                {errors.emergency ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.emergency}</p> : null}
+              </label>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-semibold text-ink/80">
                 {t("rateLabel")}
@@ -224,7 +300,7 @@ export function AdWizard() {
                   onChange={(e) => persist({ ...draft, rateEuro: e.target.value })}
                   className={`mt-1 ${inputCls}`}
                 />
-                <p className="mt-1 text-xs font-medium text-ink/70">{t("rateHint")}</p>
+                <p className="mt-1 text-xs font-medium text-ink/70">{draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j)) ? t("rateHintBusiness") : t("rateHint")}</p>
                 {errors.rate ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.rate}</p> : null}
               </label>
               <label className="text-sm font-semibold text-ink/80">

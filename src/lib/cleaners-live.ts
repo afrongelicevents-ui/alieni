@@ -18,12 +18,16 @@ type Row = {
   radius_km: number;
   about: string | null;
   verified_jobs_count: number;
+  job_types: string[] | null;
+  kvk_number: string | null;
+  emergency_rate_cents: number | null;
+  vog_documents: { status: string; issued_at: string }[] | null;
   profiles: { display_name: string; city: string | null } | null;
   availability_slots: { weekday: number; block: string }[];
 };
 
 const SELECT =
-  "id, rate_cents, min_hours, services, languages, postcode, radius_km, about, verified_jobs_count, profiles ( display_name, city ), availability_slots ( weekday, block )";
+  "id, rate_cents, min_hours, services, languages, postcode, radius_km, about, verified_jobs_count, job_types, kvk_number, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
 
 function toCleaner(row: Row): SampleCleaner {
   const availability: Partial<Record<Weekday, DayBlock[]>> = {};
@@ -46,6 +50,12 @@ function toCleaner(row: Row): SampleCleaner {
     verifiedJobs: row.verified_jobs_count,
     services: row.services ?? [],
     languages: row.languages ?? [],
+    jobTypes: (row.job_types ?? ["household"]) as SampleCleaner["jobTypes"],
+    kvkNumber: row.kvk_number ?? undefined,
+    emergencyRateCents: row.emergency_rate_cents ?? undefined,
+    vog: row.vog_documents?.[0]
+      ? { status: row.vog_documents[0].status as "approved" | "pending" | "rejected", issuedAt: row.vog_documents[0].issued_at }
+      : undefined,
     about: { nl: about, en: about },
     availability,
     reviews: [],

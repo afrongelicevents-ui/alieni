@@ -65,7 +65,8 @@
     "results": "{count, plural, =0 {Geen schoonmakers gevonden} one {# schoonmaker gevonden} other {# schoonmakers gevonden}}",
     "noResults": "Geen schoonmakers gevonden. Probeer een andere postcode of minder filters.",
     "distanceAway": "±{km} km",
-    "minHoursShort": "min. {hours} uur"
+    "minHoursShort": "min. {hours} uur",
+    "jobType": "Type klus"
   },
   "profile": {
     "notFound": "Deze advertentie bestaat niet (meer).",
@@ -127,7 +128,22 @@
     "savedTitle": "Je advertentie staat klaar! 🎉",
     "savedText": "Accounts zijn nog niet actief. Je advertentie is veilig op dit apparaat bewaard en wordt gepubliceerd zodra we live gaan.",
     "editAgain": "Bewerk advertentie",
-    "languagesLabel": "Welke talen spreek je?"
+    "languagesLabel": "Welke talen spreek je?",
+    "jobTypesLabel": "Voor wie wil je werken?",
+    "jobTypesError": "Kies minstens één type klus.",
+    "kvkLabel": "KvK-nummer (verplicht voor zakelijke klussen)",
+    "kvkHint": "Voor bedrijven werk je als zzp'er of bedrijf. 8 cijfers — niet geverifieerd door Alieni.",
+    "kvkError": "Een KvK-nummer heeft 8 cijfers.",
+    "vogLabel": "VOG voor scholen",
+    "vogIntro": "Scholen zien alleen schoonmakers met een goedgekeurde VOG (Verklaring Omtrent het Gedrag). Upload je VOG; Alieni beoordeelt hem.",
+    "vogFile": "VOG (PDF of foto)",
+    "vogIssuedAt": "Afgiftedatum",
+    "vogPrivacy": "Alleen Alieni ziet je document; scholen zien alleen het badge 'VOG ✓'. Na beoordeling wordt het bestand verwijderd; we bewaren alleen de uitkomst en de datum.",
+    "vogError": "Upload je VOG en vul de afgiftedatum in.",
+    "emergencyRateLabel": "Jouw spoedtarief (€ per uur)",
+    "emergencyRateHint": "Minimaal 1,5× je normale tarief. Spoedklussen zijn dezelfde dag.",
+    "emergencyRateError": "Je spoedtarief moet minimaal 1,5× je normale tarief zijn.",
+    "rateHintBusiness": "Zakelijke schoonmakers in Nederland vragen meestal €25–35 per uur."
   },
   "auth": {
     "loginTitle": "Inloggen",
@@ -313,7 +329,20 @@
     "settingLinenPrice": "Prijs per listing/kamer per maand (€, excl. BTW)",
     "settingLinenHint": "Geleverd door een externe linnenpartner. Standaard uit.",
     "settingVogMaxAge": "VOG maximale leeftijd (maanden)",
-    "settingVogMaxAgeHint": "Scholen zien alleen schoonmakers met een goedgekeurde VOG die niet ouder is dan dit."
+    "settingVogMaxAgeHint": "Scholen zien alleen schoonmakers met een goedgekeurde VOG die niet ouder is dan dit.",
+    "tabVog": "VOG",
+    "vogTitle": "VOG-beoordeling",
+    "vogIntro": "Alleen goedgekeurde VOG's van maximaal {months} maanden oud geven het badge 'VOG ✓' en toegang tot schoolklussen. Na je beslissing wordt het bestand automatisch verwijderd.",
+    "vogIssued": "Afgegeven",
+    "vogTooOld": "te oud",
+    "vogView": "Bekijk document",
+    "vogViewHint": "Beschikbaar zodra de opslag live is (privé-bucket, alleen admin).",
+    "vogApprove": "Goedkeuren",
+    "vogReject": "Afwijzen",
+    "vogFileDeleted": "Beoordeeld: document verwijderd, alleen uitkomst en datum bewaard.",
+    "vog_pending": "wacht op beoordeling",
+    "vog_approved": "goedgekeurd",
+    "vog_rejected": "afgewezen"
   },
   "jobs": {
     "title": "Schoonmaakklussen",

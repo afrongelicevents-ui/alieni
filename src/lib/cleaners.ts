@@ -1,5 +1,5 @@
 import { distanceKm, postcodeToLatLng, type LatLng } from "./geo";
-import { SAMPLE_CLEANERS, type SampleCleaner, type Weekday } from "./sample-data";
+import { SAMPLE_CLEANERS, type JobType, type SampleCleaner, type SampleVog, type Weekday } from "./sample-data";
 
 /**
  * Cleaner search: filtering and sorting (brief §3.2).
@@ -13,8 +13,20 @@ export type CleanerFilters = {
   maxRateCents?: number;
   day?: Weekday;
   language?: string;
+  /** Business job type; "school" additionally requires a valid VOG. */
+  jobType?: JobType;
   sort?: "distance" | "price" | "rating";
 };
+
+export const DEFAULT_VOG_MAX_AGE_MONTHS = 12;
+
+/** VOG is valid when approved and issued within the max age (brief v2 §7). */
+export function isVogValid(vog: SampleVog | undefined, now: Date, maxAgeMonths: number = DEFAULT_VOG_MAX_AGE_MONTHS): boolean {
+  if (!vog || vog.status !== "approved") return false;
+  const cutoff = new Date(now);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - maxAgeMonths);
+  return new Date(vog.issuedAt) >= cutoff;
+}
 
 export type CleanerResult = SampleCleaner & { distanceKm: number | null };
 
@@ -25,6 +37,8 @@ export function searchCleaners(
     origin?: LatLng | null;
     /** Live rows from Supabase; defaults to labelled sample data. */
     dataset?: SampleCleaner[];
+    now?: Date;
+    vogMaxAgeMonths?: number;
   } = {},
 ): CleanerResult[] {
   const origin =
@@ -61,6 +75,14 @@ export function searchCleaners(
   if (filters.language) {
     results = results.filter((c) => c.languages.includes(filters.language!));
   }
+  if (filters.jobType) {
+    const jobType = filters.jobType;
+    results = results.filter((c) => (c.jobTypes ?? ["household"]).includes(jobType));
+    if (jobType === "school") {
+      const now = options.now ?? new Date();
+      results = results.filter((c) => isVogValid(c.vog, now, options.vogMaxAgeMonths));
+    }
+  }
 
   const sort = filters.sort ?? (origin ? "distance" : "rating");
   results.sort((a, b) => {
@@ -95,5 +117,9 @@ export function parseFilters(params: Record<string, string | string[] | undefine
   if (language) f.language = language;
   const sort = one(params.sort);
   if (sort === "distance" || sort === "price" || sort === "rating") f.sort = sort;
+  const jobType = one(params.jobType);
+  if (jobType && ["household", "airbnb", "hotel", "restaurant", "office", "school", "emergency"].includes(jobType)) {
+    f.jobType = jobType as JobType;
+  }
   return f;
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { getCleaner } from "@/lib/cleaners";
+import { getCleaner, isVogValid } from "@/lib/cleaners";
 import { fetchLiveCleaner } from "@/lib/cleaners-live";
 import { formatHourlyRate } from "@/lib/money";
 import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
@@ -37,7 +37,12 @@ export default async function CleanerProfilePage({
             </svg>
           </span>
           <div>
-            <h1 className="headline text-3xl text-ink">{cleaner.name}</h1>
+            <h1 className="headline flex flex-wrap items-center gap-2 text-3xl text-ink">
+              {cleaner.name}
+              {isVogValid(cleaner.vog, new Date()) ? (
+                <span className="rounded-full bg-forest px-2.5 py-1 text-xs font-bold text-white">VOG ✓</span>
+              ) : null}
+            </h1>
             <p className="mt-1 flex items-center gap-1.5 text-sm text-ink/70">
               <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
                 <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />

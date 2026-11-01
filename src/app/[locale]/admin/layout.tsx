@@ -29,6 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const tabs = [
     { href: "/admin", key: "tabDashboard" },
     { href: "/admin/reports", key: "tabReports" },
+    { href: "/admin/vog", key: "tabVog" },
     { href: "/admin/users", key: "tabUsers" },
     { href: "/admin/ads", key: "tabAds" },
     { href: "/admin/payments", key: "tabPayments" },

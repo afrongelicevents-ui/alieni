@@ -2,6 +2,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { formatHourlyRate } from "@/lib/money";
 import { SERVICE_LABELS, type SampleCleaner } from "@/lib/sample-data";
+import { isVogValid } from "@/lib/cleaners";
 import { FavouriteButton } from "./FavouriteButton";
 
 type Props = {
@@ -26,7 +27,12 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
           </svg>
         </span>
         <div className="pr-10">
-          <h3 className="text-lg font-extrabold text-ink">{cleaner.name}</h3>
+          <h3 className="flex flex-wrap items-center gap-2 text-lg font-extrabold text-ink">
+            {cleaner.name}
+            {isVogValid(cleaner.vog, new Date()) ? (
+              <span className="rounded-full bg-forest px-2 py-0.5 text-[11px] font-bold text-white" title="VOG goedgekeurd">VOG ✓</span>
+            ) : null}
+          </h3>
           <p className="flex items-center gap-1.5 text-sm text-ink/70">
             <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
               <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
