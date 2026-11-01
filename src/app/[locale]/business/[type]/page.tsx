@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
+import { hasPublicImage } from "@/lib/public-image";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/Button";
 import { BusinessTypeIcon } from "@/components/business/BusinessTypeCard";
@@ -60,11 +62,13 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
   const cfg = BUSINESS_TYPES[bt];
   const example = monthlyFee(bt, bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1);
   const exampleUnits = bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1;
+  const hasPhoto = hasPublicImage(`img/business-${bt}.webp`);
 
   return (
     <div>
       <section className="bg-section">
-        <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
+        <div className={`mx-auto max-w-6xl items-center gap-8 px-4 py-12 md:py-16 ${hasPhoto ? "grid md:grid-cols-[1.2fr_1fr]" : ""}`}>
+        <div>
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-mint text-forest"><BusinessTypeIcon type={bt} className="h-8 w-8" /></span>
           <p className="mt-4 text-xs font-bold uppercase tracking-wide text-forest">{cfg.label[lang]}</p>
           <h1 className="headline mt-2 max-w-2xl text-4xl text-ink sm:text-5xl">{tp("heroTitle")}</h1>
@@ -81,6 +85,12 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
             <ButtonLink href={`/search?jobType=${bt}`} variant="secondary">{t("browseCleaners")}</ButtonLink>
           </div>
           <p className="mt-4 text-sm font-semibold text-forest">{t("noCommission")}</p>
+        </div>
+        {hasPhoto ? (
+          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[2rem] shadow-xl shadow-forest/10">
+            <Image src={`/img/business-${bt}.webp`} alt="" fill sizes="(min-width: 768px) 480px, 100vw" className="object-cover" />
+          </div>
+        ) : null}
         </div>
       </section>
 

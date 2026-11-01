@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { hasPublicImage } from "@/lib/public-image";
 import { PostcodeSearch } from "./PostcodeSearch";
 import { Link } from "@/i18n/navigation";
 
@@ -43,14 +45,25 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Cleaner photo placeholder — real photography will be supplied in /public. */}
-        <div className="relative mx-auto hidden aspect-[4/5] w-full max-w-sm md:block">
-          <div className="absolute inset-0 flex items-end justify-center overflow-hidden rounded-[2rem] bg-mint">
-            <svg viewBox="0 0 200 250" className="h-5/6 w-auto text-forest/20" fill="currentColor" aria-hidden="true">
-              <circle cx="100" cy="80" r="45" />
-              <path d="M30 250c0-50 31-85 70-85s70 35 70 85" />
-            </svg>
-          </div>
+        {/* Generated marketing photo (public/img) — silhouette until it exists */}
+        <div className="relative mx-auto hidden aspect-[3/4] w-full max-w-sm md:block">
+          {hasPublicImage("img/hero-cleaner.webp") ? (
+            <Image
+              src="/img/hero-cleaner.webp"
+              alt=""
+              fill
+              sizes="(min-width: 768px) 384px, 0px"
+              priority
+              className="rounded-[2rem] object-cover shadow-xl shadow-forest/10"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-end justify-center overflow-hidden rounded-[2rem] bg-mint">
+              <svg viewBox="0 0 200 250" className="h-5/6 w-auto text-forest/20" fill="currentColor" aria-hidden="true">
+                <circle cx="100" cy="80" r="45" />
+                <path d="M30 250c0-50 31-85 70-85s70 35 70 85" />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
     </section>
