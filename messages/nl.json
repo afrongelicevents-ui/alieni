@@ -11,7 +11,8 @@
     "account": "Account",
     "login": "Inloggen",
     "signup": "Aanmelden",
-    "menu": "Menu openen"
+    "menu": "Menu openen",
+    "messages": "Berichten"
   },
   "home": {
     "heroTitlePre": "Vind betrouwbare schoonmakers of schoonmaakklussen ",
@@ -171,5 +172,43 @@
     "contact": "Contact",
     "notice": "Alieni is een advertentieplatform. Schoonmakers zijn zelfstandig en niet in dienst van Alieni; gebruikers maken onderling afspraken.",
     "pricing": "Prijzen voor huishoudens zijn inclusief 21% btw."
+  },
+  "meeting": {
+    "cta": "Kennismaking aanvragen",
+    "freeNote": "Gratis en vrijblijvend. Er wordt pas betaald als jullie allebei een deal bevestigen.",
+    "title": "Kennismaken met {name}",
+    "typeLabel": "Hoe wil je kennismaken?",
+    "inPerson": "Bij jou thuis",
+    "video": "Videogesprek",
+    "slotLabel": "Kies een moment uit de beschikbaarheid",
+    "noSlots": "Deze schoonmaker heeft nog geen beschikbaarheid ingevuld.",
+    "slotError": "Kies eerst een moment.",
+    "messageLabel": "Bericht (optioneel)",
+    "messagePlaceholder": "Stel jezelf kort voor…",
+    "mandateNote": "Bij lancering koppel je in deze stap een betaalmethode (€0 — eventueel €0,01 iDEAL-verificatie die automatisch wordt teruggestort). Er wordt pas €14,95 per maand betaald nadat jullie allebei een deal bevestigen.",
+    "submit": "Verstuur aanvraag",
+    "cancel": "Annuleren",
+    "summary": "{type} · {day} ({block})",
+    "statusRequested": "aangevraagd"
+  },
+  "chat": {
+    "title": "Berichten",
+    "empty": "Nog geen gesprekken. Vraag een kennismaking aan bij een schoonmaker om te chatten.",
+    "browse": "Bekijk schoonmakers",
+    "notFound": "Dit gesprek bestaat niet.",
+    "backToList": "Alle berichten",
+    "maskingNotice": "Telefoonnummers, e-mailadressen en links worden automatisch verborgen totdat jullie allebei een deal bevestigen. Zo blijft het voor iedereen veilig en eerlijk.",
+    "maskedTag": "contactgegevens verborgen",
+    "willBeMasked": "Let op: contactgegevens in dit bericht worden verborgen voor de ontvanger.",
+    "inputPlaceholder": "Typ je bericht…",
+    "send": "Versturen"
+  },
+  "account": {
+    "title": "Account",
+    "intro": "Accounts zijn nog niet actief — dit is alvast jouw overzicht.",
+    "messages": "Berichten",
+    "favourites": "Favorieten",
+    "myAd": "Mijn advertentie",
+    "loginSignup": "Inloggen of aanmelden"
   }
 }

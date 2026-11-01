@@ -5,6 +5,7 @@ import { formatHourlyRate } from "@/lib/money";
 import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { AvailabilityGrid } from "@/components/cleaners/AvailabilityGrid";
 import { FavouriteButton } from "@/components/cleaners/FavouriteButton";
+import { MeetingRequestButton } from "@/components/cleaners/MeetingRequestButton";
 import { ReportButton } from "@/components/cleaners/ReportButton";
 
 export default async function CleanerProfilePage({
@@ -54,16 +55,8 @@ export default async function CleanerProfilePage({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-col gap-2">
-          <button
-            type="button"
-            disabled
-            title={t("meetingComingSoon")}
-            className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center gap-2 rounded-full bg-sun px-6 py-3 font-bold text-ink opacity-70"
-          >
-            {t("requestMeeting")}
-          </button>
-          <p className="text-center text-xs text-ink/60">{t("meetingComingSoon")}</p>
+        <div className="mt-5">
+          <MeetingRequestButton cleaner={cleaner} />
         </div>
       </header>
 

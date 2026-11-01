@@ -45,6 +45,9 @@ export function Header() {
           <Link href="/favourites" className="hover:underline">
             {t("nav.favourites")}
           </Link>
+          <Link href="/messages" className="hover:underline">
+            {t("nav.messages")}
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -66,6 +69,7 @@ export function Header() {
                 ["/search", "nav.search"],
                 ["/jobs", "nav.jobs"],
                 ["/favourites", "nav.favourites"],
+                ["/messages", "nav.messages"],
                 ["/account", "nav.account"],
                 ["/signup", "nav.signup"],
               ] as const

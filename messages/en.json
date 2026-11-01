@@ -11,7 +11,8 @@
     "account": "Account",
     "login": "Log in",
     "signup": "Sign up",
-    "menu": "Open menu"
+    "menu": "Open menu",
+    "messages": "Messages"
   },
   "home": {
     "heroTitlePre": "Find trusted cleaners or cleaning jobs ",
@@ -171,5 +172,43 @@
     "contact": "Contact",
     "notice": "Alieni is an advertising marketplace. Cleaners are independent and not employed by Alieni; users make their own arrangements.",
     "pricing": "Household prices include 21% VAT (btw)."
+  },
+  "meeting": {
+    "cta": "Request a meeting",
+    "freeNote": "Free and without obligation. You only pay once you both confirm a deal.",
+    "title": "Meet {name}",
+    "typeLabel": "How would you like to meet?",
+    "inPerson": "At your home",
+    "video": "Video call",
+    "slotLabel": "Pick a moment from the availability",
+    "noSlots": "This cleaner has not filled in any availability yet.",
+    "slotError": "Pick a moment first.",
+    "messageLabel": "Message (optional)",
+    "messagePlaceholder": "Briefly introduce yourself…",
+    "mandateNote": "At launch, you add a payment method in this step (€0 — possibly a €0.01 iDEAL verification that is refunded automatically). You only pay €14.95 per month after you both confirm a deal.",
+    "submit": "Send request",
+    "cancel": "Cancel",
+    "summary": "{type} · {day} ({block})",
+    "statusRequested": "requested"
+  },
+  "chat": {
+    "title": "Messages",
+    "empty": "No conversations yet. Request a meeting with a cleaner to start chatting.",
+    "browse": "Browse cleaners",
+    "notFound": "This conversation does not exist.",
+    "backToList": "All messages",
+    "maskingNotice": "Phone numbers, email addresses and links are hidden automatically until you both confirm a deal. That keeps things safe and fair for everyone.",
+    "maskedTag": "contact details hidden",
+    "willBeMasked": "Note: contact details in this message will be hidden from the recipient.",
+    "inputPlaceholder": "Type your message…",
+    "send": "Send"
+  },
+  "account": {
+    "title": "Account",
+    "intro": "Accounts are not active yet — here is your overview in the meantime.",
+    "messages": "Messages",
+    "favourites": "Favourites",
+    "myAd": "My ad",
+    "loginSignup": "Log in or sign up"
   }
 }
