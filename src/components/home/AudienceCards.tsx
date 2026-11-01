@@ -57,7 +57,7 @@ export function AudienceCards() {
       title: t("businessesTitle"),
       text: t("businessesText"),
       cta: t("businessesCta"),
-      href: "/signup",
+      href: "/jobs/new",
       desktopOnly: true,
     },
   ];

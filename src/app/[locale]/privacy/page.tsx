@@ -27,32 +27,41 @@ const nl = {
       ],
     },
     {
-      h: "3. Waar je gegevens staan",
+      h: "3. Wat we bewust NIET verwerken (dataminimalisatie)",
+      p: [
+        "Geen woonadressen: Alieni slaat nergens een adres op. Waar er wordt schoongemaakt, deel je zelf rechtstreeks met de schoonmaker — dat gaat buiten het platform om.",
+        "Geen bank- of kaartgegevens: die blijven bij onze betaalprovider Mollie. Schoonmakers betalen nooit iets, dus van hen hebben we helemaal geen financiële gegevens.",
+        "Geen identiteitsbewijzen, KvK-verificatie of VOG's: schoonmakers zijn zelfstandig; de klantrelatie is van hen, niet van Alieni.",
+        "De postcode die je in de zoekbalk typt wordt alleen gebruikt om te zoeken en nooit opgeslagen.",
+      ],
+    },
+    {
+      h: "4. Waar je gegevens staan",
       p: [
         "Alle gegevens worden gehost binnen de Europese Unie (database en opslag bij Supabase in een EU-regio, hosting bij Vercel in de EU-regio). Betalingen lopen via Mollie B.V. (Nederland).",
       ],
     },
     {
-      h: "4. Hoe lang we gegevens bewaren",
+      h: "5. Hoe lang we gegevens bewaren",
       p: [
         "Accountgegevens: zolang je account bestaat. Facturen en betaalgegevens: 7 jaar (fiscale bewaarplicht). Chatberichten: tot 2 jaar na het laatste bericht of zoveel eerder als je je account verwijdert. Meldingen: 2 jaar na afhandeling.",
       ],
     },
     {
-      h: "5. Met wie we gegevens delen",
+      h: "6. Met wie we gegevens delen",
       p: [
         "Alleen met verwerkers die nodig zijn om het platform te laten werken: Supabase (database/opslag), Vercel (hosting), Mollie (betalingen) en onze e-mailprovider voor transactionele e-mail. Met al deze partijen zijn verwerkersovereenkomsten gesloten. We verkopen nooit gegevens.",
       ],
     },
     {
-      h: "6. Jouw rechten (AVG)",
+      h: "7. Jouw rechten (AVG)",
       p: [
         "Je kunt je gegevens inzien, corrigeren, exporteren en je account verwijderen via je accountinstellingen. Verwijdering wist je profiel, advertentie en berichten; factuurgegevens bewaren we zolang de wet dat eist.",
         "Klachten kun je indienen bij de Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl).",
       ],
     },
     {
-      h: "7. Cookies",
+      h: "8. Cookies",
       p: [
         "Alieni gebruikt alleen functionele cookies die nodig zijn om in te loggen en het platform te laten werken. Er zijn geen tracking- of advertentiecookies; daarom is er geen cookiebanner nodig. Verandert dit, dan vragen we eerst toestemming.",
       ],
@@ -81,32 +90,41 @@ const en = {
       ],
     },
     {
-      h: "3. Where your data lives",
+      h: "3. What we deliberately do NOT process (data minimisation)",
+      p: [
+        "No home addresses: Alieni stores no address anywhere. Where the cleaning happens is something you share directly with the cleaner — outside the platform.",
+        "No bank or card details: those stay with our payment provider Mollie. Cleaners never pay anything, so we hold no financial data about them at all.",
+        "No identity documents, KvK verification or VOG certificates: cleaners are independent; the client relationship is theirs, not Alieni's.",
+        "The postcode you type into the search bar is only used to search and is never stored.",
+      ],
+    },
+    {
+      h: "4. Where your data lives",
       p: [
         "All data is hosted within the European Union (database and storage at Supabase in an EU region, hosting at Vercel in the EU region). Payments run via Mollie B.V. (Netherlands).",
       ],
     },
     {
-      h: "4. How long we keep data",
+      h: "5. How long we keep data",
       p: [
         "Account data: as long as your account exists. Invoices and payment data: 7 years (tax retention obligation). Chat messages: up to 2 years after the last message, or sooner if you delete your account. Reports: 2 years after handling.",
       ],
     },
     {
-      h: "5. Who we share data with",
+      h: "6. Who we share data with",
       p: [
         "Only with processors needed to run the platform: Supabase (database/storage), Vercel (hosting), Mollie (payments) and our email provider for transactional email. Data processing agreements are in place with all of them. We never sell data.",
       ],
     },
     {
-      h: "6. Your rights (GDPR)",
+      h: "7. Your rights (GDPR)",
       p: [
         "You can access, correct and export your data and delete your account via your account settings. Deletion wipes your profile, ad and messages; invoice data is kept as long as the law requires.",
         "Complaints can be filed with the Dutch Data Protection Authority, Autoriteit Persoonsgegevens (autoriteitpersoonsgegevens.nl).",
       ],
     },
     {
-      h: "7. Cookies",
+      h: "8. Cookies",
       p: [
         "Alieni only uses functional cookies needed to log in and make the platform work. There are no tracking or advertising cookies, so no cookie banner is required. If this changes, we will ask for consent first.",
       ],
