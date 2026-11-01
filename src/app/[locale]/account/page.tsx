@@ -6,6 +6,7 @@ const items = [
   { href: "/favourites", key: "favourites" },
   { href: "/cleaners/new", key: "myAd" },
   { href: "/cleaners/slots", key: "mySlots" },
+  { href: "/cleaners/emergency", key: "myEmergency" },
   { href: "/login", key: "loginSignup" },
 ] as const;
 

@@ -70,7 +70,6 @@ export function BusinessDashboard() {
           <p className="mt-2 text-xs text-white/90">{t("pendingUnits", { count: account.pendingUnitCount, units: cfg.unitPlural[lang], fee: formatEuro(monthlyFee(account.businessType, account.pendingUnitCount).netCents, lang) })}</p>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download from an API route, not a page */}
           <a href="/api/invoices/export" download className="inline-flex min-h-10 items-center rounded-full bg-white/15 px-4 text-xs font-bold text-white hover:bg-white/25">{t("exportCsv")}</a>
           {account.billingStartedAt && !account.billingEndedAt ? (
             <button type="button" onClick={() => update({ billingEndedAt: new Date().toISOString() })}

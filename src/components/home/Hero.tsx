@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { PostcodeSearch } from "./PostcodeSearch";
+import { Link } from "@/i18n/navigation";
 
 export function Hero() {
   const t = useTranslations("home");
@@ -37,6 +38,9 @@ export function Hero() {
           <div className="mt-7">
             <PostcodeSearch />
           </div>
+          <p className="mt-3 text-sm">
+            <Link href="/emergency" className="font-bold text-forest underline underline-offset-2">{t("emergencyCta")}</Link>
+          </p>
         </div>
 
         {/* Cleaner photo placeholder — real photography will be supplied in /public. */}
