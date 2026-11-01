@@ -1,0 +1,89 @@
+import { distanceKm, postcodeToLatLng } from "./geo";
+import { SAMPLE_CLEANERS, type SampleCleaner, type Weekday } from "./sample-data";
+
+/**
+ * Cleaner search: filtering and sorting (brief §3.2).
+ * Runs over sample data today; the same filter shape maps 1:1 onto the
+ * Supabase/PostGIS query once the project is connected.
+ */
+
+export type CleanerFilters = {
+  q?: string; // postcode or town
+  service?: string;
+  maxRateCents?: number;
+  day?: Weekday;
+  language?: string;
+  sort?: "distance" | "price" | "rating";
+};
+
+export type CleanerResult = SampleCleaner & { distanceKm: number | null };
+
+export function searchCleaners(filters: CleanerFilters): CleanerResult[] {
+  const origin = filters.q ? postcodeToLatLng(filters.q) : null;
+  const qLower = filters.q?.trim().toLowerCase() ?? "";
+  const isTownQuery = qLower !== "" && !/\d/.test(qLower);
+
+  let results: CleanerResult[] = SAMPLE_CLEANERS.map((c) => {
+    const loc = postcodeToLatLng(c.postcode);
+    return {
+      ...c,
+      distanceKm: origin && loc ? Math.round(distanceKm(origin, loc) * 10) / 10 : null,
+    };
+  });
+
+  if (isTownQuery) {
+    results = results.filter((c) => c.city.toLowerCase().includes(qLower));
+  } else if (origin) {
+    // Within the cleaner's own travel radius (+ small tolerance for the
+    // region-level approximation of sample data).
+    results = results.filter((c) => c.distanceKm !== null && c.distanceKm <= c.radiusKm + 15);
+  }
+
+  if (filters.service) {
+    results = results.filter((c) => c.services.includes(filters.service!));
+  }
+  if (filters.maxRateCents) {
+    results = results.filter((c) => c.rateCents <= filters.maxRateCents!);
+  }
+  if (filters.day !== undefined) {
+    results = results.filter((c) => (c.availability[filters.day!] ?? []).length > 0);
+  }
+  if (filters.language) {
+    results = results.filter((c) => c.languages.includes(filters.language!));
+  }
+
+  const sort = filters.sort ?? (origin ? "distance" : "rating");
+  results.sort((a, b) => {
+    if (sort === "price") return a.rateCents - b.rateCents;
+    if (sort === "rating") return b.rating - a.rating || b.reviewCount - a.reviewCount;
+    // distance
+    if (a.distanceKm === null) return 1;
+    if (b.distanceKm === null) return -1;
+    return a.distanceKm - b.distanceKm;
+  });
+
+  return results;
+}
+
+export function getCleaner(id: string): SampleCleaner | undefined {
+  return SAMPLE_CLEANERS.find((c) => c.id === id);
+}
+
+/** Parse untyped URL searchParams into validated filters. */
+export function parseFilters(params: Record<string, string | string[] | undefined>): CleanerFilters {
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const f: CleanerFilters = {};
+  const q = one(params.q)?.trim();
+  if (q) f.q = q.slice(0, 60);
+  const service = one(params.service);
+  if (service) f.service = service;
+  const maxRate = Number(one(params.maxRate));
+  if (Number.isFinite(maxRate) && maxRate > 0) f.maxRateCents = Math.round(maxRate) * 100;
+  const day = Number(one(params.day));
+  if (Number.isInteger(day) && day >= 0 && day <= 6) f.day = day as Weekday;
+  const language = one(params.language);
+  if (language) f.language = language;
+  const sort = one(params.sort);
+  if (sort === "distance" || sort === "price" || sort === "rating") f.sort = sort;
+  return f;
+}

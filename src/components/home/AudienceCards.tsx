@@ -50,7 +50,7 @@ export function AudienceCards() {
       title: t("cleanersTitle"),
       text: t("cleanersText"),
       cta: t("cleanersCta"),
-      href: "/jobs",
+      href: "/cleaners/new",
     },
     {
       icon: <BuildingIcon />,
