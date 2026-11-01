@@ -419,6 +419,12 @@
     "navJobs": "Mijn klussen",
     "myUnits": "Mijn {units}",
     "noCleanerYet": "Nog geen schoonmaker",
-    "demoNote": "Demomodus — je gegevens staan lokaal op dit apparaat tot accounts live zijn."
+    "demoNote": "Demomodus — je gegevens staan lokaal op dit apparaat tot accounts live zijn.",
+    "pendingUnits": "Vanaf volgende maand: {count} {units} = {fee}/maand excl. BTW.",
+    "exportCsv": "Exporteer facturen (CSV)",
+    "cancelBilling": "Opzeggen per einde maand",
+    "cancelledNote": "Opgezegd — stopt aan het einde van de lopende maand.",
+    "invoicesTitle": "Facturen",
+    "invoicesText": "Aan het einde van elke maand verschijnt hier je factuur (PDF) met BTW-specificatie. Het bedrag wordt automatisch geïncasseerd. Mislukt een incasso, dan pauzeren we de verbinding en vragen we je om je betaalmethode bij te werken."
   }
 }

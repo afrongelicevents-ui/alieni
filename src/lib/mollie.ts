@@ -21,6 +21,7 @@ type MolliePayment = {
   sequenceType: "first" | "recurring" | "oneoff";
   customerId?: string;
   paidAt?: string;
+  amountChargedBack?: { currency: string; value: string } | null;
   _links?: { checkout?: { href: string } };
 };
 
@@ -94,15 +95,22 @@ export function createMollieClient() {
       );
     },
 
-    /** Charge €14.95 immediately when both sides confirm the deal. */
-    createFirstCharge(customerId: string, webhookUrl: string) {
+    /**
+     * Charge on the customer's mandate: €14.95 immediately when both sides
+     * confirm a household deal, or a business's month-end amount.
+     */
+    createFirstCharge(
+      customerId: string,
+      webhookUrl: string,
+      override?: { value: string; description: string },
+    ) {
       return mollieFetch<MolliePayment>(key, "/payments", {
         method: "POST",
         body: JSON.stringify({
-          amount: HOUSEHOLD_SUBSCRIPTION.amount,
+          amount: override ? { currency: "EUR", value: override.value } : HOUSEHOLD_SUBSCRIPTION.amount,
           customerId,
           sequenceType: "recurring",
-          description: HOUSEHOLD_SUBSCRIPTION.description,
+          description: override?.description ?? HOUSEHOLD_SUBSCRIPTION.description,
           webhookUrl,
         }),
       });

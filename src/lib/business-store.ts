@@ -28,6 +28,8 @@ export type BusinessAccount = {
   units: BusinessUnit[];
   createdAt: string;
   billingStartedAt: string | null;
+  pendingUnitCount?: number | null;
+  billingEndedAt?: string | null;
 };
 
 const KEY = "alieni.business";

@@ -55,11 +55,34 @@ export function BusinessDashboard() {
         </p>
         <label className="mt-3 block text-xs font-semibold text-white/80">
           {t("changeUnits", { units: cfg.unitPlural[lang] })}
-          <input type="number" min={1} max={10000} value={account.unitCount}
-            onChange={(e) => update({ unitCount: Math.max(1, Math.min(10000, Math.round(Number(e.target.value) || 1))) })}
+          <input type="number" min={1} max={10000} value={account.pendingUnitCount ?? account.unitCount}
+            onChange={(e) => {
+              const n = Math.max(1, Math.min(10000, Math.round(Number(e.target.value) || 1)));
+              // Before billing starts the count is simply the count; afterwards it applies next month.
+              if (account.billingStartedAt) update({ pendingUnitCount: n === account.unitCount ? null : n });
+              else update({ unitCount: n });
+            }}
             className="mt-1 w-32 rounded-xl border-0 bg-white px-3 py-2 text-base font-extrabold text-ink" />
-          <span className="ml-2 text-white/70">{t("unitChangeNote")}</span>
+          {account.billingStartedAt ? <span className="ml-2 text-white/70">{t("unitChangeNote")}</span> : null}
         </label>
+        {account.pendingUnitCount ? (
+          <p className="mt-2 text-xs text-white/90">{t("pendingUnits", { count: account.pendingUnitCount, units: cfg.unitPlural[lang], fee: formatEuro(monthlyFee(account.businessType, account.pendingUnitCount).netCents, lang) })}</p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- file download from an API route, not a page */}
+          <a href="/api/invoices/export" download className="inline-flex min-h-10 items-center rounded-full bg-white/15 px-4 text-xs font-bold text-white hover:bg-white/25">{t("exportCsv")}</a>
+          {account.billingStartedAt && !account.billingEndedAt ? (
+            <button type="button" onClick={() => update({ billingEndedAt: new Date().toISOString() })}
+              className="inline-flex min-h-10 items-center rounded-full border border-white/40 px-4 text-xs font-bold text-white hover:bg-white/10">{t("cancelBilling")}</button>
+          ) : null}
+          {account.billingEndedAt ? <span className="inline-flex min-h-10 items-center text-xs text-white/80">{t("cancelledNote")}</span> : null}
+        </div>
+      </section>
+
+      {/* invoices (live list once accounts are connected) */}
+      <section className="rounded-card-lg border border-line bg-white p-5">
+        <h3 className="font-extrabold text-ink">{t("invoicesTitle")}</h3>
+        <p className="mt-1 text-sm text-ink/70">{t("invoicesText")}</p>
       </section>
 
       {/* quick links */}

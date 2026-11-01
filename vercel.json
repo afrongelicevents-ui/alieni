@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/checkins",
       "schedule": "23 8 * * *"
+    },
+    {
+      "path": "/api/cron/business-billing",
+      "schedule": "45 20 * * *"
     }
   ]
 }

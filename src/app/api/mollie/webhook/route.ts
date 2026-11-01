@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createMollieClient } from "@/lib/mollie";
-import { invoiceEmail, sendEmail } from "@/lib/email";
+import { invoiceEmail, paymentFailedEmail, sendEmail } from "@/lib/email";
+import { connectionStatusFor, paymentTransition } from "@/lib/billing";
 import { rateLimit } from "@/lib/rate-limit";
 
 /**
@@ -56,8 +57,41 @@ export async function POST(request: Request) {
     .select("id")
     .eq("mollie_customer_id", payment.customerId ?? "")
     .maybeSingle();
+
+  // ---- Business month-end direct debit (brief v2 §4, §11) ----
   if (!household) {
-    return NextResponse.json({ ok: false, reason: "unknown_customer" }, { status: 200 });
+    const { data: business } = await admin
+      .from("business_profiles")
+      .select("id, user_id")
+      .eq("mollie_customer_id", payment.customerId ?? "")
+      .maybeSingle();
+    if (!business) {
+      return NextResponse.json({ ok: false, reason: "unknown_customer" }, { status: 200 });
+    }
+    const transition = paymentTransition(payment);
+    const periodStatus =
+      transition === "paid" ? "paid" : transition === "reversed" ? "reversed" : transition === "failed" ? "failed" : null;
+    if (periodStatus) {
+      await admin
+        .from("business_billing_periods")
+        .update({ status: periodStatus })
+        .eq("mollie_payment_id", payment.id);
+    }
+    const connStatus = connectionStatusFor(transition);
+    if (connStatus === "paused") {
+      // Pause billing + every connection of this business → contacts re-masked
+      await admin.from("business_profiles").update({ billing_paused_at: new Date().toISOString(), payment_failed_at: new Date().toISOString() }).eq("id", business.id);
+      await admin.from("connections").update({ status: "paused" }).eq("household_id", business.user_id).eq("status", "active");
+      const { data: user } = await admin.auth.admin.getUserById(business.user_id);
+      if (user?.user?.email) {
+        const mail = paymentFailedEmail();
+        await sendEmail(user.user.email, mail.subject, mail.text);
+      }
+    } else if (connStatus === "active") {
+      await admin.from("business_profiles").update({ billing_paused_at: null, payment_failed_at: null }).eq("id", business.id);
+      await admin.from("connections").update({ status: "active" }).eq("household_id", business.user_id).eq("status", "paused");
+    }
+    return NextResponse.json({ ok: true, business: true, transition });
   }
 
   // 3. Idempotent upsert of the payment row.
@@ -141,6 +175,22 @@ export async function POST(request: Request) {
           await sendEmail(user.user.email, mail.subject, mail.text);
         }
       }
+    }
+  }
+
+  // ---- Household SEPA failure / chargeback → pause (re-masks contacts) ----
+  if (payment.sequenceType === "recurring") {
+    const transition = paymentTransition(payment);
+    const connStatus = connectionStatusFor(transition);
+    if (connStatus === "paused") {
+      await admin.from("connections").update({ status: "paused" }).eq("household_id", household.id).eq("status", "active");
+      const { data: user } = await admin.auth.admin.getUserById(household.id);
+      if (user?.user?.email) {
+        const mail = paymentFailedEmail();
+        await sendEmail(user.user.email, mail.subject, mail.text);
+      }
+    } else if (connStatus === "active") {
+      await admin.from("connections").update({ status: "active" }).eq("household_id", household.id).eq("status", "paused");
     }
   }
 

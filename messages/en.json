@@ -419,6 +419,12 @@
     "navJobs": "My jobs",
     "myUnits": "My {units}",
     "noCleanerYet": "No cleaner yet",
-    "demoNote": "Demo mode — your details are stored locally on this device until accounts are live."
+    "demoNote": "Demo mode — your details are stored locally on this device until accounts are live.",
+    "pendingUnits": "From next month: {count} {units} = {fee}/month excl. VAT.",
+    "exportCsv": "Export invoices (CSV)",
+    "cancelBilling": "Cancel at end of month",
+    "cancelledNote": "Cancelled — stops at the end of the current month.",
+    "invoicesTitle": "Invoices",
+    "invoicesText": "At the end of each month your invoice (PDF) with VAT breakdown appears here. The amount is collected automatically. If a direct debit fails, we pause the connection and ask you to update your payment method."
   }
 }

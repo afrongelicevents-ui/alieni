@@ -93,3 +93,24 @@ export function reporterUpdateEmail(outcome: "hidden" | "removed" | "dismissed")
     ].join("\n"),
   };
 }
+
+/** SEPA debit failed or reversed (brief v2 §11): connection paused. */
+export function paymentFailedEmail(): { subject: string; text: string } {
+  return {
+    subject: "Actie nodig: betaling mislukt — Alieni",
+    text: [
+      "Hoi,",
+      "",
+      "De automatische incasso voor je Alieni-verbinding is mislukt of",
+      "teruggedraaid. Je verbinding is daarom tijdelijk gepauzeerd en",
+      "contactgegevens in de chat zijn weer verborgen.",
+      "",
+      "Werk je betaalmethode bij in de app (Account → Betalingen); zodra de",
+      "betaling slaagt, is alles direct weer actief.",
+      "",
+      "Vragen? Reageer gerust op deze e-mail.",
+      "",
+      "Groetjes, Alieni · Connect · Clean · Thrive",
+    ].join("\n"),
+  };
+}
