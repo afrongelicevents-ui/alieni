@@ -1,0 +1,109 @@
+/**
+ * SAMPLE admin data — placeholder numbers while Supabase is not connected.
+ * Every admin view is clearly labelled as sample data.
+ */
+
+export type AdminPayment = {
+  id: string;
+  invoiceNumber: string | null;
+  household: string;
+  cleaner: string;
+  amountCents: number;
+  status: "paid" | "pending" | "failed" | "refunded";
+  paidAt: string | null;
+};
+
+export type AdminConnection = {
+  id: string;
+  household: string;
+  cleaner: string;
+  status: "active" | "ended" | "pending";
+  startedAt: string | null;
+  endedAt: string | null;
+};
+
+export type AdminReport = {
+  id: string;
+  subject: string;
+  subjectType: "cleaner_profile" | "review" | "message";
+  reason: string;
+  details: string;
+  reporter: string;
+  createdAt: string;
+  status: "open" | "hidden" | "removed" | "dismissed";
+};
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "household" | "cleaner" | "business";
+  city: string;
+  createdAt: string;
+};
+
+// November 2026 is "this month" for the sample KPIs.
+export const SAMPLE_PAYMENTS: AdminPayment[] = [
+  { id: "p1", invoiceNumber: "ALI-2026-0007", household: "Familie Jansen", cleaner: "Sandra M.", amountCents: 1495, status: "paid", paidAt: "2026-11-01T08:00:00Z" },
+  { id: "p2", invoiceNumber: "ALI-2026-0008", household: "P. de Vries", cleaner: "Kofi A.", amountCents: 1495, status: "paid", paidAt: "2026-11-01T09:30:00Z" },
+  { id: "p3", invoiceNumber: "ALI-2026-0009", household: "A. Bakker", cleaner: "Fernanda S.", amountCents: 1495, status: "paid", paidAt: "2026-11-01T11:15:00Z" },
+  { id: "p4", invoiceNumber: null, household: "M. Visser", cleaner: "Hassan E.", amountCents: 1495, status: "pending", paidAt: null },
+  { id: "p5", invoiceNumber: "ALI-2026-0005", household: "T. Smit", cleaner: "Maria V.", amountCents: 1495, status: "paid", paidAt: "2026-10-12T10:00:00Z" },
+  { id: "p6", invoiceNumber: "ALI-2026-0006", household: "Familie Jansen", cleaner: "Sandra M.", amountCents: 1495, status: "paid", paidAt: "2026-10-01T08:00:00Z" },
+  { id: "p7", invoiceNumber: null, household: "R. Mulder", cleaner: "Ewa K.", amountCents: 1, status: "refunded", paidAt: "2026-10-28T14:00:00Z" },
+];
+
+export const SAMPLE_CONNECTIONS: AdminConnection[] = [
+  { id: "c1", household: "Familie Jansen", cleaner: "Sandra M.", status: "active", startedAt: "2026-09-14T00:00:00Z", endedAt: null },
+  { id: "c2", household: "P. de Vries", cleaner: "Kofi A.", status: "active", startedAt: "2026-10-02T00:00:00Z", endedAt: null },
+  { id: "c3", household: "A. Bakker", cleaner: "Fernanda S.", status: "active", startedAt: "2026-10-20T00:00:00Z", endedAt: null },
+  { id: "c4", household: "T. Smit", cleaner: "Maria V.", status: "ended", startedAt: "2026-08-05T00:00:00Z", endedAt: "2026-11-01T00:00:00Z" },
+  { id: "c5", household: "M. Visser", cleaner: "Hassan E.", status: "pending", startedAt: null, endedAt: null },
+];
+
+export const SAMPLE_REPORTS: AdminReport[] = [
+  {
+    id: "r1",
+    subject: "Advertentie 'Superschoon 24/7'",
+    subjectType: "cleaner_profile",
+    reason: "scam",
+    details: "Vraagt om vooruitbetaling buiten het platform om.",
+    reporter: "P. de Vries",
+    createdAt: "2026-11-01T07:40:00Z",
+    status: "open",
+  },
+  {
+    id: "r2",
+    subject: "Review op profiel Kofi A.",
+    subjectType: "review",
+    reason: "offensive",
+    details: "Discriminerende opmerking in de review.",
+    reporter: "Kofi A.",
+    createdAt: "2026-10-31T18:05:00Z",
+    status: "open",
+  },
+  {
+    id: "r3",
+    subject: "Advertentie 'CleanFast'",
+    subjectType: "cleaner_profile",
+    reason: "fake",
+    details: "Foto komt van een stockfotosite, naam lijkt verzonnen.",
+    reporter: "A. Bakker",
+    createdAt: "2026-10-30T12:20:00Z",
+    status: "open",
+  },
+];
+
+export const SAMPLE_USERS: AdminUser[] = [
+  { id: "u1", name: "Familie Jansen", email: "jansen@example.com", role: "household", city: "Amsterdam", createdAt: "2026-09-01" },
+  { id: "u2", name: "Sandra M.", email: "sandra@example.com", role: "cleaner", city: "Amsterdam", createdAt: "2026-08-15" },
+  { id: "u3", name: "P. de Vries", email: "pdevries@example.com", role: "household", city: "Rotterdam", createdAt: "2026-09-20" },
+  { id: "u4", name: "Kofi A.", email: "kofi@example.com", role: "cleaner", city: "Rotterdam", createdAt: "2026-08-22" },
+  { id: "u5", name: "HostPro BV", email: "info@hostpro.example", role: "business", city: "Amsterdam", createdAt: "2026-10-05" },
+  { id: "u6", name: "Ewa K.", email: "ewa@example.com", role: "cleaner", city: "Den Haag", createdAt: "2026-10-11" },
+];
+
+export const SAMPLE_COUNTS = {
+  meetingsRequestedThisMonth: 9,
+  newAdsThisMonth: 4,
+};
