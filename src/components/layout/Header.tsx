@@ -31,7 +31,7 @@ export function Header() {
             </svg>
           </button>
           <Link href="/" aria-label="Alieni — home">
-            <LogoLockup tagline={t("brand.tagline")} />
+            <LogoLockup />
           </Link>
         </div>
 

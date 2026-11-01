@@ -9,7 +9,7 @@ export function Footer() {
     <footer className="border-t border-line bg-section pb-24 md:pb-10">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
         <div>
-          <LogoLockup tagline={t("brand.tagline")} />
+          <LogoLockup className="h-14 w-auto" />
           <p className="mt-4 max-w-xs text-sm text-ink/70">{t("footer.notice")}</p>
         </div>
         <nav aria-label="Footer" className="text-sm font-semibold text-forest">
