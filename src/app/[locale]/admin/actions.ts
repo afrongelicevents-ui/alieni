@@ -111,6 +111,8 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
   const linen = cents(values.linenPriceEuro);
   const floor = cents(values.rateFloorEuro);
   const vogMonths = Math.round(Number(values.vogMaxAgeMonths));
+  const coverCancel = Number(values.coverCancelHours), coverStrikes = Math.round(Number(values.coverStrikeLimit)), coverDays = Math.round(Number(values.coverMaxDays));
+  if (![coverCancel, coverStrikes, coverDays].every((n) => Number.isFinite(n) && n >= 0) || coverStrikes < 1 || coverDays < 0 || coverDays > 60) return { ok: false, error: "invalid" };
   if ([household, emH, emB, linen, floor].some((x) => x === null) || !Number.isFinite(vogMonths) || vogMonths < 1) return { ok: false, error: "invalid" };
   try {
     const { supabase, userId } = await requireAdmin();
@@ -120,6 +122,7 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
       { key: "linen_addon", value: { enabled: values.linenEnabled, price_per_unit_cents: linen } },
       { key: "rate_floor_cents", value: floor },
       { key: "vog_max_age_months", value: vogMonths },
+      { key: "cover_rules", value: { cancel_window_hours: coverCancel, strike_limit: coverStrikes, max_days_ahead: coverDays } },
       { key: "banned_words", value: values.bannedWords.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean) },
     ].map((r) => ({ ...r, updated_at: new Date().toISOString() }));
     const { error } = await supabase.from("settings").upsert(rows, { onConflict: "key" });

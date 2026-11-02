@@ -35,6 +35,7 @@ const FK = {
   pricing_rules: { service_key: "service_catalog" },
   fee_events: { business_id: "business_profiles", rule_id: "pricing_rules" },
   work_records: { business_id: "business_profiles", cleaner_profile_id: "cleaner_profiles", household_id: "profiles" },
+  cleaner_strikes: { cleaner_profile_id: "cleaner_profiles" },
 };
 const UNIQUE = {
   cleaner_profiles: [["user_id"]],
@@ -49,6 +50,7 @@ const UNIQUE = {
 };
 // ---- Phase 1: catalogue seed, pricing lookup, fee events, work records (mirrors migration 0020) ----
 function seedCatalog() {
+  if (!table("settings").some((r) => r.key === "cover_rules")) table("settings").push({ key: "cover_rules", value: { cancel_window_hours: 4, strike_limit: 2, max_days_ahead: 14 }, updated_at: new Date().toISOString() });
   if (table("service_catalog").length) return;
   [["connect", true, 0], ["cover", true, 1], ["turnover", true, 2], ["oneoff", false, 3], ["contract", false, 4]].forEach(([k, enabled, sort_order]) =>
     table("service_catalog").push({ service_key: k, enabled, business_types: [], sort_order, updated_at: new Date().toISOString() }));
@@ -75,6 +77,16 @@ function upsertWork(ref, row) {
   table("work_records").push(rec);
   return rec;
 }
+function pointOf(v) { const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(String(v || "")); return m ? { lng: Number(m[1]), lat: Number(m[2]) } : null; }
+function kmBetween(a, b) { const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
+function eligible(cp, r) {
+  if (!cp || !cp.emergency_opt_in) return false;
+  if (r.requester_type !== "household" && (cp.work_scope ?? "household") === "household") return false;
+  const a = pointOf(r.location), b = pointOf(cp.location);
+  if (a && b && kmBetween(a, b) > (cp.radius_km ?? 10)) return false;
+  return true;
+}
+function coverRules() { return table("settings").find((r) => r.key === "cover_rules")?.value ?? { cancel_window_hours: 4, strike_limit: 2, max_days_ahead: 14 }; }
 function slotWorkTrigger(old, next) {
   if (next.status === "reserved" && old.status !== "reserved") upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, outcome: "scheduled" });
   else if (next.status === "done" && old.status !== "done") { upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, completed_at: next.done_at ?? new Date().toISOString(), outcome: "done" }); recordFeeEvent(next.business_id, "turnover", "turnover_completed", "cleaning_slots", next.id); }
@@ -233,6 +245,11 @@ function beforeInsert(tname, row, user) {
   if (tname === "business_profiles" && role !== "business" && role !== "admin") throw new Error("only business accounts can create a business profile");
   if ((tname === "meeting_requests" || tname === "favourites" || tname === "conversations") && !["household", "business", "admin"].includes(role)) throw new Error("new row violates row-level security policy");
   if (tname === "household_profiles" && role !== "household") throw new Error("new row violates row-level security policy");
+  if (tname === "emergency_requests") {
+    if (row.unit_id) { const u = table("business_units").find((x) => x.id === row.unit_id); const bp = u && table("business_profiles").find((b) => b.id === u.business_id); if (!bp || bp.user_id !== row.requester_id) throw new Error("unit does not belong to the requester"); }
+    if (new Date(row.window_start) > new Date(Date.now() + (coverRules().max_days_ahead + 1) * 864e5)) throw new Error("too far ahead");
+  }
+  if (tname === "cleaner_strikes") throw new Error("new row violates row-level security policy for table \"cleaner_strikes\"");
   if ((tname === "fee_events" || tname === "work_records") ) throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
   if ((tname === "pricing_rules" || tname === "service_catalog") && role !== "admin") throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
 }
@@ -267,7 +284,7 @@ const DEFAULTS = {
   vog_documents: () => ({ status: "pending" }),
   jobs: () => ({ status: "draft" }),
   business_profiles: () => ({ unit_count: 1 }),
-  emergency_requests: () => ({ status: "searching" }),
+  emergency_requests: () => ({ status: "searching", attendance: "unknown", unit_id: null, report_to: null, cancelled_at: null, cancel_reason: null, accepted_by: null, fee_cents: null }),
   pricing_rules: () => ({ model: "none", amount_cents: 0, percent: null, unit: null, business_type: null, valid_from: new Date().toISOString().slice(0, 10), valid_to: null, active: false, notes: null }),
 };
 
@@ -279,11 +296,42 @@ function rest(req, res, url, raw) {
     const { p_request_id } = JSON.parse(raw.toString() || "{}");
     const cp = user && table("cleaner_profiles").find((c) => c.user_id === user.id && c.emergency_opt_in);
     const r = table("emergency_requests").find((x) => x.id === p_request_id);
-    if (!cp || !r || r.status !== "searching" || new Date(r.window_start) <= new Date()) return send(res, 200, false);
+    if (!cp || !r || !eligible(cp, r) || r.status !== "searching" || new Date(r.window_start) <= new Date()) return send(res, 200, false);
     const old = { ...r };
     r.status = "accepted"; r.accepted_by = cp.id; r.accepted_at = new Date().toISOString();
-    r.fee_cents = r.requester_type === "household" ? 995 : 1495;
+    r.fee_cents = r.requester_type === "household" ? 995 : null;
     emergencyWorkTrigger(old, r);
+    return send(res, 200, true);
+  }
+  // RPC: cancel_emergency_request (requester; late = inside the cancel window → fee event stays)
+  if (tname === "rpc/cancel_emergency_request") {
+    const user = userFromAuth(req);
+    const { p_request_id, p_reason } = JSON.parse(raw.toString() || "{}");
+    const r = table("emergency_requests").find((x) => x.id === p_request_id && user && x.requester_id === user.id);
+    if (!r || !["searching", "accepted"].includes(r.status)) return send(res, 200, "not_allowed");
+    const late = r.status === "accepted" && Date.now() > new Date(r.window_start).getTime() - coverRules().cancel_window_hours * 3600e3;
+    const old = { ...r };
+    r.status = "cancelled"; r.cancelled_at = new Date().toISOString(); r.cancel_reason = p_reason || null;
+    emergencyWorkTrigger(old, r);
+    if (!late) for (const e of table("fee_events")) if (e.reference_table === "emergency_requests" && e.reference_id === r.id && e.status === "pending") { e.status = "waived"; e.waived_reason = "cancelled outside the window"; }
+    return send(res, 200, late ? "cancelled_late" : "cancelled_free");
+  }
+  // RPC: report_emergency_attendance (requester; no-show → fee waived + strike; limit → opt-in off)
+  if (tname === "rpc/report_emergency_attendance") {
+    const user = userFromAuth(req);
+    const { p_request_id, p_came, p_note } = JSON.parse(raw.toString() || "{}");
+    const r = table("emergency_requests").find((x) => x.id === p_request_id && user && x.requester_id === user.id);
+    if (!r || r.status !== "accepted" || !r.accepted_by || Date.now() < new Date(r.window_start).getTime() || r.attendance !== "unknown") return send(res, 200, false);
+    r.attendance = p_came ? "came" : "no_show"; r.attendance_at = new Date().toISOString(); r.attendance_note = p_note || null;
+    const w = table("work_records").find((x) => x.reference_table === "emergency_requests" && x.reference_id === r.id);
+    if (p_came) { if (w) { w.outcome = "done"; w.completed_at = w.completed_at ?? new Date().toISOString(); w.business_confirmed_at = new Date().toISOString(); } }
+    else {
+      if (w) { w.outcome = "no_show"; w.business_confirmed_at = new Date().toISOString(); if (p_note) w.notes = p_note; }
+      for (const e of table("fee_events")) if (e.reference_table === "emergency_requests" && e.reference_id === r.id && e.status === "pending") { e.status = "waived"; e.waived_reason = "no-show"; }
+      if (!table("cleaner_strikes").some((k) => k.request_id === r.id)) table("cleaner_strikes").push({ id: crypto.randomUUID(), cleaner_profile_id: r.accepted_by, request_id: r.id, reason: "no_show", created_at: new Date().toISOString() });
+      const n = table("cleaner_strikes").filter((k) => k.cleaner_profile_id === r.accepted_by).length;
+      if (n >= coverRules().strike_limit) { const cp = table("cleaner_profiles").find((c) => c.id === r.accepted_by); if (cp) cp.emergency_opt_in = false; }
+    }
     return send(res, 200, true);
   }
   // RPC: review_work_record (business/household confirms or disputes own record)
@@ -318,7 +366,8 @@ function rest(req, res, url, raw) {
   let viewRows = null;
   if (tname === "emergency_requests_open") {
     tname = "emergency_requests";
-    viewRows = table("emergency_requests").filter((r) => r.status === "searching").map(({ address_line: _a, ...rest }) => rest);
+    const me = userFromAuth(req); const cpMe = me && table("cleaner_profiles").find((c) => c.user_id === me.id);
+    viewRows = table("emergency_requests").filter((r) => r.status === "searching" && new Date(r.window_start) > new Date() && eligible(cpMe, r)).map(({ address_line: _a, location: _l, ...rest }) => ({ ...rest, postcode: String(rest.postcode).slice(0, 4) }));
   }
   const params = url.searchParams;
   const prefer = req.headers.prefer || "";

@@ -147,8 +147,10 @@ async function signUp(page, email, role) {
   await hh.locator("form input").nth(2).fill("Amsterdam");
   const later = new Date(Date.now() + 2 * 36e5), end = new Date(Date.now() + 6 * 36e5);
   const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  await hh.locator("input[type=time]").nth(0).fill(hhmm(later));
-  await hh.locator("input[type=time]").nth(1).fill(hhmm(end));
+  // the household form is same-day only: late in the evening keep the window before midnight
+  const sameDay = (d) => d.getDate() === new Date().getDate();
+  await hh.locator("input[type=time]").nth(0).fill(sameDay(later) ? hhmm(later) : hhmm(new Date(Date.now() + 2 * 60e3)));
+  await hh.locator("input[type=time]").nth(1).fill(sameDay(end) ? hhmm(end) : "23:59");
   await hh.fill("textarea", "Whole flat after a party: kitchen, bathroom, floors.");
   await hh.getByRole("button", { name: /Send emergency request/ }).click();
   await hh.waitForSelector("text=Searching for a cleaner", { timeout: 15000 });

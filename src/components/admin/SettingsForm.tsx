@@ -12,6 +12,9 @@ import { saveSettings } from "@/app/[locale]/admin/actions";
  */
 export type Settings = {
   householdPriceEuro: string;
+  coverCancelHours: string;
+  coverStrikeLimit: string;
+  coverMaxDays: string;
   emergencyHouseholdEuro: string;
   emergencyBusinessEuro: string;
   linenEnabled: boolean;
@@ -24,6 +27,9 @@ export type Settings = {
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const DEFAULTS: Settings = {
   householdPriceEuro: "14,95",
+  coverCancelHours: "4",
+  coverStrikeLimit: "2",
+  coverMaxDays: "14",
   emergencyHouseholdEuro: "9,95",
   emergencyBusinessEuro: "14,95",
   linenEnabled: false,
@@ -87,6 +93,14 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
           <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingEmergency")}</legend>
           {field(t("settingEmergencyHousehold"), settings.emergencyHouseholdEuro, (v) => update({ emergencyHouseholdEuro: v }))}
           {field(t("settingEmergencyBusiness"), settings.emergencyBusinessEuro, (v) => update({ emergencyBusinessEuro: v }))}
+          <p className="text-xs text-ink/70 sm:col-span-2">{t("settingEmergencyHint")}</p>
+        </fieldset>
+
+        <fieldset className="grid gap-3 sm:grid-cols-3">
+          <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingCover")}</legend>
+          {field(t("settingCoverCancel"), settings.coverCancelHours, (v) => update({ coverCancelHours: v }))}
+          {field(t("settingCoverStrikes"), settings.coverStrikeLimit, (v) => update({ coverStrikeLimit: v }))}
+          {field(t("settingCoverDays"), settings.coverMaxDays, (v) => update({ coverMaxDays: v }))}
         </fieldset>
 
         <fieldset className="flex flex-col gap-3">

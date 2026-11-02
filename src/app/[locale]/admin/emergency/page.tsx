@@ -17,7 +17,7 @@ export default async function AdminEmergencyPage({ params }: { params: Promise<{
       <div className="mt-4 overflow-x-auto rounded-card-lg border border-line bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-section text-xs font-bold text-ink/70">
-            <tr><th className="px-4 py-3">{t("colRequester")}</th><th className="px-4 py-3">{t("colCity")}</th><th className="px-4 py-3">{t("colWindow")}</th><th className="px-4 py-3">{t("colStatus")}</th><th className="px-4 py-3">{t("colCleaner")}</th><th className="px-4 py-3 text-right">{t("colFee")}</th></tr>
+            <tr><th className="px-4 py-3">{t("colRequester")}</th><th className="px-4 py-3">{t("colCity")}</th><th className="px-4 py-3">{t("colWindow")}</th><th className="px-4 py-3">{t("colStatus")}</th><th className="px-4 py-3">{t("colCleaner")}</th><th className="px-4 py-3">{t("colAttendance")}</th><th className="px-4 py-3">{t("colStrikes")}</th><th className="px-4 py-3 text-right">{t("colFee")}</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {items.map((e) => (
@@ -27,6 +27,8 @@ export default async function AdminEmergencyPage({ params }: { params: Promise<{
                 <td className="px-4 py-3">{e.window}</td>
                 <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${e.status === "accepted" ? "bg-mint text-forest" : e.status === "searching" ? "bg-sun/30 text-ink" : "bg-section text-ink/70"}`}>{t(`em_${e.status}` as "em_searching")}</span></td>
                 <td className="px-4 py-3">{e.acceptedBy ?? "—"}</td>
+                <td className="px-4 py-3">{t(`att_${e.attendance ?? "unknown"}` as "att_unknown")}</td>
+                <td className="px-4 py-3">{e.strikes ?? 0}</td>
                 <td className="px-4 py-3 text-right font-semibold">{e.feeCents ? formatEuro(e.feeCents, lang) : "—"}</td>
               </tr>
             ))}

@@ -138,6 +138,8 @@ const inHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
     const wtabs = await c.locator("nav[aria-label] a").allTextContents();
     ok(`[${label}] Work page tabs follow work types: Emergency + My jobs, no Turnovers`, wtabs.includes("My jobs") && wtabs.some((x) => /Emergency/.test(x)) && !wtabs.includes("Turnovers"), wtabs.join("|"));
     const ctok = await accessToken(cctx);
+    // Phase 2: business cover only reaches cleaners who work commercially — widen this cleaner's scope (own row, allowed)
+    await rest(ctok, "PATCH", `cleaner_profiles?id=eq.${cp.id}`, { work_scope: "both" });
 
     // ---------- Business posts an emergency request; cleaner accepts → work record + € 0 fee event ----------
     const emReq = await rest(btok, "POST", "emergency_requests", { requester_id: bizRow.user_id, requester_type: "business", address_line: "Prinsengracht 1", postcode: "1015 DX", city: "Amsterdam", window_start: inHours(5), window_end: inHours(8), hours: 3, tasks: "Checkout clean, 2 bedrooms" });

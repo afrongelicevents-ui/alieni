@@ -127,6 +127,8 @@ export const SAMPLE_BUSINESSES: AdminBusiness[] = [
 ];
 
 export type AdminEmergency = {
+  attendance?: "unknown" | "came" | "no_show";
+  strikes?: number;
   id: string;
   requester: string;
   requesterType: "household" | "business";

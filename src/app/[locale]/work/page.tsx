@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/guard";
 import { createClient } from "@/lib/supabase/server";
 import { getSlotsForCleaner, getWorkForCleaner } from "@/lib/business-data";
 import { MyWorkList } from "@/components/cleaners/MyWorkList";
+import { getCoverRules } from "@/lib/cover-data";
 import { JobsBoard, type BoardJob } from "@/components/jobs/JobsBoard";
 import { SlotsList } from "@/components/cleaners/SlotsList";
 import { EmergencyCleanerList, type MineRequest, type OpenRequest } from "@/components/emergency/EmergencyCleanerList";
@@ -63,6 +64,8 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   let open: OpenRequest[] = [];
   let mine: MineRequest[] = [];
   let work: Awaited<ReturnType<typeof getWorkForCleaner>> = [];
+  let strikes = 0;
+  let strikeLimit = 2;
 
   if (current === "jobs") {
     const spaceTypes = spaceTypesFor(profile.job_types);
@@ -80,13 +83,19 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   if (current === "emergency") {
     const [{ data: openRows }, { data: mineRows }] = await Promise.all([
       profile.emergency_opt_in ? supabase.from("emergency_requests_open").select("id, postcode, city, window_start, window_end, hours, tasks").order("window_start").limit(50) : Promise.resolve({ data: [] }),
-      supabase.from("emergency_requests").select("id, postcode, city, address_line, window_start, window_end, hours, tasks, requester_id").eq("accepted_by", profile.id).eq("status", "accepted").order("window_start", { ascending: false }).limit(20),
+      supabase.from("emergency_requests").select("id, postcode, city, address_line, window_start, window_end, hours, tasks, requester_id, report_to").eq("accepted_by", profile.id).eq("status", "accepted").order("window_start", { ascending: false }).limit(20),
     ]);
+    const [{ count: strikeCount }, rules] = await Promise.all([
+      supabase.from("cleaner_strikes").select("id", { count: "exact", head: true }).eq("cleaner_profile_id", profile.id),
+      getCoverRules(),
+    ]);
+    strikes = strikeCount ?? 0;
+    strikeLimit = rules.strikeLimit;
     open = ((openRows ?? []) as { id: string; postcode: string; city: string; window_start: string; window_end: string; hours: number; tasks: string }[]).map((r) => ({ id: r.id, postcode: r.postcode, city: r.city, windowStart: r.window_start, windowEnd: r.window_end, hours: Number(r.hours), tasks: r.tasks }));
     const ids = [...new Set(((mineRows ?? []) as { requester_id: string }[]).map((r) => r.requester_id))];
     const { data: names } = ids.length ? await supabase.from("profiles").select("id, display_name").in("id", ids) : { data: [] };
     const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
-    mine = ((mineRows ?? []) as { id: string; postcode: string; city: string; address_line: string | null; window_start: string; window_end: string; hours: number; tasks: string; requester_id: string }[]).map((r) => ({ id: r.id, postcode: r.postcode, city: r.city, addressLine: r.address_line, windowStart: r.window_start, windowEnd: r.window_end, hours: Number(r.hours), tasks: r.tasks, requesterName: nameOf.get(r.requester_id) ?? null }));
+    mine = ((mineRows ?? []) as { id: string; postcode: string; city: string; address_line: string | null; window_start: string; window_end: string; hours: number; tasks: string; requester_id: string; report_to: string | null }[]).map((r) => ({ id: r.id, postcode: r.postcode, city: r.city, addressLine: r.address_line, windowStart: r.window_start, windowEnd: r.window_end, hours: Number(r.hours), tasks: r.tasks, requesterName: nameOf.get(r.requester_id) ?? null, reportTo: r.report_to }));
   }
 
   return (
@@ -106,7 +115,7 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
       <div className="mt-4">
         {current === "jobs" ? <JobsBoard jobs={jobs} viewer={{ signedIn: true, isCleaner: true, isBusiness: false }} /> : null}
         {current === "turnovers" ? <SlotsList slots={slots} myCleanerId={profile.id} /> : null}
-        {current === "emergency" ? <EmergencyCleanerList open={open} mine={mine} optedIn={profile.emergency_opt_in} myRateCents={profile.emergency_rate_cents ?? profile.rate_cents} /> : null}
+        {current === "emergency" ? <EmergencyCleanerList open={open} mine={mine} optedIn={profile.emergency_opt_in} myRateCents={profile.emergency_rate_cents ?? profile.rate_cents} strikes={strikes} strikeLimit={strikeLimit} /> : null}
         {current === "mine" ? (<><p className="mb-3 text-sm text-ink/70">{t("mineIntro")}</p><MyWorkList records={work} /></>) : null}
       </div>
       {profile.status !== "published" ? <p className="mt-6 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("offlineNote")} <Link href="/profile" className="font-bold underline">{t("goProfile")}</Link></p> : null}

@@ -5,6 +5,7 @@ import { computeKpis, type Kpis } from "./kpis";
 import { SAMPLE_BUSINESSES, SAMPLE_CONNECTIONS, SAMPLE_COUNTS, SAMPLE_EMERGENCIES, SAMPLE_PAYMENTS, SAMPLE_REPORTS, SAMPLE_USERS, type AdminBusiness, type AdminEmergency, type AdminPayment, type AdminReport, type AdminUser } from "./sample-admin-data";
 import { SAMPLE_CLEANERS } from "../sample-data";
 import { BUSINESS_TYPES } from "../business";
+import { parseCoverRules } from "../cover";
 import { DEFAULT_CATALOG, getActiveRules, monthlyUnitPrices, type CatalogRow, type PricingRule } from "../services";
 
 /**
@@ -139,8 +140,8 @@ export async function listBusinesses(): Promise<{ demo: boolean; businesses: Adm
 export async function listEmergencies(): Promise<{ demo: boolean; items: AdminEmergency[] }> {
   const supabase = await createClient();
   if (!supabase) return { demo: true, items: SAMPLE_EMERGENCIES };
-  const { data } = await supabase.from("emergency_requests").select("id, requester_id, requester_type, city, window_start, window_end, status, accepted_by, fee_cents").order("created_at", { ascending: false }).limit(200);
-  const rows = (data ?? []) as { id: string; requester_id: string; requester_type: "household" | "business"; city: string; window_start: string; window_end: string; status: AdminEmergency["status"]; accepted_by: string | null; fee_cents: number | null }[];
+  const { data } = await supabase.from("emergency_requests").select("id, requester_id, requester_type, city, window_start, window_end, status, accepted_by, fee_cents, attendance").order("created_at", { ascending: false }).limit(200);
+  const rows = (data ?? []) as { id: string; requester_id: string; requester_type: "household" | "business"; city: string; window_start: string; window_end: string; status: AdminEmergency["status"]; accepted_by: string | null; fee_cents: number | null ; attendance?: string }[];
   const ids = [...new Set(rows.map((r) => r.requester_id))];
   const cpIds = rows.map((r) => r.accepted_by).filter((x): x is string => Boolean(x));
   const [{ data: names }, { data: cps }] = await Promise.all([
@@ -150,7 +151,10 @@ export async function listEmergencies(): Promise<{ demo: boolean; items: AdminEm
   const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
   const cleanerOf = new Map(((cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]).map((c) => [c.id, c.profiles?.display_name ?? "—"]));
   const fmt = (iso: string) => new Date(iso).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  return { demo: false, items: rows.map((r) => ({ id: r.id, requester: nameOf.get(r.requester_id) ?? "—", requesterType: r.requester_type, city: r.city, window: `${fmt(r.window_start)}–${fmt(r.window_end).slice(-5)}`, status: r.status, acceptedBy: r.accepted_by ? cleanerOf.get(r.accepted_by) ?? "—" : null, feeCents: r.fee_cents })) };
+  const { data: strikeRows } = cpIds.length ? await supabase.from("cleaner_strikes").select("cleaner_profile_id").in("cleaner_profile_id", cpIds) : { data: [] };
+  const strikesOf = new Map<string, number>();
+  for (const sr of (strikeRows ?? []) as { cleaner_profile_id: string }[]) strikesOf.set(sr.cleaner_profile_id, (strikesOf.get(sr.cleaner_profile_id) ?? 0) + 1);
+  return { demo: false, items: rows.map((r) => ({ id: r.id, requester: nameOf.get(r.requester_id) ?? "—", requesterType: r.requester_type, city: r.city, window: `${fmt(r.window_start)}–${fmt(r.window_end).slice(-5)}`, status: r.status, acceptedBy: r.accepted_by ? cleanerOf.get(r.accepted_by) ?? "—" : null, feeCents: r.fee_cents, attendance: (r.attendance ?? "unknown") as AdminEmergency["attendance"], strikes: r.accepted_by ? strikesOf.get(r.accepted_by) ?? 0 : 0 })) };
 }
 
 export async function listPayments(): Promise<{ demo: boolean; payments: AdminPayment[] }> {
@@ -176,7 +180,7 @@ export async function listPayments(): Promise<{ demo: boolean; payments: AdminPa
   return { demo: false, payments: rows.map((p) => ({ id: p.id, invoiceNumber: invoiceOf.get(p.id) ?? null, household: nameOf.get(p.household_id) ?? "—", cleaner: p.connection_id ? nameOf.get(cleanerOfConn.get(p.connection_id) ?? "") ?? "—" : "—", amountCents: p.amount_cents, status: statusMap[p.status] ?? "pending", paidAt: p.paid_at })) };
 }
 
-export type SettingsValues = { householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string };
+export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string };
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function getSettings(): Promise<{ demo: boolean; values: SettingsValues | null }> {
   const supabase = await createClient();
@@ -186,9 +190,13 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
   const num = (v: unknown, d: number) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
   const em = (map.get("emergency_fee_cents") as { household_incl_btw?: number; business_excl_btw?: number } | undefined) ?? {};
   const linen = (map.get("linen_addon") as { enabled?: boolean; price_per_unit_cents?: number } | undefined) ?? {};
+  const cover = parseCoverRules(map.get("cover_rules"));
   return {
     demo: false,
     values: {
+      coverCancelHours: String(cover.cancelWindowHours),
+      coverStrikeLimit: String(cover.strikeLimit),
+      coverMaxDays: String(cover.maxDaysAhead),
       householdPriceEuro: euro(num(map.get("household_fee_cents"), 1495)),
       emergencyHouseholdEuro: euro(num(em.household_incl_btw, 995)),
       emergencyBusinessEuro: euro(num(em.business_excl_btw, 1495)),
