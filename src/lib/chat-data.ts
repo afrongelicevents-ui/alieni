@@ -39,7 +39,10 @@ export type ConversationDetail = {
     cleanerConfirmedAt: string | null;
     startedAt: string | null;
     endedAt: string | null;
+    paymentSetUp: boolean; // Mollie mandate + subscription attached
   } | null;
+  /** Mollie is configured on the server, so the household can set up payment. */
+  paymentsEnabled: boolean;
   messages: ChatMessage[];
 };
 
@@ -126,7 +129,7 @@ export async function getConversation(id: string, userId: string): Promise<Conve
     conv.meeting_request_id
       ? supabase.from("meeting_requests").select("id, type, proposed_weekday, proposed_block, status").eq("id", conv.meeting_request_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase.from("connections").select("id, status, household_confirmed_at, cleaner_confirmed_at, started_at, ended_at").eq("household_id", conv.household_id).eq("cleaner_id", conv.cleaner_id).maybeSingle(),
+    supabase.from("connections").select("id, status, household_confirmed_at, cleaner_confirmed_at, started_at, ended_at, mollie_subscription_id").eq("household_id", conv.household_id).eq("cleaner_id", conv.cleaner_id).maybeSingle(),
     supabase.from("messages").select("id, sender_id, body, masked, created_at").eq("conversation_id", conv.id).order("created_at", { ascending: true }).limit(500),
   ]);
 
@@ -143,8 +146,9 @@ export async function getConversation(id: string, userId: string): Promise<Conve
       ? { id: meeting.id, type: meeting.type, weekday: meeting.proposed_weekday, block: meeting.proposed_block, status: meeting.status }
       : null,
     connection: conn
-      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at }
+      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: Boolean(conn.mollie_subscription_id) }
       : null,
+    paymentsEnabled: Boolean(process.env.MOLLIE_API_KEY),
     messages: ((msgs ?? []) as { id: string; sender_id: string; body: string; masked: boolean; created_at: string }[]).map((m) => ({
       id: m.id,
       mine: m.sender_id === userId,

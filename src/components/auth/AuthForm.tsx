@@ -148,6 +148,12 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
           />
         </label>
 
+        {mode === "login" ? (
+          <p className="-mt-2 text-right text-xs">
+            <Link href="/reset-password" className="font-semibold text-forest underline">{t("forgot")}</Link>
+          </p>
+        ) : null}
+
         <Turnstile onToken={setCaptchaToken} />
 
         {status === "error" ? (

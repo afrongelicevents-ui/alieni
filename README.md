@@ -65,3 +65,12 @@ On Vercel Pro, replace the bundle with the individual routes at their intended
 frequencies: `checkins` daily, `ical-sync` `*/30 * * * *`, `emergency`
 `*/10 * * * *`. Emergency requests still expire correctly inside the app
 (`expireIfDue` runs on every read); only the clean-up is daily until then.
+
+## Launch checklist (owner)
+
+1. Supabase → Authentication → URL configuration: Site URL = the live URL; add `https://<live>/**` to redirect URLs (needed for e-mail confirmation and password reset links).
+2. Vercel env: `SUPABASE_SERVICE_ROLE_KEY` (e-mail notifications, admin e-mail column, crons), `RESEND_API_KEY` (+ verified sending domain), `MOLLIE_API_KEY` (live key, after KYC), `CRON_SECRET`, optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, optional `NEXT_PUBLIC_APP_URL`.
+3. Mollie dashboard: webhook URL `https://<live>/api/mollie/webhook`; enable iDEAL + SEPA Direct Debit.
+4. Fill `COMPANY_DETAILS` in `src/lib/invoices.ts` (KvK, BTW) before the first invoice.
+5. Admin → Settings: confirm prices; Admin → Photos: upload final photos.
+6. Run the e2e suite (see `e2e/README.md`) before every release.

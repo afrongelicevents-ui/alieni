@@ -40,12 +40,24 @@ Reviewed and found sound: VOG storage policies (owner upload, admin-only read, f
 - [ ] **Rate limiting** on login, signup, messaging, meeting requests and reports at the edge (Vercel WAF / Upstash); DB backstop exists for reports, in-memory damping on the Mollie webhook; Turnstile covers signup
 - [x] **Bot protection** on signup: Turnstile widget integrated; activates with NEXT_PUBLIC_TURNSTILE_SITE_KEY + the secret in Supabase Auth settings
 - [x] **CSP decision**: nonce-based CSP would force dynamic rendering of every page (currently statically generated, Lighthouse 100). Accepted risk: `script-src 'unsafe-inline'` remains, mitigated by React escaping, zero `dangerouslySetInnerHTML`, and no third-party scripts except Turnstile (explicitly allow-listed). Revisit if user-generated HTML is ever rendered
-- [ ] **Image uploads** (profile photos): type/size checks, re-encode, strip EXIF, private bucket + signed URLs — not built yet, build with the upload feature
+- [x] **Image uploads**: profile photos and site photos are re-encoded server-side with sharp (EXIF stripped, resized, WebP) into public buckets scoped by RLS to the owner; VOG files go to a private bucket readable by admin only via 5-minute signed URLs and are deleted by trigger after review; turnover photos go to a private bucket
 - [ ] **Mollie webhook URL** uses an unguessable path segment in addition to API fetch-back verification
 - [x] Business v2 security review completed (see above); re-run on the final release diff
-- [ ] Server-side contact masking also at the edge function that sends notification emails (do not leak raw message bodies into email)
+- [x] Notification e-mails never contain message bodies (`lib/notify.ts`): new-message and deal notices link to the app only; chat text is masked server-side before it is stored (`messages/actions.ts`)
 
 ## Reporting
 
 Suspected vulnerabilities: email the owner (see site contact). Do not open a
 public GitHub issue for security reports.
+
+## Go-live review (household, business and admin on the database)
+
+| Area | Control |
+|---|---|
+| Server actions | Every write goes through a server action that re-checks the session (`lib/auth.ts`) and relies on RLS as the real boundary; inputs validated with Zod |
+| Conversations | Membership re-checked in code on top of RLS; a third account gets "not found" (e2e flow2) |
+| Deal activation | Database trigger sets `active` only when both confirmations are present; `verified_jobs_count` only changes inside that trigger |
+| Admin | `requireAdmin()` in every admin action; all actions logged to `admin_audit_log`; admin role only via the allow-list migration |
+| Emergency | Street address hidden from the open-requests view; visible to the accepting cleaner only; accept is an atomic SQL function |
+| Mollie | Checkout URL comes from Mollie; connection is claimed (`mollie_subscription_id = 'pending'`) before charging so webhook replays cannot double-charge |
+| Password reset | Supabase recovery flow; the request form always reports "sent" so addresses cannot be enumerated |

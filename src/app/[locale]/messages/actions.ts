@@ -2,8 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { errorCode, requireUser } from "@/lib/auth";
 import { maskContacts } from "@/lib/masking";
+import { meetingRequestEmail } from "@/lib/email";
+import { createMollieClient } from "@/lib/mollie";
+import { dealConfirmedNotice, newMessageNotice, notifyUser } from "@/lib/notify";
+
+async function appUrl(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+}
 
 export type ChatActionState = { ok: boolean; error?: string; conversationId?: string };
 
@@ -52,6 +63,10 @@ export async function requestMeeting(input: z.input<typeof meetingSchema>): Prom
       const { text } = maskContacts(m.message);
       await supabase.from("messages").insert({ conversation_id: conversationId, sender_id: userId, body: text, masked: true });
     }
+    // Best-effort e-mail to the cleaner (no message content, brief §7).
+    const { data: cleanerProfile } = await supabase.from("profiles").select("display_name").eq("id", cleaner.user_id).maybeSingle();
+    const mail = meetingRequestEmail(cleanerProfile?.display_name ?? "");
+    void notifyUser(cleaner.user_id, mail.subject, mail.text);
     revalidatePath("/", "layout");
     return { ok: true, conversationId };
   } catch (err) {
@@ -86,6 +101,13 @@ export async function sendMessage(conversationId: string, body: string): Promise
     const { error } = await supabase.from("messages").insert({ conversation_id: conversationId, sender_id: userId, body: stored, masked: !active });
     if (error) return { ok: false, error: "save_failed" };
     await supabase.from("conversations").update({ last_message_at: new Date().toISOString() }).eq("id", conversationId);
+    // Notify the other party at most once per quiet hour (no message content).
+    const otherId = member.role === "household" ? member.conv.cleaner_id : member.conv.household_id;
+    const { count: recent } = await supabase.from("messages").select("id", { count: "exact", head: true }).eq("conversation_id", conversationId).eq("sender_id", userId).gte("created_at", new Date(Date.now() - 60 * 60e3).toISOString());
+    if ((recent ?? 0) <= 1) {
+      const mail = newMessageNotice(await appUrl());
+      void notifyUser(otherId, mail.subject, mail.text);
+    }
     revalidatePath(`/messages/${conversationId}`);
     revalidatePath("/messages");
     return { ok: true, conversationId };
@@ -133,6 +155,11 @@ export async function confirmDeal(conversationId: string): Promise<ChatActionSta
         .insert({ household_id: member.conv.household_id, cleaner_id: member.conv.cleaner_id, status: "pending", [column]: now });
       if (error) return { ok: false, error: "save_failed" };
     }
+    // Tell the other party (best effort).
+    const otherId = member.role === "household" ? member.conv.cleaner_id : member.conv.household_id;
+    const { data: me } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+    const mail = dealConfirmedNotice(me?.display_name ?? "", await appUrl());
+    void notifyUser(otherId, mail.subject, mail.text);
     revalidatePath(`/messages/${conversationId}`);
     revalidatePath("/account");
     return { ok: true, conversationId };
@@ -160,6 +187,38 @@ export async function endConnection(conversationId: string): Promise<ChatActionS
     revalidatePath(`/messages/${conversationId}`);
     revalidatePath("/account");
     return { ok: true, conversationId };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/**
+ * Household sets up payment for an active connection (brief §3.7): a €0.01
+ * iDEAL verification creates the SEPA mandate; the webhook then charges
+ * €14.95 and starts the monthly subscription. Returns the Mollie checkout URL.
+ */
+export async function setupHouseholdPayment(conversationId: string): Promise<ChatActionState & { checkoutUrl?: string }> {
+  const mollie = createMollieClient();
+  if (!mollie) return { ok: false, error: "payments_not_configured" };
+  try {
+    const { supabase, userId, email } = await requireUser();
+    const member = await membership(supabase, conversationId, userId);
+    if (!member || member.role !== "household") return { ok: false, error: "not_member" };
+    if (member.conn?.status !== "active") return { ok: false, error: "not_active" };
+    const { data: profile } = await supabase.from("profiles").select("display_name, mollie_customer_id").eq("id", userId).maybeSingle();
+    let customerId = profile?.mollie_customer_id as string | null | undefined;
+    if (!customerId) {
+      const customer = await mollie.createCustomer(profile?.display_name ?? email, email);
+      customerId = customer.id;
+      const { error } = await supabase.from("profiles").update({ mollie_customer_id: customerId }).eq("id", userId);
+      if (error) return { ok: false, error: "save_failed" };
+    }
+    const base = await appUrl();
+    const payment = await mollie.createMandatePayment(customerId, `${base}/messages/${conversationId}?payment=started`, `${base}/api/mollie/webhook`);
+    const checkoutUrl = payment._links?.checkout?.href;
+    if (!checkoutUrl) return { ok: false, error: "failed" };
+    await supabase.from("connections").update({ mollie_customer_id: customerId }).eq("id", member.conn.id);
+    return { ok: true, conversationId, checkoutUrl };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
   }

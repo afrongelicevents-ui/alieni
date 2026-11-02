@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import type { ConversationDetail } from "@/lib/chat-data";
-import { confirmDeal, endConnection } from "@/app/[locale]/messages/actions";
+import { confirmDeal, endConnection, setupHouseholdPayment } from "@/app/[locale]/messages/actions";
 
 /**
  * Mutual "We have a deal" / "Not a match" (brief §3.7–3.9), both sides.
@@ -30,11 +30,35 @@ export function DealPanelLive({ conversation }: { conversation: ConversationDeta
   const btnPrimary = "inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50";
   const btnGhost = "inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line px-5 text-sm font-bold text-ink/70 hover:bg-section disabled:opacity-50";
 
+  async function pay() {
+    setBusy(true);
+    setError(null);
+    const r = await setupHouseholdPayment(conversation.id);
+    setBusy(false);
+    if (r.ok && r.checkoutUrl) {
+      window.location.href = r.checkoutUrl; // Mollie-hosted checkout (iDEAL)
+      return;
+    }
+    setError(r.error ?? "failed");
+  }
+
   if (conn?.status === "active") {
+    const needsPayment = conversation.role === "household" && !conn.paymentSetUp;
     return (
       <div className="mt-3 rounded-card-lg border border-forest/30 bg-mint p-4">
         <h3 className="font-extrabold text-ink">{t("activeTitle")}</h3>
         <p className="mt-1 text-sm text-ink/70">{conversation.role === "household" ? t("activeText") : t("activeTextCleaner")}</p>
+        {needsPayment ? (
+          conversation.paymentsEnabled ? (
+            <div className="mt-3 rounded-xl bg-white p-3">
+              <p className="text-sm font-semibold text-ink">{t("payTitle")}</p>
+              <p className="mt-1 text-xs text-ink/70">{t("payText")}</p>
+              <button type="button" disabled={busy} onClick={pay} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("payCta")}</button>
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl bg-white p-3 text-xs text-ink/70">{t("payLater")}</p>
+          )
+        ) : null}
         <button type="button" disabled={busy} onClick={() => run(() => endConnection(conversation.id))} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-5 text-sm font-bold text-forest hover:bg-white disabled:opacity-50">
           {t("endConnection")}
         </button>

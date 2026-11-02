@@ -222,7 +222,18 @@
     "resent": "Verstuurd. Check je inbox en spam.",
     "confirmedNotice": "Je e-mailadres is bevestigd. Log hieronder in.",
     "cleanerSignupIntro": "Gratis, altijd. Na het aanmaken van je account staat je advertentie meteen online.",
-    "loginRequired": "Log in of maak een gratis account om verder te gaan."
+    "loginRequired": "Log in of maak een gratis account om verder te gaan.",
+    "forgot": "Wachtwoord vergeten?",
+    "resetTitle": "Wachtwoord vergeten",
+    "resetIntro": "Vul je e-mailadres in. Je krijgt een link waarmee je een nieuw wachtwoord instelt.",
+    "resetSubmit": "Stuur herstel-link",
+    "resetSent": "Als dit e-mailadres bij ons bekend is, hebben we een link gestuurd. Check ook je spam.",
+    "resetUpdateTitle": "Nieuw wachtwoord instellen",
+    "newPassword": "Nieuw wachtwoord (minimaal 8 tekens)",
+    "resetSave": "Wachtwoord opslaan",
+    "resetDone": "Je wachtwoord is gewijzigd.",
+    "resetLinkInvalid": "Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.",
+    "resetAgain": "Nieuwe link aanvragen"
   },
   "common": {
     "favourite": "Opslaan als favoriet",
@@ -365,7 +376,11 @@
     "otherConfirmed": "{name} heeft de deal bevestigd. Jij ook?",
     "withdraw": "Bevestiging intrekken",
     "reopen": "Toch een deal? Opnieuw bevestigen",
-    "error": "Er ging iets mis. Probeer het opnieuw."
+    "error": "Er ging iets mis. Probeer het opnieuw.",
+    "payTitle": "Betaalmethode koppelen",
+    "payText": "Eenmalige iDEAL-verificatie van € 0,01 (wordt teruggestort). Daarna wordt € 14,95 per maand automatisch geïncasseerd, opzegbaar per maand.",
+    "payCta": "Betaalmethode koppelen via iDEAL",
+    "payLater": "Betalingen zijn nog niet geactiveerd op het platform. Je krijgt bericht zodra je je betaalmethode kunt koppelen; tot die tijd is de verbinding gratis actief."
   },
   "admin": {
     "title": "Alieni Admin",

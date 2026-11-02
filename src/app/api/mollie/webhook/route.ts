@@ -134,6 +134,43 @@ export async function POST(request: Request) {
         // Already refunded on a webhook replay — fine.
       }
     }
+
+    // Mandate in place → charge €14.95 now for each active connection that
+    // has no subscription yet, and start the monthly subscription (brief §3.7).
+    if (valid) {
+      const webhookUrl = `${new URL(request.url).origin}/api/mollie/webhook`;
+      const { data: conns } = await admin
+        .from("connections")
+        .select("id")
+        .eq("household_id", household.id)
+        .eq("status", "active")
+        .is("mollie_subscription_id", null);
+      for (const conn of conns ?? []) {
+        // Claim the connection first so a webhook replay cannot double-charge.
+        const { data: claimed } = await admin
+          .from("connections")
+          .update({ mollie_customer_id: payment.customerId, mollie_subscription_id: "pending" })
+          .eq("id", conn.id)
+          .is("mollie_subscription_id", null)
+          .select("id")
+          .maybeSingle();
+        if (!claimed) continue;
+        try {
+          const charge = await mollie.createFirstCharge(payment.customerId, webhookUrl);
+          await admin.from("payments").upsert(
+            { mollie_payment_id: charge.id, type: "subscription", status: charge.status, amount_cents: Math.round(Number(charge.amount.value) * 100), household_id: household.id, connection_id: conn.id },
+            { onConflict: "mollie_payment_id" },
+          );
+          const start = new Date();
+          start.setUTCMonth(start.getUTCMonth() + 1);
+          const sub = await mollie.createSubscription(payment.customerId, start.toISOString().slice(0, 10), webhookUrl);
+          await admin.from("connections").update({ mollie_subscription_id: sub.id }).eq("id", conn.id);
+        } catch {
+          // Release the claim so the next webhook (or a retry) can try again.
+          await admin.from("connections").update({ mollie_subscription_id: null }).eq("id", conn.id).eq("mollie_subscription_id", "pending");
+        }
+      }
+    }
   }
 
   if (payment.status === "paid" && payment.sequenceType === "recurring" && paymentRow.connection_id) {

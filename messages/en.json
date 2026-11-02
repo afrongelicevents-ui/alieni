@@ -222,7 +222,18 @@
     "resent": "Sent. Check your inbox and spam folder.",
     "confirmedNotice": "Your email address is confirmed. Log in below.",
     "cleanerSignupIntro": "Free, always. Your ad goes live right after you create your account.",
-    "loginRequired": "Log in or create a free account to continue."
+    "loginRequired": "Log in or create a free account to continue.",
+    "forgot": "Forgot password?",
+    "resetTitle": "Forgot password",
+    "resetIntro": "Enter your email address. You will receive a link to set a new password.",
+    "resetSubmit": "Send reset link",
+    "resetSent": "If this address is known to us, we sent a link. Check your spam folder too.",
+    "resetUpdateTitle": "Set a new password",
+    "newPassword": "New password (at least 8 characters)",
+    "resetSave": "Save password",
+    "resetDone": "Your password has been changed.",
+    "resetLinkInvalid": "This link has expired or was already used. Request a new one.",
+    "resetAgain": "Request a new link"
   },
   "common": {
     "favourite": "Save as favourite",
@@ -365,7 +376,11 @@
     "otherConfirmed": "{name} confirmed the deal. Do you?",
     "withdraw": "Withdraw confirmation",
     "reopen": "A deal after all? Confirm again",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "payTitle": "Set up payment",
+    "payText": "One-time €0.01 iDEAL verification (refunded). After that €14.95 per month is collected automatically, cancellable monthly.",
+    "payCta": "Set up payment via iDEAL",
+    "payLater": "Payments are not activated on the platform yet. You will be notified when you can set up your payment method; until then the connection is active free of charge."
   },
   "admin": {
     "title": "Alieni Admin",
