@@ -40,6 +40,7 @@ export type ConversationDetail = {
     startedAt: string | null;
     endedAt: string | null;
     paymentSetUp: boolean; // Mollie mandate + subscription attached
+    paused: boolean; // last direct debit failed: contacts re-masked until a new mandate
   } | null;
   /** Mollie is configured on the server, so the household can set up payment. */
   paymentsEnabled: boolean;
@@ -146,7 +147,7 @@ export async function getConversation(id: string, userId: string): Promise<Conve
       ? { id: meeting.id, type: meeting.type, weekday: meeting.proposed_weekday, block: meeting.proposed_block, status: meeting.status }
       : null,
     connection: conn
-      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: Boolean(conn.mollie_subscription_id) }
+      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: Boolean(conn.mollie_subscription_id), paused: conn.status === "paused" }
       : null,
     paymentsEnabled: Boolean(process.env.MOLLIE_API_KEY),
     messages: ((msgs ?? []) as { id: string; sender_id: string; body: string; masked: boolean; created_at: string }[]).map((m) => ({

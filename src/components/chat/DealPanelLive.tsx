@@ -42,6 +42,19 @@ export function DealPanelLive({ conversation }: { conversation: ConversationDeta
     setError(r.error ?? "failed");
   }
 
+  if (conn?.status === "active" && conn.paused) {
+    return (
+      <div className="mt-3 rounded-card-lg border border-red-200 bg-red-50 p-4">
+        <h3 className="font-extrabold text-ink">{t("pausedTitle")}</h3>
+        <p className="mt-1 text-sm text-ink/80">{conversation.role === "household" ? t("pausedTextHousehold") : t("pausedTextCleaner")}</p>
+        {conversation.role === "household" && conversation.paymentsEnabled ? (
+          <button type="button" disabled={busy} onClick={pay} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("payUpdateCta")}</button>
+        ) : null}
+        {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t("error")}</p> : null}
+      </div>
+    );
+  }
+
   if (conn?.status === "active") {
     const needsPayment = conversation.role === "household" && !conn.paymentSetUp;
     return (

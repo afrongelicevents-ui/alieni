@@ -380,7 +380,11 @@
     "payTitle": "Set up payment",
     "payText": "One-time €0.01 iDEAL verification (refunded). After that €14.95 per month is collected automatically, cancellable monthly.",
     "payCta": "Set up payment via iDEAL",
-    "payLater": "Payments are not activated on the platform yet. You will be notified when you can set up your payment method; until then the connection is active free of charge."
+    "payLater": "Payments are not activated on the platform yet. You will be notified when you can set up your payment method; until then the connection is active free of charge.",
+    "pausedTitle": "Payment failed — connection paused",
+    "pausedTextHousehold": "The last €14.95 direct debit failed. Set up your payment method again; contact details become visible again afterwards.",
+    "pausedTextCleaner": "The household's payment failed. Once they update their payment method the connection is active again.",
+    "payUpdateCta": "Set up payment method again"
   },
   "admin": {
     "title": "Alieni Admin",

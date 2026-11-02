@@ -380,7 +380,11 @@
     "payTitle": "Betaalmethode koppelen",
     "payText": "Eenmalige iDEAL-verificatie van € 0,01 (wordt teruggestort). Daarna wordt € 14,95 per maand automatisch geïncasseerd, opzegbaar per maand.",
     "payCta": "Betaalmethode koppelen via iDEAL",
-    "payLater": "Betalingen zijn nog niet geactiveerd op het platform. Je krijgt bericht zodra je je betaalmethode kunt koppelen; tot die tijd is de verbinding gratis actief."
+    "payLater": "Betalingen zijn nog niet geactiveerd op het platform. Je krijgt bericht zodra je je betaalmethode kunt koppelen; tot die tijd is de verbinding gratis actief.",
+    "pausedTitle": "Betaling mislukt — verbinding gepauzeerd",
+    "pausedTextHousehold": "De laatste incasso van € 14,95 is mislukt. Koppel je betaalmethode opnieuw; daarna zijn contactgegevens weer zichtbaar.",
+    "pausedTextCleaner": "De betaling van het huishouden is mislukt. Zodra zij hun betaalmethode hebben bijgewerkt, is de verbinding weer actief.",
+    "payUpdateCta": "Betaalmethode opnieuw koppelen"
   },
   "admin": {
     "title": "Alieni Admin",

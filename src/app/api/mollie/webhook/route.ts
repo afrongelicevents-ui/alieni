@@ -164,21 +164,33 @@ export async function POST(request: Request) {
           .select("id")
           .maybeSingle();
         if (!claimed) continue;
+        // Charge at most once per connection: skip if a subscription payment already exists.
+        const { data: already } = await admin.from("payments").select("id").eq("connection_id", conn.id).eq("type", "subscription").limit(1);
+        if (!already?.length) {
+          try {
+            const charge = await mollie.createFirstCharge(payment.customerId, webhookUrl, undefined, { profile_id: household.id, connection_id: conn.id });
+            await admin.from("payments").upsert(
+              { mollie_payment_id: charge.id, type: "subscription", status: charge.status, amount_cents: Math.round(Number(charge.amount.value) * 100), household_id: household.id, connection_id: conn.id },
+              { onConflict: "mollie_payment_id" },
+            );
+          } catch {
+            // Charge failed: release the claim so a retry can charge (nothing was created at Mollie).
+            await admin.from("connections").update({ mollie_subscription_id: null }).eq("id", conn.id).eq("mollie_subscription_id", "pending");
+            continue;
+          }
+        }
         try {
-          const charge = await mollie.createFirstCharge(payment.customerId, webhookUrl);
-          await admin.from("payments").upsert(
-            { mollie_payment_id: charge.id, type: "subscription", status: charge.status, amount_cents: Math.round(Number(charge.amount.value) * 100), household_id: household.id, connection_id: conn.id },
-            { onConflict: "mollie_payment_id" },
-          );
           const start = new Date();
           start.setUTCMonth(start.getUTCMonth() + 1);
           const sub = await mollie.createSubscription(payment.customerId, start.toISOString().slice(0, 10), webhookUrl);
           await admin.from("connections").update({ mollie_subscription_id: sub.id }).eq("id", conn.id);
         } catch {
-          // Release the claim so the next webhook (or a retry) can try again.
-          await admin.from("connections").update({ mollie_subscription_id: null }).eq("id", conn.id).eq("mollie_subscription_id", "pending");
+          // Charged but no subscription yet: keep the claim (prevents a second charge); flagged for ops.
+          await admin.from("connections").update({ mollie_subscription_id: "charged-no-subscription" }).eq("id", conn.id).eq("mollie_subscription_id", "pending");
         }
       }
+      // A fresh mandate after a failed debit: unpause (contacts visible again).
+      await admin.from("connections").update({ status: "active" }).eq("household_id", household.id).eq("status", "paused");
     }
   }
 

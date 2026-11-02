@@ -141,6 +141,7 @@ create or replace view emergency_requests_open as
   select id, requester_type, left(postcode, 4) as postcode, city, window_start, window_end, hours, tasks, created_at
   from emergency_requests
   where status = 'searching'
+    and window_start > now()
     and exists (select 1 from cleaner_profiles cp where cp.user_id = auth.uid() and cp.emergency_opt_in);
 grant select on emergency_requests_open to authenticated;
 
@@ -203,3 +204,19 @@ create trigger cleaner_profiles_guard_update
 update storage.buckets set file_size_limit = 10485760,
   allowed_mime_types = array['application/pdf', 'image/jpeg', 'image/png']
   where id = 'vog';
+
+-- ========== meeting request flooding backstop (max 20 per household per day) ==========
+create or replace function check_meeting_request_rate() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from meeting_requests
+      where household_id = auth.uid() and created_at > now() - interval '24 hours') >= 20 then
+    raise exception 'meeting request limit reached (20 per day)';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists meeting_requests_rate_limit on meeting_requests;
+create trigger meeting_requests_rate_limit
+  before insert on meeting_requests
+  for each row execute function check_meeting_request_rate();

@@ -105,6 +105,7 @@ export function createMollieClient() {
       customerId: string,
       webhookUrl: string,
       override?: { value: string; description: string },
+      metadata?: Record<string, string>,
     ) {
       return mollieFetch<MolliePayment>(key, "/payments", {
         method: "POST",
@@ -114,6 +115,7 @@ export function createMollieClient() {
           sequenceType: "recurring",
           description: override?.description ?? HOUSEHOLD_SUBSCRIPTION.description,
           webhookUrl,
+          metadata,
         }),
       });
     },

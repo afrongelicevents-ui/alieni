@@ -184,6 +184,7 @@ export async function endConnection(conversationId: string): Promise<ChatActionS
     if (member.conn) {
       const { error } = await supabase.from("connections").update({ status: "ended", ended_at: now }).eq("id", member.conn.id);
       if (error) return { ok: false, error: "save_failed" };
+      await cancelMollieSubscription(member.conn.id);
     } else {
       const { error } = await supabase
         .from("connections")
@@ -195,6 +196,24 @@ export async function endConnection(conversationId: string): Promise<ChatActionS
     return { ok: true, conversationId };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Stop future charges when a connection ends (brief §3.9). Best effort; server role only. */
+async function cancelMollieSubscription(connectionId: string): Promise<void> {
+  const mollie = createMollieClient();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!mollie || !serviceKey || !supabaseUrl) return;
+  try {
+    const admin = createSupabaseAdmin(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    const { data: conn } = await admin.from("connections").select("mollie_customer_id, mollie_subscription_id").eq("id", connectionId).maybeSingle();
+    if (conn?.mollie_customer_id && conn.mollie_subscription_id && conn.mollie_subscription_id.startsWith("sub_")) {
+      await mollie.cancelSubscription(conn.mollie_customer_id, conn.mollie_subscription_id);
+      await admin.from("connections").update({ mollie_subscription_id: `cancelled:${conn.mollie_subscription_id}` }).eq("id", connectionId);
+    }
+  } catch {
+    // Logged by Mollie; ops can cancel manually from the dashboard.
   }
 }
 
@@ -212,7 +231,7 @@ export async function setupHouseholdPayment(conversationId: string): Promise<Cha
     const { supabase, userId, email } = await requireUser();
     const member = await membership(supabase, conversationId, userId);
     if (!member || member.role !== "household") return { ok: false, error: "not_member" };
-    if (member.conn?.status !== "active") return { ok: false, error: "not_active" };
+    if (member.conn?.status !== "active" && member.conn?.status !== "paused") return { ok: false, error: "not_active" };
     // Mollie identifiers are server-only columns: read/write them with the service role.
     const admin = createSupabaseAdmin(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const { data: profile } = await admin.from("profiles").select("display_name, mollie_customer_id").eq("id", userId).maybeSingle();
