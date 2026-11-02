@@ -163,7 +163,11 @@
     "haveAccount": "Al een account?",
     "checkEmail": "Bijna klaar! Check je e-mail en tik op de bevestigingslink. Daarna kun je inloggen.",
     "redirecting": "Gelukt! Je wordt doorgestuurd…",
-    "busy": "Even geduld…"
+    "busy": "Even geduld…",
+    "alreadyRegistered": "Dit e-mailadres heeft al een account. Ga naar Inloggen.",
+    "timeout": "Geen antwoord van de server na 20 seconden. Probeer het opnieuw.",
+    "networkError": "Verbinding mislukt. Controleer je internet en probeer het opnieuw.",
+    "goToAccount": "Naar mijn account →"
   },
   "common": {
     "favourite": "Opslaan als favoriet",

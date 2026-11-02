@@ -3,6 +3,8 @@ import { Link } from "@/i18n/navigation";
 import { LogoLockup } from "@/components/brand/Logo";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
+const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev").slice(0, 7);
+
 export function Footer() {
   const t = useTranslations();
 
@@ -32,6 +34,7 @@ export function Footer() {
           <p className="mt-2 text-xs">© {new Date().getFullYear()} Alieni</p>
         </div>
       </div>
+      <p className="mx-auto max-w-6xl px-4 pb-2 text-right text-[11px] text-ink/40">v. {BUILD}</p>
     </footer>
   );
 }

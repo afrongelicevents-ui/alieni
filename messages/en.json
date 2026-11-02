@@ -163,7 +163,11 @@
     "haveAccount": "Already have an account?",
     "checkEmail": "Almost there! Check your email and tap the confirmation link. Then you can log in.",
     "redirecting": "Done! Taking you to your account…",
-    "busy": "One moment…"
+    "busy": "One moment…",
+    "alreadyRegistered": "This email already has an account. Use Log in instead.",
+    "timeout": "No answer from the server after 20 seconds. Please try again.",
+    "networkError": "Connection failed. Check your internet and try again.",
+    "goToAccount": "Go to my account →"
   },
   "common": {
     "favourite": "Save as favourite",
