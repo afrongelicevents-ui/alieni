@@ -2,6 +2,7 @@ import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/Button";
 import { JobsBoard, type BoardJob, type Viewer } from "@/components/jobs/JobsBoard";
 import { SAMPLE_JOBS } from "@/lib/jobs";
+import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -24,6 +25,8 @@ export default async function JobsPage({
   const t = await getTranslations("jobs");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
   const user = await getSessionUser();
+  if (user?.role === "cleaner") redirect(`/${locale}/work?tab=jobs`);
+  if (user?.role === "household") redirect(`/${locale}/home`);
   const supabase = await createClient();
 
   let myCleanerProfileId: string | null = null;

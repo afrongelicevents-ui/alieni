@@ -13,7 +13,7 @@ async function signUp(page, email, role) {
   await page.fill("input[type=email]", email);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/account$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 
@@ -31,6 +31,7 @@ async function signUp(page, email, role) {
   const cleanerCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const cleaner = await cleanerCtx.newPage(); track(cleaner);
   await signUp(cleaner, "sandra@example.com", "cleaner");
+  await cleaner.goto(`${APP}/en/account`, { waitUntil: "networkidle" });
   ok("Cleaner: account created with role cleaner", (await cleaner.textContent("main")).includes("Cleaner"));
   await cleaner.goto(`${APP}/en/cleaners/new`, { waitUntil: "networkidle" });
   await cleaner.fill("input[maxlength='80']", "Sandra M.");
@@ -53,8 +54,8 @@ async function signUp(page, email, role) {
   await cleaner.getByRole("button", { name: "Save photo" }).click();
   await cleaner.waitForSelector("text=Photo saved", { timeout: 15000 });
   ok("Cleaner: profile photo uploaded to profile-photos bucket", (await (await fetch(`${EMU}/__emu/state`)).json()).objects.some((k) => k.startsWith("profile-photos/")));
-  await cleaner.goto(`${APP}/en/account`, { waitUntil: "networkidle" });
-  ok("Cleaner: account dashboard shows ad online", (await cleaner.textContent("main")).includes("online"));
+  await cleaner.goto(`${APP}/en/home`, { waitUntil: "networkidle" });
+  ok("Cleaner: home shows ad online", (await cleaner.textContent("main")).includes("online"));
 
   // ---------- Household: find, favourite, request meeting ----------
   const hhCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -118,8 +119,8 @@ async function signUp(page, email, role) {
   await hh.goto(threadUrl, { waitUntil: "networkidle" });
   ok("Household: sees the phone number now", (await hh.textContent("main")).includes("0687654321"));
   await hh.screenshot({ path: `${OUT}/f2-03-connected.png`, fullPage: true });
-  await hh.goto(`${APP}/en/account`, { waitUntil: "networkidle" });
-  ok("Household: dashboard shows 1 connection, 1 favourite", /Connections/.test(await hh.textContent("main")));
+  await hh.goto(`${APP}/en/home`, { waitUntil: "networkidle" });
+  ok("Household: home shows the connected cleaner", /Sandra M\./.test(await hh.textContent("main")) && /Connected/.test(await hh.textContent("main")));
   ok("Cleaner: verified jobs counter incremented", ((await (await fetch(`${EMU}/__emu/table?name=cleaner_profiles`)).json())[0].verified_jobs_count) === 1);
 
   // ---------- Access control ----------

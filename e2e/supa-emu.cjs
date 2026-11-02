@@ -12,7 +12,7 @@ const ADMIN_ALLOWLIST = new Set(["afrongelic.events@gmail.com"]);
 // ---------- tables ----------
 const tables = {};
 function table(name) { return (tables[name] ??= []); }
-const PK = { profiles: "id", site_media: "slot", favourites: ["user_id", "cleaner_profile_id"], settings: "key" };
+const PK = { profiles: "id", site_media: "slot", favourites: ["user_id", "cleaner_profile_id"], settings: "key", household_profiles: "user_id" };
 // foreign keys: table -> column -> target table
 const FK = {
   cleaner_profiles: { user_id: "profiles" },
@@ -29,6 +29,7 @@ const FK = {
   jobs: { business_id: "business_profiles" },
   job_responses: { job_id: "jobs", cleaner_profile_id: "cleaner_profiles" },
   emergency_requests: { requester_id: "profiles" },
+  household_profiles: { user_id: "profiles" },
   cleaning_slots: { unit_id: "business_units" },
 };
 const UNIQUE = {
@@ -177,6 +178,12 @@ function beforeInsert(tname, row, user) {
     if (!active) row.masked = true;
   }
   if (tname === "profiles" && row.role === "admin" && !ADMIN_ALLOWLIST.has(user?.email)) throw new Error("role escalation blocked");
+  // role-bound writes (migration 0019)
+  const role = user ? roleOf(user.id) : null;
+  if (tname === "cleaner_profiles" && role !== "cleaner" && role !== "admin") throw new Error("new row violates row-level security policy for table \"cleaner_profiles\"");
+  if (tname === "business_profiles" && role !== "business" && role !== "admin") throw new Error("only business accounts can create a business profile");
+  if ((tname === "meeting_requests" || tname === "favourites" || tname === "conversations") && !["household", "business", "admin"].includes(role)) throw new Error("new row violates row-level security policy");
+  if (tname === "household_profiles" && role !== "household") throw new Error("new row violates row-level security policy");
 }
 function beforeUpdate(tname, row, patch) {
   if (tname === "vog_documents" && patch.status && patch.status !== "pending" && row.status === "pending") {
@@ -191,10 +198,10 @@ function beforeUpdate(tname, row, patch) {
       if (cp) cp.verified_jobs_count = (cp.verified_jobs_count ?? 0) + 1;
     }
   }
-  if (tname === "profiles" && patch.role === "admin" && row.role !== "admin") throw new Error("role escalation blocked");
+  if (tname === "profiles" && patch.role !== undefined && patch.role !== row.role) throw new Error("role cannot be changed after sign-up");
 }
 const DEFAULTS = {
-  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], emergency_opt_in: false, min_hours: 2, radius_km: 10 }),
+  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], work_scope: "household", experience_years: null, emergency_opt_in: false, min_hours: 2, radius_km: 10 }),
   meeting_requests: () => ({ status: "requested" }),
   connections: () => ({ status: "pending" }),
   messages: () => ({ masked: true }),

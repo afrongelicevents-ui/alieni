@@ -13,7 +13,7 @@ async function signUp(page, email, role) {
   await page.fill("input[type=email]", email);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/account$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 
@@ -36,7 +36,8 @@ async function signUp(page, email, role) {
   await cleaner.fill("input[maxlength='60']", "Groningen");
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.getByRole("button", { name: /Regular cleaning/ }).first().click();
-  await cleaner.getByRole("button", { name: /^School/ }).click();
+  await cleaner.getByText("Both", { exact: true }).click();
+  await cleaner.getByRole("button", { name: /^Schools/ }).click();
   await cleaner.fill("input[placeholder='12345678']", "11112222");
   await cleaner.fill("input[type=date]", "2026-09-01");
   await cleaner.getByRole("button", { name: "Next" }).click();

@@ -22,6 +22,7 @@ export default async function BusinessSignupPage({
 
   const user = await getSessionUser();
   if (user) {
+    if (user.role !== "business" && user.role !== "admin") redirect(`/${locale}/home`);
     const supabase = await createClient();
     const { data: existing } = await supabase!.from("business_profiles").select("id").eq("user_id", user.id).maybeSingle();
     if (existing) redirect(`/${locale}/business/dashboard`);

@@ -28,6 +28,8 @@ type Draft = {
   services: string[];
   languages: string[];
   jobTypes: JobType[];
+  workScope: "household" | "commercial" | "both";
+  experienceYears: number | null;
   kvkNumber: string;
   vogFileName: string;
   vogIssuedAt: string;
@@ -47,6 +49,8 @@ const EMPTY: Draft = {
   services: [],
   languages: ["nl"],
   jobTypes: ["household"],
+  workScope: "household",
+  experienceYears: null,
   kvkNumber: "",
   vogFileName: "",
   vogIssuedAt: "",
@@ -76,15 +80,15 @@ const chipCls = (on: boolean) =>
     on ? "border-forest bg-forest text-white" : "border-line bg-white text-ink/80 hover:bg-mint"
   }`;
 
-export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: ExistingAd | null }) {
+export function AdWizard({ signedIn, existing, initialStep, startEditing }: { signedIn: boolean; existing: ExistingAd | null; initialStep?: number; startEditing?: boolean }) {
   const t = useTranslations("wizard");
   const tCommon = useTranslations("common");
   const locale = useLocale() as "nl" | "en";
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(Math.min(2, Math.max(0, (initialStep ?? 1) - 1)));
   const [draft, setDraft] = useState<Draft>(existing ? { ...EMPTY, ...existing.draft } : EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState<AdActionState | null>(existing ? { ok: true, adId: existing.adId, status: existing.status } : null);
+  const [saved, setSaved] = useState<AdActionState | null>(existing && !startEditing && !initialStep ? { ok: true, adId: existing.adId, status: existing.status } : null);
   const [busy, setBusy] = useState(false);
   const [photoState, photoAction, photoBusy] = useActionState(uploadProfilePhoto, { ok: false } as AdActionState);
   const [vogState, vogAction, vogBusy] = useActionState(uploadVogFile, { ok: false } as AdActionState);
@@ -114,6 +118,17 @@ export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: 
     return list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
   }
 
+  const BUSINESS_ENVIRONMENTS: JobType[] = ["airbnb", "hotel", "restaurant", "office", "school"];
+  function setScope(scope: Draft["workScope"]) {
+    const keepEmergency = draft.jobTypes.includes("emergency") ? (["emergency"] as JobType[]) : [];
+    const business = draft.jobTypes.filter((j) => BUSINESS_ENVIRONMENTS.includes(j));
+    const next: JobType[] =
+      scope === "household" ? ["household", ...keepEmergency]
+      : scope === "commercial" ? [...business, ...keepEmergency]
+      : ["household", ...business, ...keepEmergency];
+    persist({ ...draft, workScope: scope, jobTypes: next });
+  }
+
   function toggleBlock(day: Weekday, block: DayBlock) {
     const current = draft.availability[day] ?? [];
     const next = current.includes(block) ? current.filter((b) => b !== block) : [...current, block];
@@ -129,7 +144,7 @@ export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: 
       if (draft.services.length === 0) e.services = t("servicesError");
       const cents = parseRateCents(draft.rateEuro);
       if (cents === null || cents < DEFAULT_RATE_FLOOR_CENTS) e.rate = t("rateError");
-      if (draft.jobTypes.length === 0) e.jobTypes = t("jobTypesError");
+      if (draft.workScope !== "household" && !draft.jobTypes.some((j) => BUSINESS_ENVIRONMENTS.includes(j))) e.jobTypes = t("environmentsError");
       const wantsBusiness = draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j));
       if (wantsBusiness && !/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvk = t("kvkError");
       if (draft.jobTypes.includes("school") && !draft.vogIssuedAt) e.vog = t("vogError");
@@ -157,6 +172,8 @@ export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: 
       services: draft.services,
       languages: draft.languages,
       jobTypes: draft.jobTypes,
+      workScope: draft.workScope,
+      experienceYears: draft.experienceYears,
       kvkNumber: draft.kvkNumber.trim(),
       emergencyRateCents: parseRateCents(draft.emergencyRateEuro) ?? 0,
       rateCents: parseRateCents(draft.rateEuro) ?? 0,
@@ -307,6 +324,15 @@ export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: 
               />
             </label>
             <label className="text-sm font-semibold text-ink/80">
+              {t("experienceLabel")}
+              <select value={draft.experienceYears ?? ""} onChange={(e) => persist({ ...draft, experienceYears: e.target.value === "" ? null : Number(e.target.value) })} className={`mt-1 ${inputCls}`}>
+                <option value="">{t("experiencePick")}</option>
+                {[0, 1, 2, 3, 5, 10, 15, 20].map((y) => (
+                  <option key={y} value={y}>{y === 0 ? t("experienceNone") : t("experienceYears", { years: y })}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-semibold text-ink/80">
               {t("aboutLabel")}
               <textarea
                 value={draft.about}
@@ -342,22 +368,35 @@ export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: 
             </fieldset>
 
             <fieldset>
-              <legend className="text-sm font-semibold text-ink/80">{t("jobTypesLabel")}</legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={draft.jobTypes.includes(key)}
-                    onClick={() => persist({ ...draft, jobTypes: toggleIn(draft.jobTypes, key) })}
-                    className={chipCls(draft.jobTypes.includes(key))}
-                  >
-                    {JOB_TYPE_LABELS[key][locale]}
-                  </button>
+              <legend className="text-sm font-semibold text-ink/80">{t("scopeLabel")}</legend>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                {(["household", "commercial", "both"] as const).map((scope) => (
+                  <label key={scope} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 px-3 text-center text-sm font-bold ${draft.workScope === scope ? "border-forest bg-mint text-forest" : "border-line bg-white text-ink/70"}`}>
+                    <input type="radio" name="work-scope" value={scope} checked={draft.workScope === scope} onChange={() => setScope(scope)} className="sr-only" />
+                    {t(`scope_${scope}` as "scope_household")}
+                  </label>
                 ))}
               </div>
-              {errors.jobTypes ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.jobTypes}</p> : null}
             </fieldset>
+
+            {draft.workScope !== "household" ? (
+              <fieldset>
+                <legend className="text-sm font-semibold text-ink/80">{t("environmentsLabel")}</legend>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {BUSINESS_ENVIRONMENTS.map((key) => (
+                    <button key={key} type="button" aria-pressed={draft.jobTypes.includes(key)} onClick={() => persist({ ...draft, jobTypes: toggleIn(draft.jobTypes, key) })} className={chipCls(draft.jobTypes.includes(key))}>
+                      {JOB_TYPE_LABELS[key][locale]}
+                    </button>
+                  ))}
+                </div>
+                {errors.jobTypes ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.jobTypes}</p> : null}
+              </fieldset>
+            ) : null}
+
+            <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 text-sm font-semibold text-ink has-[:checked]:border-forest has-[:checked]:bg-mint">
+              <input type="checkbox" checked={draft.jobTypes.includes("emergency")} onChange={() => persist({ ...draft, jobTypes: toggleIn(draft.jobTypes, "emergency") })} className="h-5 w-5 accent-forest" />
+              <span>{JOB_TYPE_LABELS.emergency[locale]} <span className="block text-xs font-medium text-ink/60">{t("emergencyHint")}</span></span>
+            </label>
 
             {draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j)) ? (
               <label className="text-sm font-semibold text-ink/80">

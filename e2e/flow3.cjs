@@ -15,7 +15,7 @@ async function signUp(page, email, role) {
   await page.fill("input[type=email]", email);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/account$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 
@@ -38,8 +38,9 @@ async function signUp(page, email, role) {
   await cleaner.fill("input[maxlength='60']", "Amsterdam");
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.getByRole("button", { name: /Regular cleaning/ }).first().click();
-  await cleaner.getByRole("button", { name: /^Emergency/ }).click();
-  await cleaner.getByRole("button", { name: /^Hotel/ }).click();
+  await cleaner.getByText("Both", { exact: true }).click();
+  await cleaner.getByRole("button", { name: /^Hotels/ }).click();
+  await cleaner.getByLabel(/Emergency jobs/).check();
   await cleaner.fill("input[placeholder='12345678']", "12345678");
   await cleaner.fill("input[inputmode='decimal'] >> nth=0", "30,00");
   await cleaner.getByRole("button", { name: "Next" }).click();
@@ -86,6 +87,7 @@ async function signUp(page, email, role) {
 
   // post a job
   await biz.goto(`${APP}/en/jobs/new`, { waitUntil: "networkidle" });
+  await biz.selectOption("select >> nth=0", "hospitality"); // space type the cleaner works in
   await biz.selectOption("select >> nth=1", { index: 1 }); // unit
   await biz.fill("textarea", "Daily room turnovers, 24 rooms, 11:00-15:00, linen provided.");
   await biz.getByRole("button", { name: /Post job/ }).click();
@@ -95,7 +97,7 @@ async function signUp(page, email, role) {
 
   // ---------- Cleaner responds ----------
   await cleaner.goto(`${APP}/en/jobs`, { waitUntil: "networkidle" });
-  ok("Cleaner: real job on the board (no sample badge)", /Hotel De Linde/.test(await cleaner.textContent("main")) && !/example/.test(await cleaner.textContent("main")));
+  ok("Cleaner: matching job in Work → Business jobs (no sample)", /\/en\/work/.test(cleaner.url()) && /Hotel De Linde/.test(await cleaner.textContent("main")) && !/example/.test(await cleaner.textContent("main")));
   await cleaner.getByRole("button", { name: "Respond to this job" }).click();
   await cleaner.fill("textarea", "Available every day from 11:00. Hotel experience.");
   await cleaner.getByRole("button", { name: "Send response" }).click();
@@ -123,7 +125,7 @@ async function signUp(page, email, role) {
 
   // ---------- Cleaner sees hotel turnovers, reserves, completes ----------
   await cleaner.goto(`${APP}/en/cleaners/slots`, { waitUntil: "networkidle" });
-  ok("Cleaner: sees the hotel's 3 turnover slots", (await cleaner.getByRole("button", { name: "Reserve" }).count()) === 3);
+  ok("Cleaner: sees the hotel's 3 turnover slots in Work → Turnovers", /tab=turnovers/.test(cleaner.url()) && (await cleaner.getByRole("button", { name: "Reserve" }).count()) === 3);
   await cleaner.getByRole("button", { name: "Reserve" }).first().click();
   await cleaner.waitForTimeout(1500);
   const reserved = (await tbl("cleaning_slots")).find((s) => s.status === "reserved");

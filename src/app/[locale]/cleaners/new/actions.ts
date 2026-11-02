@@ -17,6 +17,8 @@ const adSchema = z.object({
   services: z.array(z.enum(Object.keys(SERVICE_LABELS) as [string, ...string[]])).min(1),
   languages: z.array(z.enum(Object.keys(LANGUAGE_LABELS) as [string, ...string[]])).min(1),
   jobTypes: z.array(z.enum(Object.keys(JOB_TYPE_LABELS) as [string, ...string[]])).min(1),
+  workScope: z.enum(["household", "commercial", "both"]).default("household"),
+  experienceYears: z.number().int().min(0).max(60).nullable().default(null),
   kvkNumber: z.string().trim().regex(/^$|^[0-9]{8}$/),
   emergencyRateCents: z.number().int().min(0).max(50000),
   rateCents: z.number().int().min(DEFAULT_RATE_FLOOR_CENTS).max(50000),
@@ -44,12 +46,9 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
     // Display name + city live on the profile (shown on the ad).
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ display_name: ad.name, city: ad.city || null, role: "cleaner" })
+      .update({ display_name: ad.name, city: ad.city || null })
       .eq("id", userId);
-    if (profileError) {
-      // Role may be locked (e.g. admin testing as cleaner): keep going without role change.
-      await supabase.from("profiles").update({ display_name: ad.name, city: ad.city || null }).eq("id", userId);
-    }
+    if (profileError) return { ok: false, error: "save_failed" };
 
     const point = await geocode(ad.postcode);
     const row = {
@@ -64,6 +63,8 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null,
       about: ad.about || null,
       job_types: ad.jobTypes,
+      work_scope: ad.workScope,
+      experience_years: ad.experienceYears,
       kvk_number: ad.kvkNumber || null,
       emergency_opt_in: ad.jobTypes.includes("emergency"),
       emergency_rate_cents: ad.jobTypes.includes("emergency") ? ad.emergencyRateCents : null,

@@ -35,7 +35,7 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
   const b = parsed.data;
   try {
     const { supabase, userId } = await requireUser();
-    await supabase.from("profiles").update({ display_name: b.companyName, role: "business" }).eq("id", userId);
+    await supabase.from("profiles").update({ display_name: b.companyName }).eq("id", userId);
     const { data: existing } = await supabase.from("business_profiles").select("id, billing_started_at").eq("user_id", userId).maybeSingle();
     const row = {
       user_id: userId,

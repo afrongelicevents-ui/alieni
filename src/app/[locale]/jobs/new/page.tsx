@@ -1,8 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobPostForm } from "@/components/jobs/JobPostForm";
-import { LoginPrompt } from "@/components/auth/LoginPrompt";
 import { ButtonLink } from "@/components/ui/Button";
-import { getSessionUser } from "@/lib/auth";
+import { requireRole } from "@/lib/guard";
 import { getBusinessForUser } from "@/lib/business-data";
 
 export const dynamic = "force-dynamic";
@@ -15,17 +14,15 @@ export default async function NewJobPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("jobs");
-  const user = await getSessionUser();
-  const bundle = user ? await getBusinessForUser(user.id) : null;
+  const user = await requireRole(locale, ["business"], "/jobs/new");
+  const bundle = await getBusinessForUser(user.id);
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="headline text-3xl text-ink">{t("postTitle")}</h1>
       <p className="mt-2 text-ink/70">{t("postIntro")}</p>
       <div className="mt-6">
-        {!user ? (
-          <LoginPrompt next="/jobs/new" text={t("loginToPost")} />
-        ) : !bundle ? (
+        {!bundle ? (
           <div className="flex flex-col items-center gap-4 rounded-card-lg border border-line bg-white px-6 py-12 text-center">
             <p className="max-w-sm text-ink/70">{t("needBusiness")}</p>
             <ButtonLink href="/business/signup" withArrow>{t("createBusiness")}</ButtonLink>

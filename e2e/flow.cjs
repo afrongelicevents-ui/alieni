@@ -17,7 +17,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   page.on("response", (r) => { const u = r.url(); if (r.status() >= 400 && !u.includes("/auth/v1/") && !u.includes("/en/admin")) errors.push(`${r.status()} ${u}`); });
 
   // 1. Sign-up validates empty fields natively
-  await page.goto(`${APP}/en/signup`, { waitUntil: "networkidle" });
+  await page.goto(`${APP}/en/signup?role=household`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Create account" }).click();
   const invalid = await page.evaluate(() => !document.querySelector("form").checkValidity());
   ok("Sign-up: empty form is blocked by validation", invalid);
@@ -32,21 +32,20 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   // 3. Real sign-up → lands on account page, signed in, admin link
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/account$/, { timeout: 15000 }).catch(() => {});
+  await page.waitForURL(/\/en\/admin$/, { timeout: 15000 }).catch(() => {});
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: `${OUT}/01-after-signup.png` });
-  ok("Sign-up: redirected to /en/account", /\/en\/account$/.test(page.url()), page.url());
+  ok("Sign-up: owner lands on /en/admin", /\/en\/admin$/.test(page.url()), page.url());
+  await page.goto(`${APP}/en/account`, { waitUntil: "networkidle" });
   const body = await page.textContent("body");
-  ok("Account page: shows 'Signed in as' + email", body.includes("Signed in as") && body.includes("afrongelic.events@gmail.com"));
-  ok("Account page: shows Admin dashboard link (owner is admin)", (await page.getByRole("link", { name: /Admin dashboard/ }).count()) === 1);
+  ok("Settings page: shows 'Signed in as' + email", body.includes("Signed in as") && body.includes("afrongelic.events@gmail.com"));
+  ok("Settings page: shows Admin link (owner is admin)", (await page.getByRole("link", { name: /admin/i }).count()) >= 1);
   ok("Header: shows single Account button when signed in", (await page.locator("header").textContent()).includes("Account") && !(await page.locator("header").textContent()).includes("Log in"));
   const state = await (await fetch(`${EMU}/__emu/state`)).json();
   ok("Database: account saved with role admin", state.users.length === 1 && state.users[0].role === "admin", JSON.stringify(state.users));
 
   // 4. Admin → Photos
-  await page.getByRole("link", { name: /Admin dashboard/ }).click();
-  await page.waitForURL(/\/en\/admin$/, { timeout: 15000 }).catch(() => {});
-  await page.waitForLoadState("networkidle");
+  await page.goto(`${APP}/en/admin`, { waitUntil: "networkidle" });
   ok("Admin: dashboard opens for admin (no 404)", /\/en\/admin$/.test(page.url()) && (await page.textContent("body")).includes("Alieni Admin"), page.url());
   await page.getByRole("link", { name: "Photos" }).click();
   await page.waitForURL(/\/en\/admin\/media$/, { timeout: 15000 }).catch(() => {});
@@ -98,13 +97,13 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   await page.screenshot({ path: `${OUT}/05-login-error.png` });
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Log in" }).click();
-  await page.waitForURL(/\/en\/account$/, { timeout: 15000 }).catch(() => {});
+  await page.waitForURL(/\/en\/admin$/, { timeout: 15000 }).catch(() => {});
   await page.waitForLoadState("networkidle");
-  ok("Log in: correct password → account page", /\/en\/account$/.test(page.url()) && (await page.textContent("body")).includes("Signed in as"), page.url());
+  ok("Log in: correct password → admin home", /\/en\/admin$/.test(page.url()), page.url());
 
   // 9. Duplicate sign-up shows 'already has an account'
-  await page.goto(`${APP}/en/account`); await page.getByRole("button", { name: "Log out" }).click(); await page.waitForTimeout(1000);
-  await page.goto(`${APP}/en/signup`, { waitUntil: "networkidle" });
+  await page.goto(`${APP}/en/account`, { waitUntil: "networkidle" }); await page.getByRole("button", { name: "Log out" }).click(); await page.waitForTimeout(1000);
+  await page.goto(`${APP}/en/signup?role=household`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", "afrongelic.events@gmail.com");
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
@@ -114,15 +113,15 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   // 10. Dutch flow once (default locale, fresh browser so no language cookie)
   const nlctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const nl = await nlctx.newPage();
-  await nl.goto(`${APP}/signup`, { waitUntil: "networkidle" });
+  await nl.goto(`${APP}/signup?role=household`, { waitUntil: "networkidle" });
   await nl.fill("input[type=email]", "tester@example.com");
   await nl.fill("input[type=password]", "Test-Password-123");
   await nl.getByRole("button", { name: "Account aanmaken" }).click();
-  await nl.waitForURL(/\/account$/, { timeout: 15000 }).catch(() => {});
+  await nl.waitForURL(/\/home$/, { timeout: 15000 }).catch(() => {});
   await nl.waitForLoadState("networkidle");
   const nlBody = await nl.textContent("main");
-  const nlAdminLinks = await nl.getByRole("link", { name: /Admin-dashboard/ }).count();
-  ok("Dutch sign-up (second user): account page, household role, no admin link", /\/account$/.test(nl.url()) && nlBody.includes("Ingelogd als") && nlBody.includes("Huishouden") && nlAdminLinks === 0, `${nl.url()} adminLinks=${nlAdminLinks}`);
+  const nlAdminLinks = await nl.getByRole("link", { name: /Admin/ }).count();
+  ok("Dutch sign-up (second user): household home, no admin link", /\/home$/.test(nl.url()) && nlBody.includes("Jouw schoonmaker") && nlAdminLinks === 0, `${nl.url()} adminLinks=${nlAdminLinks}`);
   await nl.screenshot({ path: `${OUT}/06-account-nl.png` });
   await nlctx.close();
 

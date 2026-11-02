@@ -22,7 +22,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
   const locale = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(defaultRole);
+  const [role] = useState(defaultRole);
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
   const [message, setMessage] = useState("");
@@ -78,7 +78,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
         setStatus("done");
         // Full reload on purpose: the server must see the fresh auth cookies.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/${locale}${safeNext(next) ?? "/account"}`);
+        window.location.assign(`/${locale}${safeNext(next) ?? "/home"}`);
         return;
       }
       if (mode === "signup" && result.data.user && (result.data.user.identities?.length ?? 1) === 0) {
@@ -110,16 +110,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
       ) : null}
 
       <div className="flex flex-col gap-4">
-        {mode === "signup" ? (
-          <label className="text-sm font-semibold text-ink/80">
-            {t("roleLabel")}
-            <select value={role} onChange={(e) => setRole(e.target.value)} disabled={!active} className={`mt-1 ${inputCls}`}>
-              <option value="household">{t("roleHousehold")}</option>
-              <option value="cleaner">{t("roleCleaner")}</option>
-              <option value="business">{t("roleBusiness")}</option>
-            </select>
-          </label>
-        ) : null}
+        {mode === "signup" ? <input type="hidden" name="role" value={role} /> : null}
 
         <label className="text-sm font-semibold text-ink/80">
           {t("email")}
@@ -176,7 +167,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
         {status === "done" ? (
           <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
             {t("redirecting")}{" "}
-            <a href={`/${locale}${safeNext(next) ?? "/account"}`} className="underline">{t("goToAccount")}</a>
+            <a href={`/${locale}${safeNext(next) ?? "/home"}`} className="underline">{t("goToAccount")}</a>
           </p>
         ) : null}
 
