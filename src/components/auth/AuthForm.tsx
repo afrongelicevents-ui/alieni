@@ -22,6 +22,25 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [message, setMessage] = useState("");
 
   const active = supabase !== null;
+  const [resent, setResent] = useState(false);
+
+  /** Map Supabase's technical messages to plain language (nl/en via messages). */
+  function friendlyError(raw: string): string {
+    const m = raw.toLowerCase();
+    if (m.includes("not confirmed")) return t("errNotConfirmed");
+    if (m.includes("invalid login credentials")) return t("errBadLogin");
+    if (m.includes("rate limit")) return t("errRateLimit");
+    if (m.includes("already registered") || m.includes("already exists")) return t("alreadyRegistered");
+    if (m.includes("password") && m.includes("least")) return t("errWeakPassword");
+    return raw;
+  }
+
+  async function resendConfirmation() {
+    if (!supabase || !email) return;
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResent(true);
+    if (error) setMessage(friendlyError(error.message));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +51,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       const call =
         mode === "login"
           ? supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
-          : supabase.auth.signUp({ email, password, options: { data: { role }, captchaToken } });
+          : supabase.auth.signUp({
+              email,
+              password,
+              options: { data: { role }, captchaToken, emailRedirectTo: `${window.location.origin}/${locale}/login?confirmed=1` },
+            });
       // Never hang: if Supabase does not answer within 20s, say so.
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("timeout")), 20_000),
@@ -41,7 +64,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
       if (result.error) {
         setStatus("error");
-        setMessage(result.error.message);
+        setMessage(friendlyError(result.error.message));
         return;
       }
       if (result.data.session) {
@@ -121,8 +144,23 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
         <Turnstile onToken={setCaptchaToken} />
 
-        {status === "error" ? <p className="text-sm font-semibold text-red-700">{message}</p> : null}
-        {status === "sent" ? <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("checkEmail")}</p> : null}
+        {status === "error" ? (
+          <div className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">
+            <p>{message}</p>
+            {message === t("errNotConfirmed") && !resent ? (
+              <button type="button" onClick={resendConfirmation} className="mt-2 font-bold text-forest underline">
+                {t("resend")}
+              </button>
+            ) : null}
+            {resent ? <p className="mt-2 text-forest">{t("resent")}</p> : null}
+          </div>
+        ) : null}
+        {status === "sent" ? (
+          <div className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
+            <p>{t("checkEmail")}</p>
+            <p className="mt-2 font-medium text-ink/80">{t("checkEmailSteps")}</p>
+          </div>
+        ) : null}
         {status === "done" ? (
           <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
             {t("redirecting")}{" "}

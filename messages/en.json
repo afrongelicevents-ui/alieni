@@ -167,7 +167,15 @@
     "alreadyRegistered": "This email already has an account. Use Log in instead.",
     "timeout": "No answer from the server after 20 seconds. Please try again.",
     "networkError": "Connection failed. Check your internet and try again.",
-    "goToAccount": "Go to my account →"
+    "goToAccount": "Go to my account →",
+    "checkEmailSteps": "1) Open the email from Alieni/Supabase. 2) Tap the link (the page that opens may look odd, that is fine). 3) Come back to the site and tap Log in with the same email and password.",
+    "errNotConfirmed": "Your email address is not confirmed yet. Open the email you received and tap the link. Then logging in works.",
+    "errBadLogin": "Email address or password is incorrect.",
+    "errRateLimit": "Too many emails were sent just now. Wait an hour and try again, or use the link in the email you already have.",
+    "errWeakPassword": "Choose a password of at least 8 characters.",
+    "resend": "Send the confirmation email again",
+    "resent": "Sent. Check your inbox and spam folder.",
+    "confirmedNotice": "Your email address is confirmed. Log in below."
   },
   "common": {
     "favourite": "Save as favourite",

@@ -167,7 +167,15 @@
     "alreadyRegistered": "Dit e-mailadres heeft al een account. Ga naar Inloggen.",
     "timeout": "Geen antwoord van de server na 20 seconden. Probeer het opnieuw.",
     "networkError": "Verbinding mislukt. Controleer je internet en probeer het opnieuw.",
-    "goToAccount": "Naar mijn account →"
+    "goToAccount": "Naar mijn account →",
+    "checkEmailSteps": "1) Open de e-mail van Alieni/Supabase. 2) Tik op de link (de pagina die opent mag er raar uitzien, dat geeft niet). 3) Kom terug naar de site en tik op Inloggen met hetzelfde e-mailadres en wachtwoord.",
+    "errNotConfirmed": "Je e-mailadres is nog niet bevestigd. Open de e-mail die je kreeg en tik op de link. Daarna lukt inloggen.",
+    "errBadLogin": "E-mailadres of wachtwoord klopt niet.",
+    "errRateLimit": "Er zijn even te veel e-mails verstuurd. Wacht een uur en probeer het dan opnieuw, of gebruik de link uit de e-mail die je al hebt.",
+    "errWeakPassword": "Kies een wachtwoord van minimaal 8 tekens.",
+    "resend": "Bevestigingsmail opnieuw sturen",
+    "resent": "Verstuurd. Check je inbox en spam.",
+    "confirmedNotice": "Je e-mailadres is bevestigd. Log hieronder in."
   },
   "common": {
     "favourite": "Opslaan als favoriet",
