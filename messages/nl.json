@@ -160,7 +160,10 @@
     "notActive": "Accounts zijn nog niet actief — we lanceren binnenkort. Schoonmakers kunnen hun advertentie alvast klaarzetten.",
     "cleanerCta": "Zet je advertentie alvast klaar",
     "noAccount": "Nog geen account?",
-    "haveAccount": "Al een account?"
+    "haveAccount": "Al een account?",
+    "checkEmail": "Bijna klaar! Check je e-mail en tik op de bevestigingslink. Daarna kun je inloggen.",
+    "redirecting": "Gelukt! Je wordt doorgestuurd…",
+    "busy": "Even geduld…"
   },
   "common": {
     "favourite": "Opslaan als favoriet",
@@ -223,13 +226,20 @@
   },
   "account": {
     "title": "Account",
-    "intro": "Accounts zijn nog niet actief — dit is alvast jouw overzicht.",
+    "intro": "Log in of maak een account om je berichten, favorieten en advertentie te beheren.",
     "messages": "Berichten",
     "favourites": "Favorieten",
     "myAd": "Mijn advertentie",
     "loginSignup": "Inloggen of aanmelden",
     "mySlots": "Mijn turnovers (checkout-schoonmaak)",
-    "myEmergency": "Spoedklussen (vandaag)"
+    "myEmergency": "Spoedklussen (vandaag)",
+    "signedInAs": "Ingelogd als",
+    "logout": "Uitloggen",
+    "admin": "Admin-dashboard (foto's, instellingen, meldingen)",
+    "role_household": "Huishouden",
+    "role_cleaner": "Schoonmaker",
+    "role_business": "Zakelijk",
+    "role_admin": "Beheerder"
   },
   "deal": {
     "question": "Hebben jullie een deal?",

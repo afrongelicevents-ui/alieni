@@ -160,7 +160,10 @@
     "notActive": "Accounts are not active yet — we are launching soon. Cleaners can already prepare their ad.",
     "cleanerCta": "Prepare your ad now",
     "noAccount": "No account yet?",
-    "haveAccount": "Already have an account?"
+    "haveAccount": "Already have an account?",
+    "checkEmail": "Almost there! Check your email and tap the confirmation link. Then you can log in.",
+    "redirecting": "Done! Taking you to your account…",
+    "busy": "One moment…"
   },
   "common": {
     "favourite": "Save as favourite",
@@ -223,13 +226,20 @@
   },
   "account": {
     "title": "Account",
-    "intro": "Accounts are not active yet — here is your overview in the meantime.",
+    "intro": "Log in or create an account to manage your messages, favourites and ad.",
     "messages": "Messages",
     "favourites": "Favourites",
     "myAd": "My ad",
     "loginSignup": "Log in or sign up",
     "mySlots": "My turnovers (checkout cleans)",
-    "myEmergency": "Emergency jobs (today)"
+    "myEmergency": "Emergency jobs (today)",
+    "signedInAs": "Signed in as",
+    "logout": "Log out",
+    "admin": "Admin dashboard (photos, settings, reports)",
+    "role_household": "Household",
+    "role_cleaner": "Cleaner",
+    "role_business": "Business",
+    "role_admin": "Administrator"
   },
   "deal": {
     "question": "Do you have a deal?",

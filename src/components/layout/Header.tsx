@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { LogoLockup } from "@/components/brand/Logo";
-import { ButtonLink } from "@/components/ui/Button";
+import { AuthButtons } from "./AuthButtons";
 
 export function Header() {
   const t = useTranslations();
@@ -51,12 +51,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <ButtonLink href="/login" variant="secondary" className="px-5 py-2">
-            {t("nav.login")}
-          </ButtonLink>
-          <ButtonLink href="/signup" variant="dark" className="hidden px-5 py-2 sm:inline-flex">
-            {t("nav.signup")}
-          </ButtonLink>
+          <AuthButtons />
         </div>
       </div>
 

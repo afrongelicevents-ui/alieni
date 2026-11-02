@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Turnstile } from "./Turnstile";
 
@@ -13,11 +13,12 @@ import { Turnstile } from "./Turnstile";
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const t = useTranslations("auth");
   const supabase = createClient();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("household");
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
-  const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent">("idle");
+  const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
   const [message, setMessage] = useState("");
 
   const active = supabase !== null;
@@ -33,7 +34,13 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     if (result.error) {
       setStatus("error");
       setMessage(result.error.message);
+    } else if (result.data.session) {
+      // Signed in (login, or signup without e-mail confirmation): go to the account page.
+      setStatus("done");
+      router.push("/account");
+      router.refresh();
     } else {
+      // Signup with e-mail confirmation on: tell them to check their inbox.
       setStatus("sent");
     }
   }
@@ -94,13 +101,15 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <Turnstile onToken={setCaptchaToken} />
 
         {status === "error" ? <p className="text-sm font-semibold text-red-700">{message}</p> : null}
+        {status === "sent" ? <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("checkEmail")}</p> : null}
+        {status === "done" ? <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("redirecting")}</p> : null}
 
         <button
           type="submit"
-          disabled={!active || status === "busy"}
+          disabled={!active || status === "busy" || status === "done"}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest px-6 font-bold text-white transition-colors hover:bg-forest-dark disabled:opacity-50"
         >
-          {mode === "login" ? t("submitLogin") : t("submitSignup")}
+          {status === "busy" ? t("busy") : mode === "login" ? t("submitLogin") : t("submitSignup")}
         </button>
 
         <p className="text-center text-sm text-ink/70">
