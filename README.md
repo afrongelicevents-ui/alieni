@@ -54,9 +54,14 @@ npm run dev
 
 ## Vercel crons and the Hobby plan
 
-`vercel.json` schedules every cron **once a day** because Vercel's Hobby plan
-rejects any more frequent schedule (the deploy fails with "Hobby accounts are
-limited to daily cron jobs"). Once the project is on Vercel Pro, raise the
-frequencies: `ical-sync` to `*/30 * * * *` and `emergency` to `*/10 * * * *`.
-Until then, emergency requests still expire correctly in the app itself
-(`expireIfDue` runs on every read); only the clean-up e-mails are daily.
+Vercel's Hobby plan allows **two** cron jobs per project, each **once a day**
+(any other `vercel.json` fails the whole deploy). So `vercel.json` schedules:
+
+- `/api/cron/business-billing` daily at 20:45 UTC (month-end direct debit)
+- `/api/cron/daily` daily at 05:17 UTC, which runs check-ins, iCal sync and
+  emergency clean-up in one go
+
+On Vercel Pro, replace the bundle with the individual routes at their intended
+frequencies: `checkins` daily, `ical-sync` `*/30 * * * *`, `emergency`
+`*/10 * * * *`. Emergency requests still expire correctly inside the app
+(`expireIfDue` runs on every read); only the clean-up is daily until then.
