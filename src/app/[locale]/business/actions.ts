@@ -1,0 +1,174 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { errorCode, requireUser } from "@/lib/auth";
+import { geocode } from "@/lib/geocode";
+import { BUSINESS_TYPE_KEYS, BUSINESS_TYPES, type BusinessType } from "@/lib/business";
+import { isSafeIcalUrl } from "@/lib/url-safety";
+import { dutchPostcodeSchema } from "@/lib/validation";
+
+export type BusinessActionState = { ok: boolean; error?: string; id?: string };
+
+const unitSchema = z.object({
+  name: z.string().trim().max(120),
+  addressLine: z.string().trim().min(1).max(200),
+  postcode: dutchPostcodeSchema,
+  city: z.string().trim().min(1).max(80),
+});
+const profileSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().min(1).max(60),
+  companyName: z.string().trim().min(1).max(120),
+  kvkNumber: z.string().trim().regex(/^[0-9]{8}$/),
+  btwNumber: z.string().trim().max(20),
+  businessType: z.enum(BUSINESS_TYPE_KEYS as [BusinessType, ...BusinessType[]]),
+  unitCount: z.number().int().min(1).max(10000),
+  units: z.array(unitSchema).min(1).max(10),
+});
+export type BusinessProfileInput = z.input<typeof profileSchema>;
+
+/** Create (or update) the signed-in user's business profile + initial units. */
+export async function saveBusinessProfile(input: BusinessProfileInput): Promise<BusinessActionState> {
+  const parsed = profileSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const b = parsed.data;
+  try {
+    const { supabase, userId } = await requireUser();
+    await supabase.from("profiles").update({ display_name: b.companyName, role: "business" }).eq("id", userId);
+    const { data: existing } = await supabase.from("business_profiles").select("id, billing_started_at").eq("user_id", userId).maybeSingle();
+    const row = {
+      user_id: userId,
+      company_name: b.companyName,
+      kvk_number: b.kvkNumber,
+      btw_number: b.btwNumber || null,
+      business_type: b.businessType,
+      contact_first_name: b.firstName,
+      contact_last_name: b.lastName,
+      unit_count: b.unitCount,
+      unit_price_cents: BUSINESS_TYPES[b.businessType].defaultUnitPriceCents,
+    };
+    const { data: saved, error } = existing
+      ? await supabase.from("business_profiles").update(row).eq("id", existing.id).select("id").single()
+      : await supabase.from("business_profiles").insert(row).select("id").single();
+    if (error || !saved) return { ok: false, error: "save_failed" };
+
+    if (!existing) {
+      const units = await Promise.all(
+        b.units.map(async (u) => {
+          const point = await geocode(u.postcode);
+          return {
+            business_id: saved.id,
+            name: u.name || u.addressLine,
+            address_line: u.addressLine,
+            postcode: u.postcode,
+            city: u.city,
+            location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null,
+          };
+        }),
+      );
+      const { error: unitErr } = await supabase.from("business_units").insert(units);
+      if (unitErr) return { ok: false, error: "save_failed" };
+    }
+    revalidatePath("/", "layout");
+    return { ok: true, id: saved.id };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+export async function addBusinessUnit(input: z.input<typeof unitSchema>): Promise<BusinessActionState> {
+  const parsed = unitSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const u = parsed.data;
+  try {
+    const { supabase, userId } = await requireUser();
+    const { data: bp } = await supabase.from("business_profiles").select("id").eq("user_id", userId).maybeSingle();
+    if (!bp) return { ok: false, error: "no_business" };
+    const point = await geocode(u.postcode);
+    const { data, error } = await supabase
+      .from("business_units")
+      .insert({ business_id: bp.id, name: u.name || u.addressLine, address_line: u.addressLine, postcode: u.postcode, city: u.city, location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null })
+      .select("id")
+      .single();
+    if (error || !data) return { ok: false, error: "save_failed" };
+    revalidatePath("/business/dashboard");
+    return { ok: true, id: data.id };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Unit count: immediate before billing starts; from next month afterwards. */
+export async function updateUnitCount(count: number): Promise<BusinessActionState> {
+  const n = Math.round(count);
+  if (!Number.isFinite(n) || n < 1 || n > 10000) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireUser();
+    const { data: bp } = await supabase.from("business_profiles").select("id, unit_count, billing_started_at").eq("user_id", userId).maybeSingle();
+    if (!bp) return { ok: false, error: "no_business" };
+    const patch = bp.billing_started_at ? { pending_unit_count: n === bp.unit_count ? null : n } : { unit_count: n, pending_unit_count: null };
+    const { error } = await supabase.from("business_profiles").update(patch).eq("id", bp.id);
+    if (error) return { ok: false, error: "save_failed" };
+    revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+export async function cancelBusinessBilling(): Promise<BusinessActionState> {
+  try {
+    const { supabase, userId } = await requireUser();
+    const { error } = await supabase.from("business_profiles").update({ billing_ended_at: new Date().toISOString() }).eq("user_id", userId);
+    if (error) return { ok: false, error: "save_failed" };
+    revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Link (or clear) a unit's iCal feed. The daily sync job fetches it server-side. */
+export async function saveIcalUrl(unitId: string, url: string): Promise<BusinessActionState> {
+  const trimmed = url.trim();
+  if (trimmed && !isSafeIcalUrl(trimmed)) return { ok: false, error: "unsafe_url" };
+  try {
+    const { supabase } = await requireUser();
+    const { error } = await supabase.from("business_units").update({ ical_url: trimmed || null, ical_last_error: null }).eq("id", unitId);
+    if (error) return { ok: false, error: "save_failed" };
+    revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Hotels: add N manual turnovers on a date (checkout → check-in window). */
+export async function addManualTurnovers(unitId: string, date: string, count: number): Promise<BusinessActionState> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "invalid" };
+  const n = Math.min(50, Math.max(1, Math.round(count)));
+  try {
+    const { supabase, userId } = await requireUser();
+    const { data: unit } = await supabase.from("business_units").select("id, business_id, checkout_time, checkin_time, business_profiles ( user_id )").eq("id", unitId).maybeSingle();
+    if (!unit) return { ok: false, error: "no_business" };
+    const owner = (unit as unknown as { business_profiles: { user_id: string } | null }).business_profiles?.user_id;
+    if (owner && owner !== userId) return { ok: false, error: "no_business" };
+    const rows = Array.from({ length: n }, (_, i) => ({
+      unit_id: unit.id,
+      business_id: unit.business_id,
+      source: "manual",
+      external_uid: `manual-${date}-${Date.now().toString(36)}-${i}`,
+      slot_date: date,
+      starts_at: `${date}T${unit.checkout_time}+01:00`,
+      ends_at: `${date}T${unit.checkin_time}+01:00`,
+      status: "open",
+    }));
+    const { error } = await supabase.from("cleaning_slots").insert(rows);
+    if (error) return { ok: false, error: "save_failed" };
+    revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}

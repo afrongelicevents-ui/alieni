@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
-import { useBusinessAccount, type BusinessUnit } from "@/lib/business-store";
+import { createClient } from "@/lib/supabase/client";
 import { formatEuro } from "@/lib/money";
 import { dutchPostcodeSchema, emailSchema } from "@/lib/validation";
+import { saveBusinessProfile } from "@/app/[locale]/business/actions";
 import { BusinessTypeCard } from "./BusinessTypeCard";
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
+type UnitDraft = { id: string; name: string; addressLine: string; postcode: string; city: string };
 type Draft = {
   firstName: string;
   lastName: string;
@@ -21,19 +22,23 @@ type Draft = {
   btwNumber: string;
   businessType: BusinessType;
   unitCount: string;
-  units: BusinessUnit[];
+  units: UnitDraft[];
 };
 
-export function BusinessSignup({ initialType }: { initialType?: BusinessType }) {
+/**
+ * 4-step business sign-up. Signed-out visitors create their account in
+ * step 1 (Supabase Auth); the profile and units are saved through a server
+ * action at the end. Signed-in users skip the account fields.
+ */
+export function BusinessSignup({ initialType, signedIn, email: knownEmail }: { initialType?: BusinessType; signedIn: boolean; email?: string }) {
   const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
-  const router = useRouter();
-  const { save } = useBusinessAccount();
 
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft>({
-    firstName: "", lastName: "", email: "", password: "", companyName: "", kvkNumber: "", btwNumber: "",
+    firstName: "", lastName: "", email: knownEmail ?? "", password: "", companyName: "", kvkNumber: "", btwNumber: "",
     businessType: initialType ?? "airbnb", unitCount: "1",
     units: [{ id: "u1", name: "", addressLine: "", postcode: "", city: "" }],
   });
@@ -49,8 +54,10 @@ export function BusinessSignup({ initialType }: { initialType?: BusinessType }) 
     if (step === 0) {
       if (!draft.firstName.trim()) e.firstName = t("required");
       if (!draft.lastName.trim()) e.lastName = t("required");
-      if (!emailSchema.safeParse(draft.email).success) e.email = t("emailError");
-      if (draft.password.length < 8) e.password = t("passwordError");
+      if (!signedIn) {
+        if (!emailSchema.safeParse(draft.email).success) e.email = t("emailError");
+        if (draft.password.length < 8) e.password = t("passwordError");
+      }
       if (!draft.companyName.trim()) e.companyName = t("required");
       if (!/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvkNumber = t("kvkError");
     }
@@ -66,11 +73,54 @@ export function BusinessSignup({ initialType }: { initialType?: BusinessType }) 
     return Object.keys(e).length === 0;
   }
 
+  async function finish() {
+    setBusy(true);
+    setErrors({});
+    try {
+      if (!signedIn) {
+        const supabase = createClient();
+        if (!supabase) {
+          setErrors({ submit: t("error_not_configured") });
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email: draft.email.trim().toLowerCase(),
+          password: draft.password,
+          options: { data: { role: "business", display_name: draft.companyName.trim() } },
+        });
+        if (error) {
+          setErrors({ submit: /already/i.test(error.message) ? t("error_exists") : error.message });
+          return;
+        }
+        if (!data.session) {
+          // E-mail confirmation is on: finish after confirming.
+          setErrors({ submit: t("confirmEmailFirst") });
+          return;
+        }
+      }
+      const result = await saveBusinessProfile({
+        firstName: draft.firstName.trim(), lastName: draft.lastName.trim(),
+        companyName: draft.companyName.trim(), kvkNumber: draft.kvkNumber.trim(), btwNumber: draft.btwNumber.trim(),
+        businessType: draft.businessType, unitCount: unitCountNum,
+        units: draft.units.map((u) => ({ name: u.name.trim(), addressLine: u.addressLine.trim(), postcode: u.postcode, city: u.city.trim() })),
+      });
+      if (!result.ok) {
+        setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed") });
+        return;
+      }
+      // Full reload so the server sees the new session cookies.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`/${lang}/business/dashboard`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function next() {
     if (!validate()) return;
     if (step === 2) {
-      // Size the address list to the unit count (max 10 editable here; more via dashboard)
-      const target = Math.min(unitCountNum, 10);
+      // Hotels: rooms share one building, so one address. Others: one address per unit (max 10 here).
+      const target = draft.businessType === "hotel" ? 1 : Math.min(unitCountNum, 10);
       const units = [...draft.units];
       while (units.length < target) units.push({ id: `u${units.length + 1}`, name: "", addressLine: "", postcode: "", city: "" });
       set({ units: units.slice(0, target), unitCount: String(unitCountNum) });
@@ -79,14 +129,7 @@ export function BusinessSignup({ initialType }: { initialType?: BusinessType }) 
       setStep(step + 1);
       return;
     }
-    save({
-      firstName: draft.firstName.trim(), lastName: draft.lastName.trim(), email: draft.email.trim().toLowerCase(),
-      companyName: draft.companyName.trim(), kvkNumber: draft.kvkNumber.trim(), btwNumber: draft.btwNumber.trim(),
-      businessType: draft.businessType, unitCount: unitCountNum,
-      units: draft.units.map((u) => ({ ...u, postcode: dutchPostcodeSchema.parse(u.postcode), name: u.name.trim() || u.addressLine.trim() })),
-      createdAt: new Date().toISOString(), billingStartedAt: null,
-    });
-    router.push("/business/dashboard");
+    void finish();
   }
 
   const err = (k: string) => (errors[k] ? <p className="mt-1 text-xs font-semibold text-red-700">{errors[k]}</p> : null);
@@ -111,10 +154,16 @@ export function BusinessSignup({ initialType }: { initialType?: BusinessType }) 
               <input className={`mt-1 ${inputCls}`} value={draft.firstName} onChange={(e) => set({ firstName: e.target.value })} autoComplete="given-name" />{err("firstName")}</label>
             <label className="text-sm font-semibold text-ink/80">{t("lastName")}
               <input className={`mt-1 ${inputCls}`} value={draft.lastName} onChange={(e) => set({ lastName: e.target.value })} autoComplete="family-name" />{err("lastName")}</label>
-            <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("workEmail")}
-              <input type="email" className={`mt-1 ${inputCls}`} value={draft.email} onChange={(e) => set({ email: e.target.value })} autoComplete="email" />{err("email")}</label>
-            <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("password")}
-              <input type="password" className={`mt-1 ${inputCls}`} value={draft.password} onChange={(e) => set({ password: e.target.value })} autoComplete="new-password" minLength={8} />{err("password")}</label>
+            {signedIn ? (
+              <p className="rounded-xl bg-mint p-3 text-sm text-forest sm:col-span-2">{t("signedInAs", { email: knownEmail ?? "" })}</p>
+            ) : (
+              <>
+                <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("workEmail")}
+                  <input type="email" className={`mt-1 ${inputCls}`} value={draft.email} onChange={(e) => set({ email: e.target.value })} autoComplete="email" />{err("email")}</label>
+                <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("password")}
+                  <input type="password" className={`mt-1 ${inputCls}`} value={draft.password} onChange={(e) => set({ password: e.target.value })} autoComplete="new-password" minLength={8} />{err("password")}</label>
+              </>
+            )}
             <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("companyName")}
               <input className={`mt-1 ${inputCls}`} value={draft.companyName} onChange={(e) => set({ companyName: e.target.value })} autoComplete="organization" />{err("companyName")}</label>
             <label className="text-sm font-semibold text-ink/80">{t("kvk")}
@@ -175,17 +224,19 @@ export function BusinessSignup({ initialType }: { initialType?: BusinessType }) 
                 </div>
               </fieldset>
             ))}
-            {unitCountNum > 10 ? <p className="text-xs text-ink/70">{t("moreUnitsLater", { count: unitCountNum - 10 })}</p> : null}
+            {draft.businessType !== "hotel" && unitCountNum > 10 ? <p className="text-xs text-ink/70">{t("moreUnitsLater", { count: unitCountNum - 10 })}</p> : null}
           </div>
         ) : null}
       </div>
 
+      {errors.submit ? <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{errors.submit}</p> : null}
+
       <div className="mt-5 flex justify-between gap-3">
-        <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}
+        <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0 || busy}
           className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line px-6 text-sm font-bold text-ink/70 disabled:opacity-40">{t("back")}</button>
-        <button type="button" onClick={next}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark">
-          {step === 3 ? t("finish") : t("next")}</button>
+        <button type="button" onClick={next} disabled={busy}
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">
+          {busy ? t("saving") : step === 3 ? t("finish") : t("next")}</button>
       </div>
     </div>
   );

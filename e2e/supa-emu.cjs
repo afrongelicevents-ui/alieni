@@ -203,7 +203,25 @@ const DEFAULTS = {
 };
 
 function rest(req, res, url, raw) {
-  const tname = url.pathname.slice("/rest/v1/".length).replace(/\/$/, "");
+  let tname = url.pathname.slice("/rest/v1/".length).replace(/\/$/, "");
+  // RPC: accept_emergency_request (first to accept wins)
+  if (tname === "rpc/accept_emergency_request") {
+    const user = userFromAuth(req);
+    const { p_request_id } = JSON.parse(raw.toString() || "{}");
+    const cp = user && table("cleaner_profiles").find((c) => c.user_id === user.id && c.emergency_opt_in);
+    const r = table("emergency_requests").find((x) => x.id === p_request_id);
+    if (!cp || !r || r.status !== "searching" || new Date(r.window_start) <= new Date()) return send(res, 200, false);
+    r.status = "accepted"; r.accepted_by = cp.id; r.accepted_at = new Date().toISOString();
+    r.fee_cents = r.requester_type === "household" ? 995 : 1495;
+    return send(res, 200, true);
+  }
+  if (tname.startsWith("rpc/")) return send(res, 404, { message: `unknown rpc ${tname}` });
+  // view: open emergency requests without the street address
+  let viewRows = null;
+  if (tname === "emergency_requests_open") {
+    tname = "emergency_requests";
+    viewRows = table("emergency_requests").filter((r) => r.status === "searching").map(({ address_line: _a, ...rest }) => rest);
+  }
   const params = url.searchParams;
   const prefer = req.headers.prefer || "";
   const single = /vnd\.pgrst\.object/.test(req.headers.accept || "");
@@ -218,7 +236,7 @@ function rest(req, res, url, raw) {
   };
   try {
     if (req.method === "GET" || req.method === "HEAD") {
-      let rows = applyFilters(table(tname), params);
+      let rows = applyFilters(viewRows ?? table(tname), params);
       rows = applyOrder(rows, params.get("order"));
       const total = rows.length;
       const limit = Number(params.get("limit") || 0);
@@ -287,7 +305,7 @@ const server = http.createServer(async (req, res) => {
     const u = { id: crypto.randomUUID(), email: key, password, meta: data ?? {}, created_at: new Date().toISOString() };
     users.set(key, u);
     const role = ADMIN_ALLOWLIST.has(key) ? "admin" : ["household", "cleaner", "business"].includes(data?.role) ? data.role : "household";
-    table("profiles").push({ id: u.id, role, display_name: key.split("@")[0], city: null, locale: "nl", created_at: u.created_at });
+    table("profiles").push({ id: u.id, role, display_name: (data?.display_name || key.split("@")[0]), city: null, locale: "nl", created_at: u.created_at });
     return send(res, 200, session(u));
   }
   if (p === "/auth/v1/token" && req.method === "POST") {
