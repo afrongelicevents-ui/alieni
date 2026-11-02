@@ -37,6 +37,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    // Site photos uploaded from Admin → Foto's live in Supabase Storage.
+    remotePatterns: supabaseOrigin
+      ? [{ protocol: "https", hostname: new URL(supabaseOrigin).hostname, pathname: "/storage/v1/object/public/**" }]
+      : [],
+  },
+  experimental: {
+    // Admin photo uploads go through a server action (10 MB input, re-encoded to WebP).
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

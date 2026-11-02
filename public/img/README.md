@@ -1,8 +1,8 @@
-# Marketing images
+# Marketing images (fallbacks)
 
-Generated with Higgsfield (soul_2) on 2026-11-01, approved by the owner.
-Drop the files here with these exact names and the site picks them up
-automatically (hero + /business/[type] pages):
+The owner uploads site photos from **Admin → Foto's** (stored in the public
+Supabase bucket `site-media`, see migration 0014). The files in this folder
+are only the fallback used when a slot has no uploaded photo yet:
 
 - hero-cleaner.webp      (portrait 3:4, max 1200px wide)
 - business-airbnb.webp   (3:2, max 1600px wide)

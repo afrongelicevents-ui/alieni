@@ -1,10 +1,9 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { hasPublicImage } from "@/lib/public-image";
 import { PostcodeSearch } from "./PostcodeSearch";
 import { Link } from "@/i18n/navigation";
 
-export function Hero() {
+export function Hero({ imageUrl }: { imageUrl: string | null }) {
   const t = useTranslations("home");
 
   return (
@@ -45,11 +44,11 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Generated marketing photo (public/img) — silhouette until it exists */}
+        {/* Marketing photo (Admin → Foto's, or public/img) — silhouette until one exists */}
         <div className="relative mx-auto hidden aspect-[3/4] w-full max-w-sm md:block">
-          {hasPublicImage("img/hero-cleaner.webp") ? (
+          {imageUrl ? (
             <Image
-              src="/img/hero-cleaner.webp"
+              src={imageUrl}
               alt=""
               fill
               sizes="(min-width: 768px) 384px, 0px"
