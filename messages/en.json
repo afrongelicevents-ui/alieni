@@ -182,13 +182,13 @@
     "error_invalid": "Check the fields you filled in.",
     "error_kvk_required": "Business jobs require a KvK number.",
     "error_emergency_rate": "The emergency rate must be at least 1.5× your hourly rate.",
-    "error_save_failed": "Saving failed. Has the database been updated (update 4)?",
+    "error_save_failed": "Saving failed. Have parts 5 to 8 of the database setup been run?",
     "error_not_signed_in": "You are not signed in.",
     "error_not_configured": "Database not configured.",
     "error_no_file": "Choose a file first.",
     "error_too_large": "File is too large.",
     "error_bad_type": "This file type is not supported.",
-    "error_upload_failed": "Upload failed. Has the database been updated (update 4)?",
+    "error_upload_failed": "Upload failed. Have parts 5 to 8 of the database setup been run?",
     "error_no_ad": "Publish your ad first."
   },
   "auth": {
@@ -546,8 +546,8 @@
       "error_not_configured": "Supabase is not configured.",
       "error_not_signed_in": "You are not signed in.",
       "error_not_admin": "Only the administrator can change photos.",
-      "error_upload_failed": "Upload failed. Has database update 3 been run?",
-      "error_save_failed": "Saving failed. Has database update 3 been run?"
+      "error_upload_failed": "Upload failed. Has part 4 of the database setup been run?",
+      "error_save_failed": "Saving failed. Has part 4 of the database setup been run?"
     },
     "actionFailed": "Action failed. Please try again.",
     "settingsInvalid": "Check the amounts (e.g. 14,95).",
@@ -707,7 +707,7 @@
     "error_exists": "This email already has an account. Log in first, then come back.",
     "error_failed": "Something went wrong. Please try again.",
     "error_invalid": "Check the fields you filled in.",
-    "error_save_failed": "Saving failed. Has the database been updated?",
+    "error_save_failed": "Saving failed. Have parts 5 to 8 of the database setup been run?",
     "error_not_signed_in": "You are signed out. Log in again.",
     "error_not_configured": "Database not configured.",
     "error_no_business": "No business account found.",
