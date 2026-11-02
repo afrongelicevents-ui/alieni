@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
+import { Link } from "@/i18n/navigation";
 import { saveSettings } from "@/app/[locale]/admin/actions";
 
 /**
@@ -12,7 +12,6 @@ import { saveSettings } from "@/app/[locale]/admin/actions";
  */
 export type Settings = {
   householdPriceEuro: string;
-  unitPrices: Record<BusinessType, string>;
   emergencyHouseholdEuro: string;
   emergencyBusinessEuro: string;
   linenEnabled: boolean;
@@ -25,7 +24,6 @@ export type Settings = {
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const DEFAULTS: Settings = {
   householdPriceEuro: "14,95",
-  unitPrices: Object.fromEntries(BUSINESS_TYPE_KEYS.map((k) => [k, euro(BUSINESS_TYPES[k].defaultUnitPriceCents)])) as Record<BusinessType, string>,
   emergencyHouseholdEuro: "9,95",
   emergencyBusinessEuro: "14,95",
   linenEnabled: false,
@@ -40,7 +38,7 @@ const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py
 export function SettingsForm({ initial, demo }: { initial: Settings | null; demo: boolean }) {
   const t = useTranslations("admin");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
-  const [settings, setSettings] = useState<Settings>(initial ? { ...DEFAULTS, ...initial, unitPrices: { ...DEFAULTS.unitPrices, ...initial.unitPrices } } : DEFAULTS);
+  const [settings, setSettings] = useState<Settings>(initial ? { ...DEFAULTS, ...initial } : DEFAULTS);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,17 +77,11 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
       <div className="mt-4 flex flex-col gap-6 rounded-card-lg border border-line bg-white p-6">
         {field(t("settingHouseholdPrice"), settings.householdPriceEuro, (v) => update({ householdPriceEuro: v }), t("settingHouseholdPriceHint"))}
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-sm font-extrabold text-ink">{t("settingBusinessPrices")}</legend>
-          <p className="text-xs text-ink/70">{t("settingBusinessPricesHint")}</p>
-          {BUSINESS_TYPE_KEYS.map((type) =>
-            field(
-              `${BUSINESS_TYPES[type].label[lang]} — € / ${BUSINESS_TYPES[type].unit[lang]} / ${t("perMonth")}`,
-              settings.unitPrices[type],
-              (v) => update({ unitPrices: { ...settings.unitPrices, [type]: v } }),
-            ),
-          )}
-        </fieldset>
+        <div className="rounded-xl bg-mint/60 p-4 text-sm text-ink/80">
+          <p className="font-extrabold text-ink">{t("settingBusinessPrices")}</p>
+          <p className="mt-1 text-xs">{t("settingBusinessPricesMoved")}</p>
+          <Link href="/admin/pricing" className="mt-2 inline-block text-xs font-bold text-forest underline">{t("goPricing")}</Link>
+        </div>
 
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingEmergency")}</legend>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
+import { assertServiceEnabled } from "@/lib/services";
 import { geocode } from "@/lib/geocode";
 import { dutchPostcodeSchema } from "@/lib/validation";
 
@@ -30,7 +31,9 @@ export async function createEmergencyRequest(input: EmergencyInput): Promise<Eme
   if (start.getTime() < Date.now() - 5 * 60e3) return { ok: false, error: "past" };
   try {
     const { supabase, userId } = await requireUser();
-    const { data: bp } = await supabase.from("business_profiles").select("id").eq("user_id", userId).maybeSingle();
+    const { data: bp } = await supabase.from("business_profiles").select("id, business_type").eq("user_id", userId).maybeSingle();
+    // Businesses: the 'cover' service must be switched on for their sector (households are unaffected).
+    if (bp && !(await assertServiceEnabled("cover", bp.business_type))) return { ok: false, error: "service_disabled" };
     const point = await geocode(r.postcode);
     const { data, error } = await supabase
       .from("emergency_requests")

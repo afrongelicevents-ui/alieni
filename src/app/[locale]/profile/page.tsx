@@ -26,7 +26,7 @@ export default async function CleanerProfilePage({
   let existing: ExistingAd | null = null;
   const { data: ad } = await supabase
     .from("cleaner_profiles")
-    .select("id, status, rate_cents, min_hours, services, languages, postcode, radius_km, about, photo_path, job_types, kvk_number, emergency_rate_cents, experience_years, work_scope, availability_slots ( weekday, block ), vog_documents ( status, issued_at )")
+    .select("id, status, rate_cents, min_hours, services, languages, postcode, radius_km, about, photo_path, job_types, kvk_number, emergency_rate_cents, experience_years, work_scope, work_types, availability_slots ( weekday, block ), vog_documents ( status, issued_at )")
     .eq("user_id", user.id)
     .maybeSingle();
   if (ad) {
@@ -47,6 +47,7 @@ export default async function CleanerProfilePage({
         languages: ad.languages ?? [],
         jobTypes: ad.job_types ?? ["household"],
         workScope: ad.work_scope ?? "household",
+        workTypes: ad.work_types?.length ? ad.work_types : ["household_regular"],
         experienceYears: ad.experience_years ?? null,
         kvkNumber: ad.kvk_number ?? "",
         emergencyRateEuro: ad.emergency_rate_cents ? euro(ad.emergency_rate_cents) : "",

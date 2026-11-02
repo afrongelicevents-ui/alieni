@@ -138,7 +138,7 @@ async function restPatch(token, table, query, body) {
     await b.waitForLoadState("networkidle");
     ok(`[${label}] Business lands on its dashboard`, /Kantoor/.test(await b.textContent("main")));
     const bnav = await navLabels(b, mobile);
-    ok(`[${label}] Business nav: Dashboard, Cleaners, Jobs, Messages, Account`, ["Dashboard", "Cleaners", "Jobs", "Messages"].every((x) => bnav.includes(x)) && !bnav.includes("Favourites"), bnav.join("|"));
+    ok(`[${label}] Business nav: Dashboard, Cleaners, Requests, Messages, Account`, ["Dashboard", "Cleaners", "Requests", "Messages"].every((x) => bnav.includes(x)) && !bnav.includes("Favourites"), bnav.join("|"));
     await b.screenshot({ path: `${OUT}/f5-${suffix}-business-dashboard.png`, fullPage: true });
     for (const [path, dest] of [["/en/profile", /\/en\/business\/dashboard$/], ["/en/work", /\/en\/business\/dashboard$/], ["/en/home", /\/en\/business\/dashboard$/]]) {
       await b.goto(`${APP}${path}`, { waitUntil: "networkidle" });

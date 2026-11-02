@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { errorCode, requireUser } from "@/lib/auth";
 import { reporterUpdateEmail, sendEmail } from "@/lib/email";
-import { BUSINESS_TYPES } from "@/lib/business";
+import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
+import { z } from "zod";
+import { PRICING_MODELS, SERVICE_KEYS } from "@/lib/services";
 import type { SettingsValues } from "@/lib/admin/data";
 
 export type AdminActionState = { ok: boolean; error?: string; url?: string };
@@ -109,18 +111,11 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
   const linen = cents(values.linenPriceEuro);
   const floor = cents(values.rateFloorEuro);
   const vogMonths = Math.round(Number(values.vogMaxAgeMonths));
-  const prices: Record<string, number> = {};
-  for (const k of Object.keys(BUSINESS_TYPES)) {
-    const c = cents(values.unitPrices[k] ?? "");
-    if (c === null) return { ok: false, error: "invalid" };
-    prices[k] = c;
-  }
   if ([household, emH, emB, linen, floor].some((x) => x === null) || !Number.isFinite(vogMonths) || vogMonths < 1) return { ok: false, error: "invalid" };
   try {
     const { supabase, userId } = await requireAdmin();
     const rows = [
       { key: "household_fee_cents", value: household },
-      { key: "business_unit_prices_cents", value: prices },
       { key: "emergency_fee_cents", value: { household_incl_btw: emH, business_excl_btw: emB } },
       { key: "linen_addon", value: { enabled: values.linenEnabled, price_per_unit_cents: linen } },
       { key: "rate_floor_cents", value: floor },
@@ -131,6 +126,98 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
     if (error) return { ok: false, error: "save_failed" };
     await audit(supabase, userId, "settings_saved", "settings", { keys: rows.map((r) => r.key) });
     revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+// ========== Phase 1: services, pricing rules, fee events ==========
+
+/** Switch a service on/off and limit it to business types (empty = all). */
+export async function saveServiceCatalog(serviceKey: string, enabled: boolean, businessTypes: string[]): Promise<AdminActionState> {
+  if (!(SERVICE_KEYS as readonly string[]).includes(serviceKey)) return { ok: false, error: "invalid" };
+  const types = businessTypes.filter((t) => (BUSINESS_TYPE_KEYS as readonly string[]).includes(t));
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("service_catalog").update({ enabled, business_types: types, updated_at: new Date().toISOString(), updated_by: userId }).eq("service_key", serviceKey);
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "service_catalog_saved", serviceKey, { enabled, types });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+const ruleSchema = z.object({
+  serviceKey: z.enum(SERVICE_KEYS),
+  businessType: z.enum(["", ...BUSINESS_TYPE_KEYS] as ["", ...BusinessType[]]),
+  model: z.enum(PRICING_MODELS),
+  amountEuro: z.string().trim().max(12),
+  percent: z.string().trim().max(6),
+  unit: z.string().trim().max(30),
+  validFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  validTo: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().trim().max(300),
+});
+export type PricingRuleInput = z.input<typeof ruleSchema>;
+
+/** Add a pricing rule. New rules start INACTIVE; activate them explicitly. */
+export async function savePricingRule(input: PricingRuleInput): Promise<AdminActionState> {
+  const parsed = ruleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const r = parsed.data;
+  const amount = r.model === "none" || r.model === "percent" ? 0 : cents(r.amountEuro);
+  const pct = r.model === "percent" ? Number(r.percent.replace(",", ".")) : null;
+  if (amount === null || (r.model === "percent" && (!Number.isFinite(pct) || pct! < 0 || pct! > 100))) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("pricing_rules").insert({
+      service_key: r.serviceKey,
+      business_type: r.businessType || null,
+      model: r.model,
+      amount_cents: amount,
+      percent: pct,
+      unit: r.unit || null,
+      valid_from: r.validFrom,
+      valid_to: r.validTo || null,
+      active: false,
+      notes: r.notes || null,
+      created_by: userId,
+    });
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "pricing_rule_added", r.serviceKey, { model: r.model, amount, type: r.businessType || "all" });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+export async function setPricingRuleActive(ruleId: string, active: boolean): Promise<AdminActionState> {
+  if (!/^[0-9a-f-]{36}$/i.test(ruleId)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("pricing_rules").update({ active }).eq("id", ruleId);
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, active ? "pricing_rule_activated" : "pricing_rule_deactivated", ruleId);
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Park a recorded fee event (it will never be invoiced). */
+export async function waiveFeeEvent(eventId: string, reason: string): Promise<AdminActionState> {
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("fee_events").update({ status: "waived", waived_reason: reason.trim().slice(0, 200) || "waived by admin" }).eq("id", eventId).eq("status", "pending");
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "fee_event_waived", eventId, { reason });
+    revalidatePath("/admin/fees");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

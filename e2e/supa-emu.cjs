@@ -12,7 +12,7 @@ const ADMIN_ALLOWLIST = new Set(["afrongelic.events@gmail.com"]);
 // ---------- tables ----------
 const tables = {};
 function table(name) { return (tables[name] ??= []); }
-const PK = { profiles: "id", site_media: "slot", favourites: ["user_id", "cleaner_profile_id"], settings: "key", household_profiles: "user_id" };
+const PK = { profiles: "id", site_media: "slot", favourites: ["user_id", "cleaner_profile_id"], settings: "key", household_profiles: "user_id", service_catalog: "service_key" };
 // foreign keys: table -> column -> target table
 const FK = {
   cleaner_profiles: { user_id: "profiles" },
@@ -30,7 +30,11 @@ const FK = {
   job_responses: { job_id: "jobs", cleaner_profile_id: "cleaner_profiles" },
   emergency_requests: { requester_id: "profiles" },
   household_profiles: { user_id: "profiles" },
-  cleaning_slots: { unit_id: "business_units" },
+  cleaning_slots: { unit_id: "business_units", business_id: "business_profiles" },
+  // Phase 1 (migration 0020)
+  pricing_rules: { service_key: "service_catalog" },
+  fee_events: { business_id: "business_profiles", rule_id: "pricing_rules" },
+  work_records: { business_id: "business_profiles", cleaner_profile_id: "cleaner_profiles", household_id: "profiles" },
 };
 const UNIQUE = {
   cleaner_profiles: [["user_id"]],
@@ -40,7 +44,52 @@ const UNIQUE = {
   business_profiles: [["user_id"]],
   job_responses: [["job_id", "cleaner_profile_id"]],
   availability_slots: [["cleaner_profile_id", "weekday", "block"]],
+  fee_events: [["event_type", "reference_table", "reference_id"]],
+  work_records: [["reference_table", "reference_id"]],
 };
+// ---- Phase 1: catalogue seed, pricing lookup, fee events, work records (mirrors migration 0020) ----
+function seedCatalog() {
+  if (table("service_catalog").length) return;
+  [["connect", true, 0], ["cover", true, 1], ["turnover", true, 2], ["oneoff", false, 3], ["contract", false, 4]].forEach(([k, enabled, sort_order]) =>
+    table("service_catalog").push({ service_key: k, enabled, business_types: [], sort_order, updated_at: new Date().toISOString() }));
+}
+seedCatalog();
+function activeRule(service, type) {
+  const today = new Date().toISOString().slice(0, 10);
+  const rules = table("pricing_rules").filter((r) => r.service_key === service && r.active && r.valid_from <= today && (!r.valid_to || r.valid_to >= today) && (r.business_type === type || r.business_type == null));
+  rules.sort((a, b) => (a.business_type ? -1 : b.business_type ? 1 : 0));
+  return rules[0] ?? null;
+}
+function recordFeeEvent(businessId, service, eventType, refTable, refId) {
+  if (!businessId) return;
+  if (table("fee_events").some((e) => e.event_type === eventType && e.reference_table === refTable && e.reference_id === refId)) return;
+  const bp = table("business_profiles").find((b) => b.id === businessId);
+  const r = activeRule(service, bp?.business_type ?? null);
+  const amt = r && ["per_event", "per_booking"].includes(r.model) ? r.amount_cents : 0;
+  table("fee_events").push({ id: crypto.randomUUID(), business_id: businessId, service_key: service, event_type: eventType, reference_table: refTable, reference_id: refId, occurred_at: new Date().toISOString(), rule_id: r?.id ?? null, model: r?.model ?? "none", amount_cents: amt, btw_cents: Math.round(amt * 0.21), status: "pending", waived_reason: null, created_at: new Date().toISOString() });
+}
+function upsertWork(ref, row) {
+  const existing = table("work_records").find((w) => w.reference_table === ref.table && w.reference_id === ref.id);
+  if (existing) { Object.assign(existing, row, { updated_at: new Date().toISOString() }); return existing; }
+  const rec = { id: crypto.randomUUID(), business_id: null, household_id: null, cleaner_profile_id: null, scheduled_start: null, scheduled_end: null, started_at: null, completed_at: null, photo_path: null, business_confirmed_at: null, outcome: "scheduled", notes: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), reference_table: ref.table, reference_id: ref.id, ...row };
+  table("work_records").push(rec);
+  return rec;
+}
+function slotWorkTrigger(old, next) {
+  if (next.status === "reserved" && old.status !== "reserved") upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, outcome: "scheduled" });
+  else if (next.status === "done" && old.status !== "done") { upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, completed_at: next.done_at ?? new Date().toISOString(), outcome: "done" }); recordFeeEvent(next.business_id, "turnover", "turnover_completed", "cleaning_slots", next.id); }
+  else if (next.status === "cancelled" && old.status !== "cancelled") { const w = table("work_records").find((x) => x.reference_table === "cleaning_slots" && x.reference_id === next.id); if (w) w.outcome = "cancelled"; }
+}
+function emergencyWorkTrigger(old, next) {
+  if (next.status === "accepted" && old.status !== "accepted") {
+    const bp = table("business_profiles").find((b) => b.user_id === next.requester_id);
+    upsertWork({ table: "emergency_requests", id: next.id }, { business_id: bp?.id ?? null, household_id: bp ? null : next.requester_id, cleaner_profile_id: next.accepted_by, service_key: "cover", scheduled_start: next.window_start, scheduled_end: next.window_end, outcome: "scheduled" });
+    if (bp) recordFeeEvent(bp.id, "cover", "cover_accepted", "emergency_requests", next.id);
+  } else if (["cancelled", "expired"].includes(next.status) && old.status !== next.status) { const w = table("work_records").find((x) => x.reference_table === "emergency_requests" && x.reference_id === next.id); if (w) w.outcome = "cancelled"; }
+}
+function connectionFeeTrigger(old, next) {
+  if (next.status === "active" && old.status !== "active") { const bp = table("business_profiles").find((b) => b.user_id === next.household_id); if (bp) recordFeeEvent(bp.id, "connect", "connection_activated", "connections", next.id); }
+}
 const users = new Map(); // email -> { id, email, password }
 const objects = new Map(); // bucket/path -> Buffer
 const log = [];
@@ -184,8 +233,15 @@ function beforeInsert(tname, row, user) {
   if (tname === "business_profiles" && role !== "business" && role !== "admin") throw new Error("only business accounts can create a business profile");
   if ((tname === "meeting_requests" || tname === "favourites" || tname === "conversations") && !["household", "business", "admin"].includes(role)) throw new Error("new row violates row-level security policy");
   if (tname === "household_profiles" && role !== "household") throw new Error("new row violates row-level security policy");
+  if ((tname === "fee_events" || tname === "work_records") ) throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
+  if ((tname === "pricing_rules" || tname === "service_catalog") && role !== "admin") throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
 }
-function beforeUpdate(tname, row, patch) {
+function beforeUpdate(tname, row, patch, user) {
+  const role = user ? roleOf(user.id) : null;
+  if (["pricing_rules", "service_catalog", "fee_events"].includes(tname) && role !== "admin") throw new Error("permission denied for table " + tname);
+  if (tname === "work_records") throw new Error("permission denied for table work_records");
+  if (tname === "cleaning_slots") slotWorkTrigger(row, { ...row, ...patch });
+  if (tname === "emergency_requests") emergencyWorkTrigger(row, { ...row, ...patch });
   if (tname === "vog_documents" && patch.status && patch.status !== "pending" && row.status === "pending") {
     if (row.storage_path) objects.delete(`vog/${row.storage_path}`);
     patch.storage_path = null; patch.reviewed_at = new Date().toISOString();
@@ -196,6 +252,7 @@ function beforeUpdate(tname, row, patch) {
       patch.status = "active"; patch.started_at = next.started_at ?? new Date().toISOString();
       const cp = table("cleaner_profiles").find((c) => c.user_id === next.cleaner_id);
       if (cp) cp.verified_jobs_count = (cp.verified_jobs_count ?? 0) + 1;
+      connectionFeeTrigger(row, { ...next, status: "active" });
     }
   }
   if (tname === "profiles" && patch.role !== undefined && patch.role !== row.role) throw new Error("role cannot be changed after sign-up");
@@ -211,6 +268,7 @@ const DEFAULTS = {
   jobs: () => ({ status: "draft" }),
   business_profiles: () => ({ unit_count: 1 }),
   emergency_requests: () => ({ status: "searching" }),
+  pricing_rules: () => ({ model: "none", amount_cents: 0, percent: null, unit: null, business_type: null, valid_from: new Date().toISOString().slice(0, 10), valid_to: null, active: false, notes: null }),
 };
 
 function rest(req, res, url, raw) {
@@ -222,8 +280,37 @@ function rest(req, res, url, raw) {
     const cp = user && table("cleaner_profiles").find((c) => c.user_id === user.id && c.emergency_opt_in);
     const r = table("emergency_requests").find((x) => x.id === p_request_id);
     if (!cp || !r || r.status !== "searching" || new Date(r.window_start) <= new Date()) return send(res, 200, false);
+    const old = { ...r };
     r.status = "accepted"; r.accepted_by = cp.id; r.accepted_at = new Date().toISOString();
     r.fee_cents = r.requester_type === "household" ? 995 : 1495;
+    emergencyWorkTrigger(old, r);
+    return send(res, 200, true);
+  }
+  // RPC: review_work_record (business/household confirms or disputes own record)
+  if (tname === "rpc/review_work_record") {
+    const user = userFromAuth(req);
+    const { p_record_id, p_ok, p_note } = JSON.parse(raw.toString() || "{}");
+    const rec = table("work_records").find((w) => w.id === p_record_id);
+    if (!rec) return send(res, 200, false);
+    const owner = user && (table("business_profiles").some((b) => b.id === rec.business_id && b.user_id === user.id) || rec.household_id === user.id || roleOf(user.id) === "admin");
+    if (!owner) return send(res, 400, { code: "P0001", message: "not your work record" });
+    if (p_ok) { rec.business_confirmed_at = new Date().toISOString(); if (rec.outcome === "scheduled") rec.outcome = "done"; }
+    else { rec.outcome = "disputed"; for (const e of table("fee_events")) if (e.reference_table === rec.reference_table && e.reference_id === rec.reference_id && e.status === "pending") { e.status = "waived"; e.waived_reason = "disputed by customer"; } }
+    if (p_note) rec.notes = p_note;
+    rec.updated_at = new Date().toISOString();
+    return send(res, 200, true);
+  }
+  // RPC: progress_work_record (cleaner starts / completes own record)
+  if (tname === "rpc/progress_work_record") {
+    const user = userFromAuth(req);
+    const { p_record_id, p_action } = JSON.parse(raw.toString() || "{}");
+    const me = user && table("cleaner_profiles").find((c) => c.user_id === user.id);
+    const rec = table("work_records").find((w) => w.id === p_record_id && me && w.cleaner_profile_id === me.id);
+    if (!rec) return send(res, 200, false);
+    if (p_action === "start") rec.started_at = rec.started_at ?? new Date().toISOString();
+    else if (p_action === "complete") { rec.completed_at = rec.completed_at ?? new Date().toISOString(); if (rec.outcome === "scheduled") rec.outcome = "done"; }
+    else return send(res, 200, false);
+    rec.updated_at = new Date().toISOString();
     return send(res, 200, true);
   }
   if (tname.startsWith("rpc/")) return send(res, 404, { message: `unknown rpc ${tname}` });
@@ -265,7 +352,7 @@ function rest(req, res, url, raw) {
         const existing = /resolution=merge-duplicates/.test(prefer) ? conflictKey(tname, params, item) : null;
         if (existing) {
           if (/ignore/.test(prefer)) { out.push(existing); continue; }
-          beforeUpdate(tname, existing, item);
+          beforeUpdate(tname, existing, item, user);
           Object.assign(existing, item);
           out.push(existing);
           continue;
@@ -283,7 +370,7 @@ function rest(req, res, url, raw) {
     }
     if (req.method === "PATCH") {
       const rows = applyFilters(table(tname), params);
-      for (const r of rows) { beforeUpdate(tname, r, body); Object.assign(r, body); }
+      for (const r of rows) { beforeUpdate(tname, r, body, user); Object.assign(r, body); }
       return wantsRepresentation ? respond(rows) : send(res, 204, "");
     }
     if (req.method === "DELETE") {
@@ -370,7 +457,7 @@ const server = http.createServer(async (req, res) => {
   // ---- introspection for the test ----
   if (p === "/__emu/state") return send(res, 200, { users: [...users.values()].map((u) => ({ email: u.email, role: roleOf(u.id) })), tables: Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])), objects: [...objects.keys()], log: log.slice(-40) });
   if (p === "/__emu/table") return send(res, 200, table(url.searchParams.get("name") || ""));
-  if (p === "/__emu/reset") { users.clear(); objects.clear(); log.length = 0; for (const k of Object.keys(tables)) if (k !== "settings") delete tables[k]; return send(res, 200, { ok: true }); }
+  if (p === "/__emu/reset") { users.clear(); objects.clear(); log.length = 0; for (const k of Object.keys(tables)) if (k !== "settings") delete tables[k]; seedCatalog(); return send(res, 200, { ok: true }); }
   return send(res, 404, { error: `unhandled ${req.method} ${p}` });
 });
 server.listen(PORT, () => console.log(`supa-emu on ${PORT}`));

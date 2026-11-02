@@ -5,12 +5,11 @@ import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/Button";
 import { BusinessTypeIcon } from "@/components/business/BusinessTypeCard";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
+import { getPricingContext } from "@/lib/services";
 import { formatEuro } from "@/lib/money";
-import { routing } from "@/i18n/routing";
 
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) => BUSINESS_TYPE_KEYS.map((type) => ({ locale, type })));
-}
+/** Prices and the service catalogue come from the database on every request (no stale prices). */
+export const dynamic = "force-dynamic";
 
 /** Labelled demo screen per business type (brief v2 §2). */
 function DemoScreen({ type, lang }: { type: BusinessType; lang: "nl" | "en" }) {
@@ -60,8 +59,10 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
   const tp = await getTranslations(`businessPages.${bt}`);
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
   const cfg = BUSINESS_TYPES[bt];
-  const example = monthlyFee(bt, bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1);
+  const { unitPrices } = await getPricingContext();
+  const unitPrice = unitPrices[bt] ?? null; // only with an active monthly rule
   const exampleUnits = bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1;
+  const example = unitPrice ? monthlyFee(bt, exampleUnits, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, school: 0, [bt]: unitPrice }) : null;
   const photo = await siteImageUrl(`business-${bt}`);
 
   return (
@@ -75,10 +76,19 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
           <p className="mt-4 max-w-xl text-lg text-ink/75">{tp("heroText")}</p>
           <div className="mt-6 rounded-card-lg bg-white p-5 shadow-sm">
             <p className="text-sm text-ink/70">{t("liveTotalLabel")}</p>
-            <p className="text-2xl font-extrabold text-forest">
-              {formatEuro(cfg.defaultUnitPriceCents, lang)} <span className="text-base font-semibold text-ink/70">{t("perUnitMonth", { unit: cfg.unit[lang] })} · {t("exclBtw")}</span>
-            </p>
-            <p className="mt-1 text-sm text-ink/70">{tp("example", { units: exampleUnits, fee: formatEuro(example.netCents, lang) })}</p>
+            {unitPrice && example ? (
+              <>
+                <p className="text-2xl font-extrabold text-forest">
+                  {formatEuro(unitPrice, lang)} <span className="text-base font-semibold text-ink/70">{t("perUnitMonth", { unit: cfg.unit[lang] })} · {t("exclBtw")}</span>
+                </p>
+                <p className="mt-1 text-sm text-ink/70">{tp("example", { units: exampleUnits, fee: formatEuro(example.netCents, lang) })}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-extrabold text-forest">{t("priceTba")}</p>
+                <p className="mt-1 text-sm text-ink/70">{t("priceTbaNote")}</p>
+              </>
+            )}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <ButtonLink href={`/business/signup?type=${bt}`} withArrow>{t("heroCta")}</ButtonLink>

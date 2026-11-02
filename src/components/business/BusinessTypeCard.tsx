@@ -1,5 +1,5 @@
 import { useLocale, useTranslations } from "next-intl";
-import { BUSINESS_TYPES, type BusinessType, type UnitPrices, DEFAULT_UNIT_PRICES } from "@/lib/business";
+import { BUSINESS_TYPES, type BusinessType } from "@/lib/business";
 import { formatEuro } from "@/lib/money";
 
 const ICONS: Record<BusinessType, React.ReactNode> = {
@@ -18,14 +18,15 @@ export function BusinessTypeIcon({ type, className = "h-8 w-8" }: { type: Busine
   );
 }
 
+/** `prices` holds only the types with an active monthly rule; others show "price to be announced". */
 export function BusinessTypeCard({
   type,
-  prices = DEFAULT_UNIT_PRICES,
+  prices = {},
   selected,
   compact,
 }: {
   type: BusinessType;
-  prices?: UnitPrices;
+  prices?: Partial<Record<BusinessType, number>>;
   selected?: boolean;
   compact?: boolean;
 }) {
@@ -45,9 +46,15 @@ export function BusinessTypeCard({
       <h3 className="text-lg font-extrabold text-ink">{cfg.label[lang]}</h3>
       {!compact ? <p className="text-sm text-ink/70">{cfg.audience[lang]}</p> : null}
       <p className="mt-auto pt-2">
-        <span className="text-xl font-extrabold text-forest">{formatEuro(prices[type], lang)}</span>
-        <span className="text-sm font-semibold text-ink/70"> {t("perUnitMonth", { unit: cfg.unit[lang] })}</span>
-        <span className="block text-xs text-ink/70">{t("exclBtw")}</span>
+        {prices[type] ? (
+          <>
+            <span className="text-xl font-extrabold text-forest">{formatEuro(prices[type]!, lang)}</span>
+            <span className="text-sm font-semibold text-ink/70"> {t("perUnitMonth", { unit: cfg.unit[lang] })}</span>
+            <span className="block text-xs text-ink/70">{t("exclBtw")}</span>
+          </>
+        ) : (
+          <span className="inline-block rounded-full bg-sun/30 px-3 py-1 text-xs font-bold text-ink/80">{t("priceTba")}</span>
+        )}
       </p>
     </div>
   );

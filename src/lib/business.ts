@@ -1,9 +1,11 @@
 import { addBtw } from "./money";
 
 /**
- * Business side v2: fixed monthly fee per unit, billed in arrears at month
- * end by SEPA direct debit. Prices are admin settings; the defaults here
- * are placeholders (owner's instruction: "random prices for now").
+ * Business side. Since Phase 1 (service catalogue + pricing rules) nothing is
+ * priced unless an ACTIVE rule exists in Admin → Pricing. The
+ * `defaultUnitPriceCents` values below are the old placeholders: they are no
+ * longer shown or charged anywhere and only remain for the unit tests of the
+ * pro-rata maths.
  */
 
 export type BusinessType = "airbnb" | "hotel" | "restaurant" | "office" | "school";

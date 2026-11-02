@@ -2,7 +2,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { BusinessTypeCard } from "@/components/business/BusinessTypeCard";
+import { getPricingContext } from "@/lib/services";
 import { BUSINESS_TYPE_KEYS } from "@/lib/business";
+
+/** Prices and the service catalogue come from the database on every request (no stale prices). */
+export const dynamic = "force-dynamic";
 
 export default async function BusinessLandingPage({
   params,
@@ -11,6 +15,7 @@ export default async function BusinessLandingPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const { unitPrices } = await getPricingContext();
   const t = await getTranslations("business");
 
   const steps = [
@@ -45,7 +50,7 @@ export default async function BusinessLandingPage({
           {BUSINESS_TYPE_KEYS.map((type) => (
             <li key={type}>
               <Link href={`/business/${type}`} className="block h-full">
-                <BusinessTypeCard type={type} />
+                <BusinessTypeCard type={type} prices={unitPrices} />
               </Link>
             </li>
           ))}

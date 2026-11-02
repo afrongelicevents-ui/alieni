@@ -7,6 +7,7 @@ import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
 import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
 import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
+import { WORK_TYPES } from "@/lib/work-types";
 
 export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string };
 
@@ -18,6 +19,7 @@ const adSchema = z.object({
   languages: z.array(z.enum(Object.keys(LANGUAGE_LABELS) as [string, ...string[]])).min(1),
   jobTypes: z.array(z.enum(Object.keys(JOB_TYPE_LABELS) as [string, ...string[]])).min(1),
   workScope: z.enum(["household", "commercial", "both"]).default("household"),
+  workTypes: z.array(z.enum(WORK_TYPES)).min(1).default(["household_regular"]),
   experienceYears: z.number().int().min(0).max(60).nullable().default(null),
   kvkNumber: z.string().trim().regex(/^$|^[0-9]{8}$/),
   emergencyRateCents: z.number().int().min(0).max(50000),
@@ -30,6 +32,15 @@ const adSchema = z.object({
   publish: z.boolean(),
 });
 export type AdInput = z.input<typeof adSchema>;
+
+/** Work types stay consistent with the environments and emergency choice (same rule as the migration backfill). */
+function deriveWorkTypes(chosen: string[], jobTypes: string[]): string[] {
+  const out = new Set(chosen);
+  if (jobTypes.includes("emergency")) out.add("emergency_cover");
+  if (jobTypes.some((j) => j === "airbnb" || j === "hotel")) out.add("turnover");
+  if (jobTypes.some((j) => j === "office" || j === "restaurant" || j === "school")) out.add("commercial_contract");
+  return [...out];
+}
 
 /** Create or update the signed-in cleaner's ad. RLS limits it to their own row. */
 export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
@@ -64,6 +75,7 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       about: ad.about || null,
       job_types: ad.jobTypes,
       work_scope: ad.workScope,
+      work_types: deriveWorkTypes(ad.workTypes, ad.jobTypes),
       experience_years: ad.experienceYears,
       kvk_number: ad.kvkNumber || null,
       emergency_opt_in: ad.jobTypes.includes("emergency"),

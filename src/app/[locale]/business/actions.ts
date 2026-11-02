@@ -6,6 +6,7 @@ import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { isSafeIcalUrl } from "@/lib/url-safety";
+import { SERVICE_KEYS, assertServiceEnabled, type ServiceKey } from "@/lib/services";
 import { dutchPostcodeSchema } from "@/lib/validation";
 
 export type BusinessActionState = { ok: boolean; error?: string; id?: string };
@@ -134,7 +135,9 @@ export async function saveIcalUrl(unitId: string, url: string): Promise<Business
   const trimmed = url.trim();
   if (trimmed && !isSafeIcalUrl(trimmed)) return { ok: false, error: "unsafe_url" };
   try {
-    const { supabase } = await requireUser();
+    const { supabase, userId } = await requireUser();
+    const { data: bp } = await supabase.from("business_profiles").select("business_type").eq("user_id", userId).maybeSingle();
+    if (trimmed && !(await assertServiceEnabled("turnover", bp?.business_type ?? null))) return { ok: false, error: "service_disabled" };
     const { error } = await supabase.from("business_units").update({ ical_url: trimmed || null, ical_last_error: null }).eq("id", unitId);
     if (error) return { ok: false, error: "save_failed" };
     revalidatePath("/business/dashboard");
@@ -154,6 +157,8 @@ export async function addManualTurnovers(unitId: string, date: string, count: nu
     if (!unit) return { ok: false, error: "no_business" };
     const owner = (unit as unknown as { business_profiles: { user_id: string } | null }).business_profiles?.user_id;
     if (owner && owner !== userId) return { ok: false, error: "no_business" };
+    const { data: bp } = await supabase.from("business_profiles").select("business_type").eq("id", unit.business_id).maybeSingle();
+    if (!(await assertServiceEnabled("turnover", bp?.business_type ?? null))) return { ok: false, error: "service_disabled" };
     const rows = Array.from({ length: n }, (_, i) => ({
       unit_id: unit.id,
       business_id: unit.business_id,
@@ -167,6 +172,36 @@ export async function addManualTurnovers(unitId: string, date: string, count: nu
     const { error } = await supabase.from("cleaning_slots").insert(rows);
     if (error) return { ok: false, error: "save_failed" };
     revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Business confirms (ok) or disputes (not ok) a work record. Ownership is checked inside the database function. */
+export async function reviewWork(recordId: string, ok: boolean, note: string): Promise<BusinessActionState> {
+  if (!/^[0-9a-f-]{36}$/i.test(recordId)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase } = await requireUser();
+    const { data, error } = await supabase.rpc("review_work_record", { p_record_id: recordId, p_ok: ok, p_note: note.trim().slice(0, 1000) });
+    if (error) return { ok: false, error: "save_failed" };
+    if (!data) return { ok: false, error: "not_found" };
+    revalidatePath("/business/work");
+    revalidatePath("/business/dashboard");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Used by the dashboard tiles: a service that is off is refused server-side as well. */
+export async function openService(service: string): Promise<BusinessActionState> {
+  if (!(SERVICE_KEYS as readonly string[]).includes(service)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireUser();
+    const { data: bp } = await supabase.from("business_profiles").select("business_type").eq("user_id", userId).maybeSingle();
+    if (!bp) return { ok: false, error: "no_business" };
+    if (!(await assertServiceEnabled(service as ServiceKey, bp.business_type))) return { ok: false, error: "service_disabled" };
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

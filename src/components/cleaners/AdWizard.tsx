@@ -6,6 +6,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { DEFAULT_RATE_FLOOR_CENTS, dutchPostcodeSchema } from "@/lib/validation";
 import { saveCleanerAd, setAdStatus, uploadProfilePhoto, uploadVogFile, type AdActionState, type AdInput } from "@/app/[locale]/cleaners/new/actions";
 import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type JobType, type Weekday } from "@/lib/sample-data";
+import { HOUSEHOLD_WORK_TYPES, COMMERCIAL_WORK_TYPES, type WorkType } from "@/lib/work-types";
 
 /**
  * 3-step cleaner ad wizard (brief §5). The draft is kept on the device while
@@ -29,6 +30,7 @@ type Draft = {
   languages: string[];
   jobTypes: JobType[];
   workScope: "household" | "commercial" | "both";
+  workTypes: WorkType[];
   experienceYears: number | null;
   kvkNumber: string;
   vogFileName: string;
@@ -50,6 +52,7 @@ const EMPTY: Draft = {
   languages: ["nl"],
   jobTypes: ["household"],
   workScope: "household",
+  workTypes: ["household_regular"],
   experienceYears: null,
   kvkNumber: "",
   vogFileName: "",
@@ -126,7 +129,14 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       scope === "household" ? ["household", ...keepEmergency]
       : scope === "commercial" ? [...business, ...keepEmergency]
       : ["household", ...business, ...keepEmergency];
-    persist({ ...draft, workScope: scope, jobTypes: next });
+    const wt = draft.workTypes.filter((w) => (scope === "household" ? HOUSEHOLD_WORK_TYPES.includes(w) : scope === "commercial" ? COMMERCIAL_WORK_TYPES.includes(w) : true));
+    persist({ ...draft, workScope: scope, jobTypes: next, workTypes: wt.length ? wt : scope === "commercial" ? ["commercial_contract"] : ["household_regular"] });
+  }
+  function toggleWorkType(w: WorkType) {
+    const next = toggleIn(draft.workTypes, w);
+    // the emergency opt-in and the 'emergency cover' work type are one and the same choice
+    const jobTypes = w === "emergency_cover" ? (next.includes(w) ? (draft.jobTypes.includes("emergency") ? draft.jobTypes : [...draft.jobTypes, "emergency" as JobType]) : draft.jobTypes.filter((j) => j !== "emergency")) : draft.jobTypes;
+    persist({ ...draft, workTypes: next, jobTypes });
   }
 
   function toggleBlock(day: Weekday, block: DayBlock) {
@@ -145,6 +155,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       const cents = parseRateCents(draft.rateEuro);
       if (cents === null || cents < DEFAULT_RATE_FLOOR_CENTS) e.rate = t("rateError");
       if (draft.workScope !== "household" && !draft.jobTypes.some((j) => BUSINESS_ENVIRONMENTS.includes(j))) e.jobTypes = t("environmentsError");
+      if (draft.workTypes.length === 0) e.workTypes = t("workTypesError");
       const wantsBusiness = draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j));
       if (wantsBusiness && !/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvk = t("kvkError");
       if (draft.jobTypes.includes("school") && !draft.vogIssuedAt) e.vog = t("vogError");
@@ -173,6 +184,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       languages: draft.languages,
       jobTypes: draft.jobTypes,
       workScope: draft.workScope,
+      workTypes: draft.workTypes,
       experienceYears: draft.experienceYears,
       kvkNumber: draft.kvkNumber.trim(),
       emergencyRateCents: parseRateCents(draft.emergencyRateEuro) ?? 0,
@@ -379,6 +391,18 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
               </div>
             </fieldset>
 
+            <fieldset>
+              <legend className="text-sm font-semibold text-ink/80">{t("workTypesLabel")} <span className="block text-xs font-medium text-ink/60">{t("workTypesHint")}</span></legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[...(draft.workScope !== "commercial" ? HOUSEHOLD_WORK_TYPES : []), ...(draft.workScope !== "household" ? COMMERCIAL_WORK_TYPES : [])].map((w) => (
+                  <button key={w} type="button" aria-pressed={draft.workTypes.includes(w)} onClick={() => toggleWorkType(w)} className={chipCls(draft.workTypes.includes(w))} data-work-type={w}>
+                    {t(`wt_${w}` as "wt_household_regular")}
+                  </button>
+                ))}
+              </div>
+              {errors.workTypes ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.workTypes}</p> : null}
+            </fieldset>
+
             {draft.workScope !== "household" ? (
               <fieldset>
                 <legend className="text-sm font-semibold text-ink/80">{t("environmentsLabel")}</legend>
@@ -394,7 +418,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
             ) : null}
 
             <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 text-sm font-semibold text-ink has-[:checked]:border-forest has-[:checked]:bg-mint">
-              <input type="checkbox" checked={draft.jobTypes.includes("emergency")} onChange={() => persist({ ...draft, jobTypes: toggleIn(draft.jobTypes, "emergency") })} className="h-5 w-5 accent-forest" />
+              <input type="checkbox" checked={draft.jobTypes.includes("emergency")} onChange={() => toggleWorkType("emergency_cover")} className="h-5 w-5 accent-forest" />
               <span>{JOB_TYPE_LABELS.emergency[locale]} <span className="block text-xs font-medium text-ink/60">{t("emergencyHint")}</span></span>
             </label>
 

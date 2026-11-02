@@ -27,7 +27,7 @@ export const NAV: Record<NavRole, NavItem[]> = {
   business: [
     { href: "/business/dashboard", key: "dashboard", icon: "grid" },
     { href: "/search", key: "cleaners", icon: "search" },
-    { href: "/jobs", key: "jobs", icon: "jobs" },
+    { href: "/business/requests", key: "requests", icon: "jobs" },
     { href: "/messages", key: "messages", icon: "chat" },
     { href: "/account", key: "account", icon: "user" },
   ],

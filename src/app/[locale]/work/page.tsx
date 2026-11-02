@@ -2,7 +2,8 @@ import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/guard";
 import { createClient } from "@/lib/supabase/server";
-import { getSlotsForCleaner } from "@/lib/business-data";
+import { getSlotsForCleaner, getWorkForCleaner } from "@/lib/business-data";
+import { MyWorkList } from "@/components/cleaners/MyWorkList";
 import { JobsBoard, type BoardJob } from "@/components/jobs/JobsBoard";
 import { SlotsList } from "@/components/cleaners/SlotsList";
 import { EmergencyCleanerList, type MineRequest, type OpenRequest } from "@/components/emergency/EmergencyCleanerList";
@@ -30,8 +31,8 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
   const supabase = (await createClient())!;
 
-  const { data: cp } = await supabase.from("cleaner_profiles").select("id, status, job_types, work_scope, emergency_opt_in, emergency_rate_cents, rate_cents").eq("user_id", user.id).maybeSingle();
-  const profile = cp as { id: string; status: string; job_types: string[]; work_scope: string; emergency_opt_in: boolean; emergency_rate_cents: number | null; rate_cents: number } | null;
+  const { data: cp } = await supabase.from("cleaner_profiles").select("id, status, job_types, work_scope, work_types, emergency_opt_in, emergency_rate_cents, rate_cents").eq("user_id", user.id).maybeSingle();
+  const profile = cp as { id: string; status: string; job_types: string[]; work_scope: string; work_types: string[] | null; emergency_opt_in: boolean; emergency_rate_cents: number | null; rate_cents: number } | null;
 
   if (!profile) {
     return (
@@ -46,10 +47,14 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   }
 
   const commercial = profile.work_scope !== "household";
+  // Sections follow the cleaner's chosen work types (profiles saved before Phase 1 fall back to scope).
+  const wt = profile.work_types ?? [];
+  const legacy = wt.length === 0;
   const tabs = [
-    { key: "jobs", label: t("tabJobs"), show: commercial },
-    { key: "turnovers", label: t("tabTurnovers"), show: commercial },
-    { key: "emergency", label: t("tabEmergency"), show: true },
+    { key: "jobs", label: t("tabJobs"), show: commercial && (legacy || wt.includes("commercial_contract") || spaceTypesFor(profile.job_types).length > 0) },
+    { key: "turnovers", label: t("tabTurnovers"), show: commercial && (legacy || wt.includes("turnover") || profile.job_types.some((j) => j === "airbnb" || j === "hotel")) },
+    { key: "emergency", label: t("tabEmergency"), show: legacy || wt.includes("emergency_cover") || profile.emergency_opt_in },
+    { key: "mine", label: t("tabMine"), show: true },
   ].filter((x) => x.show);
   const current = tabs.some((x) => x.key === tab) ? tab : tabs[0].key;
 
@@ -57,6 +62,7 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   let slots: Awaited<ReturnType<typeof getSlotsForCleaner>> = [];
   let open: OpenRequest[] = [];
   let mine: MineRequest[] = [];
+  let work: Awaited<ReturnType<typeof getWorkForCleaner>> = [];
 
   if (current === "jobs") {
     const spaceTypes = spaceTypesFor(profile.job_types);
@@ -70,6 +76,7 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
     });
   }
   if (current === "turnovers") slots = await getSlotsForCleaner();
+  if (current === "mine") work = await getWorkForCleaner(profile.id);
   if (current === "emergency") {
     const [{ data: openRows }, { data: mineRows }] = await Promise.all([
       profile.emergency_opt_in ? supabase.from("emergency_requests_open").select("id, postcode, city, window_start, window_end, hours, tasks").order("window_start").limit(50) : Promise.resolve({ data: [] }),
@@ -100,6 +107,7 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
         {current === "jobs" ? <JobsBoard jobs={jobs} viewer={{ signedIn: true, isCleaner: true, isBusiness: false }} /> : null}
         {current === "turnovers" ? <SlotsList slots={slots} myCleanerId={profile.id} /> : null}
         {current === "emergency" ? <EmergencyCleanerList open={open} mine={mine} optedIn={profile.emergency_opt_in} myRateCents={profile.emergency_rate_cents ?? profile.rate_cents} /> : null}
+        {current === "mine" ? (<><p className="mb-3 text-sm text-ink/70">{t("mineIntro")}</p><MyWorkList records={work} /></>) : null}
       </div>
       {profile.status !== "published" ? <p className="mt-6 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("offlineNote")} <Link href="/profile" className="font-bold underline">{t("goProfile")}</Link></p> : null}
       <p className="mt-6 text-xs text-ink/60">{t("lang", { lang })}</p>

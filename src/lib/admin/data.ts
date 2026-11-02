@@ -5,6 +5,7 @@ import { computeKpis, type Kpis } from "./kpis";
 import { SAMPLE_BUSINESSES, SAMPLE_CONNECTIONS, SAMPLE_COUNTS, SAMPLE_EMERGENCIES, SAMPLE_PAYMENTS, SAMPLE_REPORTS, SAMPLE_USERS, type AdminBusiness, type AdminEmergency, type AdminPayment, type AdminReport, type AdminUser } from "./sample-admin-data";
 import { SAMPLE_CLEANERS } from "../sample-data";
 import { BUSINESS_TYPES } from "../business";
+import { DEFAULT_CATALOG, getActiveRules, monthlyUnitPrices, type CatalogRow, type PricingRule } from "../services";
 
 /**
  * Admin data. Runs with the admin's own session (RLS admin policies).
@@ -118,14 +119,19 @@ export async function listAds(): Promise<{ demo: boolean; ads: AdminAd[] }> {
 export async function listBusinesses(): Promise<{ demo: boolean; businesses: AdminBusiness[] }> {
   const supabase = await createClient();
   if (!supabase) return { demo: true, businesses: SAMPLE_BUSINESSES };
-  const { data } = await supabase.from("business_profiles").select("id, company_name, business_type, unit_count, unit_price_cents, billing_started_at, billing_ended_at, billing_paused_at, payment_failed_at").order("created_at", { ascending: false }).limit(500);
+  const [{ data }, rules] = await Promise.all([
+    supabase.from("business_profiles").select("id, company_name, business_type, unit_count, unit_price_cents, billing_started_at, billing_ended_at, billing_paused_at, payment_failed_at").order("created_at", { ascending: false }).limit(500),
+    getActiveRules(),
+  ]);
+  const unitPrices = monthlyUnitPrices(rules);
   const rows = (data ?? []) as { id: string; company_name: string; business_type: AdminBusiness["type"] | null; unit_count: number; unit_price_cents: number | null; billing_started_at: string | null; billing_ended_at: string | null; billing_paused_at: string | null; payment_failed_at: string | null }[];
   return {
     demo: false,
     businesses: rows.map((b) => {
       const type = b.business_type ?? "office";
       const status: AdminBusiness["status"] = b.payment_failed_at || b.billing_paused_at ? "paused" : b.billing_started_at && !b.billing_ended_at ? "active" : "not_started";
-      return { id: b.id, company: b.company_name, type, units: b.unit_count, unitPriceCents: b.unit_price_cents ?? BUSINESS_TYPES[type].defaultUnitPriceCents, billingStartedAt: b.billing_started_at, status };
+      // Phase 1: only an active monthly rule counts; the old placeholder prices no longer apply (0 = nothing charged)
+      return { id: b.id, company: b.company_name, type, units: b.unit_count, unitPriceCents: unitPrices[type] ?? 0, billingStartedAt: b.billing_started_at, status };
     }),
   };
 }
@@ -170,7 +176,7 @@ export async function listPayments(): Promise<{ demo: boolean; payments: AdminPa
   return { demo: false, payments: rows.map((p) => ({ id: p.id, invoiceNumber: invoiceOf.get(p.id) ?? null, household: nameOf.get(p.household_id) ?? "—", cleaner: p.connection_id ? nameOf.get(cleanerOfConn.get(p.connection_id) ?? "") ?? "—" : "—", amountCents: p.amount_cents, status: statusMap[p.status] ?? "pending", paidAt: p.paid_at })) };
 }
 
-export type SettingsValues = { householdPriceEuro: string; unitPrices: Record<string, string>; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string };
+export type SettingsValues = { householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string };
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function getSettings(): Promise<{ demo: boolean; values: SettingsValues | null }> {
   const supabase = await createClient();
@@ -178,14 +184,12 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
   const { data } = await supabase.from("settings").select("key, value");
   const map = new Map(((data ?? []) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]));
   const num = (v: unknown, d: number) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
-  const prices = (map.get("business_unit_prices_cents") as Record<string, number> | undefined) ?? {};
   const em = (map.get("emergency_fee_cents") as { household_incl_btw?: number; business_excl_btw?: number } | undefined) ?? {};
   const linen = (map.get("linen_addon") as { enabled?: boolean; price_per_unit_cents?: number } | undefined) ?? {};
   return {
     demo: false,
     values: {
       householdPriceEuro: euro(num(map.get("household_fee_cents"), 1495)),
-      unitPrices: Object.fromEntries(Object.keys(BUSINESS_TYPES).map((k) => [k, euro(num(prices[k], BUSINESS_TYPES[k as keyof typeof BUSINESS_TYPES].defaultUnitPriceCents))])),
       emergencyHouseholdEuro: euro(num(em.household_incl_btw, 995)),
       emergencyBusinessEuro: euro(num(em.business_excl_btw, 1495)),
       linenEnabled: Boolean(linen.enabled),
@@ -195,4 +199,38 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
       bannedWords: Array.isArray(map.get("banned_words")) ? (map.get("banned_words") as string[]).join(", ") : "",
     },
   };
+}
+
+// ========== Phase 1: catalogue, rules, fee events, work ==========
+export type AdminFeeEvent = { id: string; business: string; serviceKey: string; eventType: string; occurredAt: string; model: string; amountCents: number; status: "pending" | "invoiced" | "waived"; waivedReason: string | null };
+export type AdminWork = { id: string; business: string; cleaner: string; serviceKey: string; scheduledStart: string | null; completedAt: string | null; outcome: string; confirmedAt: string | null; notes: string | null };
+
+export async function listCatalog(): Promise<{ demo: boolean; catalog: CatalogRow[] }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, catalog: DEFAULT_CATALOG };
+  const { data } = await supabase.from("service_catalog").select("service_key, enabled, business_types, sort_order").order("sort_order");
+  return { demo: false, catalog: data?.length ? (data as CatalogRow[]) : DEFAULT_CATALOG };
+}
+
+export async function listPricingRules(): Promise<{ demo: boolean; rules: PricingRule[] }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, rules: [] };
+  const { data } = await supabase.from("pricing_rules").select("id, service_key, business_type, model, amount_cents, percent, unit, valid_from, valid_to, active, notes").order("service_key").order("valid_from", { ascending: false }).limit(500);
+  return { demo: false, rules: (data ?? []) as PricingRule[] };
+}
+
+export async function listFeeEvents(): Promise<{ demo: boolean; events: AdminFeeEvent[] }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, events: [] };
+  const { data } = await supabase.from("fee_events").select("id, service_key, event_type, occurred_at, model, amount_cents, status, waived_reason, business_profiles ( company_name )").order("occurred_at", { ascending: false }).limit(500);
+  const rows = (data ?? []) as unknown as { id: string; service_key: string; event_type: string; occurred_at: string; model: string; amount_cents: number; status: AdminFeeEvent["status"]; waived_reason: string | null; business_profiles: { company_name: string } | null }[];
+  return { demo: false, events: rows.map((r) => ({ id: r.id, business: r.business_profiles?.company_name ?? "—", serviceKey: r.service_key, eventType: r.event_type, occurredAt: r.occurred_at, model: r.model, amountCents: r.amount_cents, status: r.status, waivedReason: r.waived_reason })) };
+}
+
+export async function listWorkRecords(): Promise<{ demo: boolean; work: AdminWork[] }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, work: [] };
+  const { data } = await supabase.from("work_records").select("id, service_key, scheduled_start, completed_at, outcome, business_confirmed_at, notes, business_profiles ( company_name ), cleaner_profiles ( profiles ( display_name ) )").order("scheduled_start", { ascending: false }).limit(500);
+  const rows = (data ?? []) as unknown as { id: string; service_key: string; scheduled_start: string | null; completed_at: string | null; outcome: string; business_confirmed_at: string | null; notes: string | null; business_profiles: { company_name: string } | null; cleaner_profiles: { profiles: { display_name: string } | null } | null }[];
+  return { demo: false, work: rows.map((r) => ({ id: r.id, business: r.business_profiles?.company_name ?? "—", cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", serviceKey: r.service_key, scheduledStart: r.scheduled_start, completedAt: r.completed_at, outcome: r.outcome, confirmedAt: r.business_confirmed_at, notes: r.notes })) };
 }

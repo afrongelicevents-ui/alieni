@@ -18,6 +18,7 @@ on at launch.
 | Rate floor (€15/h) and postcode format enforced in the database | `0001_initial_schema.sql` |
 | Report flooding backstop: max 10/user/hour in the database | `0004_security_hardening.sql` |
 | Security headers: CSP, HSTS, nosniff, frame denial, referrer & permissions policy | `next.config.ts` |
+| Fee events and work records are written only by security-definer functions/triggers (no insert policies); the service catalogue and pricing rules are admin-only; default pricing model is `none`, so no amount is ever recorded without an active rule | `0020_business_foundations.sql` |
 | Server-only secrets (`server-only` import for Mollie; service key only in the webhook route) | `src/lib/mollie.ts` |
 | Input validation with Zod + integer-cent money (no float drift) | `src/lib/validation.ts`, `src/lib/money.ts` |
 | No `dangerouslySetInnerHTML` / `eval`; user content rendered via React escaping | verified in review |

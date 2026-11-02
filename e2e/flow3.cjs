@@ -77,8 +77,9 @@ async function signUp(page, email, role) {
   ok("Business: dashboard shows company, 24 rooms × €3,00", /Hotel De Linde/.test(await biz.textContent("main")) && /24/.test(await biz.textContent("main")));
   await biz.screenshot({ path: `${OUT}/f3-01-business-dashboard.png`, fullPage: true });
 
-  // manual turnovers
+  // manual turnovers (Phase 1: the calendar lives on its own page)
   const tomorrow = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
+  await biz.goto(`${APP}/en/business/calendar`, { waitUntil: "networkidle" });
   await biz.fill("input[type=date]", tomorrow);
   await biz.locator("input[type=number][max='50']").fill("3");
   await biz.getByRole("button", { name: "Add" }).first().click();
@@ -134,7 +135,7 @@ async function signUp(page, email, role) {
   await cleaner.waitForTimeout(2500);
   ok("Cleaner: slot marked done", (await tbl("cleaning_slots")).some((s) => s.status === "done" && s.done_at));
   await biz.goto(`${APP}/en/business/dashboard`, { waitUntil: "networkidle" });
-  ok("Business: dashboard shows connected cleaner + done slot", /Kofi A\./.test(await biz.textContent("main")) && /done/.test(await biz.textContent("main")));
+  ok("Business: dashboard shows connected cleaner + done slot", /Kofi A\./.test(await biz.textContent("main")) && /done/i.test(await biz.textContent("main")));
 
   // ---------- Emergency ----------
   const hhCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });

@@ -30,7 +30,7 @@ type Draft = {
  * step 1 (Supabase Auth); the profile and units are saved through a server
  * action at the end. Signed-in users skip the account fields.
  */
-export function BusinessSignup({ initialType, signedIn, email: knownEmail }: { initialType?: BusinessType; signedIn: boolean; email?: string }) {
+export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitPrices = {} }: { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>> }) {
   const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
 
@@ -45,7 +45,8 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail }: { i
   const set = (partial: Partial<Draft>) => setDraft((d) => ({ ...d, ...partial }));
 
   const unitCountNum = Math.max(1, Math.min(10000, Math.round(Number(draft.unitCount) || 0)));
-  const fee = monthlyFee(draft.businessType, unitCountNum);
+  const unitPrice = unitPrices[draft.businessType] ?? null; // only with an active monthly rule (Admin → Pricing)
+  const fee = unitPrice ? monthlyFee(draft.businessType, unitCountNum, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, school: 0, [draft.businessType]: unitPrice }) : null;
   const cfg = BUSINESS_TYPES[draft.businessType];
   const unitWord = unitCountNum === 1 ? cfg.unit[lang] : cfg.unitPlural[lang];
 
@@ -182,7 +183,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail }: { i
                 <label key={type} className="cursor-pointer">
                   <input type="radio" name="business-type" value={type} checked={draft.businessType === type}
                     onChange={() => set({ businessType: type })} className="sr-only" />
-                  <BusinessTypeCard type={type} selected={draft.businessType === type} compact />
+                  <BusinessTypeCard type={type} prices={unitPrices} selected={draft.businessType === type} compact />
                 </label>
               ))}
             </div>
@@ -196,11 +197,20 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail }: { i
                 value={draft.unitCount} onChange={(e) => set({ unitCount: e.target.value })} />{err("unitCount")}</label>
             <div className="mt-4 rounded-card-lg bg-mint p-5">
               <p className="text-sm text-ink/70">{t("liveTotalLabel")}</p>
-              <p className="mt-1 text-2xl font-extrabold text-forest">
-                {unitCountNum} {unitWord} × {formatEuro(cfg.defaultUnitPriceCents, lang)} = {formatEuro(fee.netCents, lang)}
-                <span className="text-base font-semibold text-ink/70">/{t("month")}</span>
-              </p>
-              <p className="text-sm text-ink/70">{t("plusBtw", { btw: formatEuro(fee.btwCents, lang), gross: formatEuro(fee.grossCents, lang) })}</p>
+              {unitPrice && fee ? (
+                <>
+                  <p className="mt-1 text-2xl font-extrabold text-forest">
+                    {unitCountNum} {unitWord} × {formatEuro(unitPrice, lang)} = {formatEuro(fee.netCents, lang)}
+                    <span className="text-base font-semibold text-ink/70">/{t("month")}</span>
+                  </p>
+                  <p className="text-sm text-ink/70">{t("plusBtw", { btw: formatEuro(fee.btwCents, lang), gross: formatEuro(fee.grossCents, lang) })}</p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-2xl font-extrabold text-forest">{t("priceTba")}</p>
+                  <p className="text-sm text-ink/70">{t("priceTbaNote")}</p>
+                </>
+              )}
               <p className="mt-3 text-xs text-ink/70">{t("payLater")}</p>
             </div>
           </div>

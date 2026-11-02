@@ -5,6 +5,7 @@ import { createMollieClient } from "@/lib/mollie";
 import { computeBillingPeriod } from "@/lib/business";
 import { applyPendingUnits, isLastDayOfMonthAmsterdam } from "@/lib/billing";
 import { invoiceEmail, sendEmail } from "@/lib/email";
+import { getActiveRules, ruleFor } from "@/lib/services";
 
 /**
  * Month-end business billing (brief v2 §4): on the last day of each month
@@ -38,14 +39,19 @@ export async function GET(request: Request) {
   const { data: businesses, error } = await admin.rpc("businesses_due_for_billing");
   if (error) return NextResponse.json({ ok: false }, { status: 500 });
 
+  // Phase 1: a business is only billed when an active 'monthly_per_unit' rule exists for its sector
+  // (Admin → Pricing). Without one the model is 'none' and the business is skipped entirely.
+  const rules = await getActiveRules();
   let billed = 0;
   for (const b of businesses ?? []) {
+    const rule = ruleFor(rules, "connect", b.business_type ?? null);
+    if (!rule || rule.model !== "monthly_per_unit" || rule.amount_cents <= 0) continue;
     const { billNow, afterBilling } = applyPendingUnits(b.unit_count, null);
     const period = computeBillingPeriod({
       billingStartedAt: new Date(b.billing_started_at),
       now,
       unitCount: billNow,
-      unitPriceCents: b.unit_price_cents,
+      unitPriceCents: rule.amount_cents,
     });
     if (!period || period.netCents <= 0) continue;
 
