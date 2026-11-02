@@ -137,7 +137,10 @@ create policy "cleaner responds" on meeting_requests for update
   using (exists (select 1 from cleaner_profiles cp where cp.id = cleaner_profile_id and cp.user_id = auth.uid()));
 
 -- ========== FINDING 8: emergency — 4-digit area in the open view; requester cannot self-assign ==========
-create or replace view emergency_requests_open as
+-- The view loses the 'location' column, so it must be dropped and recreated
+-- (CREATE OR REPLACE VIEW cannot remove columns). Grants are re-applied below.
+drop view if exists emergency_requests_open;
+create view emergency_requests_open as
   select id, requester_type, left(postcode, 4) as postcode, city, window_start, window_end, hours, tasks, created_at
   from emergency_requests
   where status = 'searching'
