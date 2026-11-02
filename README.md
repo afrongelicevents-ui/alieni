@@ -51,3 +51,12 @@ npm run dev
 5. Business side (job posts, responses, configurable pricing)
 6. Admin dashboard + automations
 7. Launch hardening (security review, legal pages, accessibility audit)
+
+## Vercel crons and the Hobby plan
+
+`vercel.json` schedules every cron **once a day** because Vercel's Hobby plan
+rejects any more frequent schedule (the deploy fails with "Hobby accounts are
+limited to daily cron jobs"). Once the project is on Vercel Pro, raise the
+frequencies: `ical-sync` to `*/30 * * * *` and `emergency` to `*/10 * * * *`.
+Until then, emergency requests still expire correctly in the app itself
+(`expireIfDue` runs on every read); only the clean-up e-mails are daily.
