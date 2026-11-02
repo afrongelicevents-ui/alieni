@@ -1,5 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { PaymentsTable } from "@/components/admin/PaymentsTable";
+import { listPayments } from "@/lib/admin/data";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminPaymentsPage({
   params,
@@ -8,5 +11,6 @@ export default async function AdminPaymentsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <PaymentsTable />;
+  const { payments } = await listPayments();
+  return <PaymentsTable payments={payments} />;
 }

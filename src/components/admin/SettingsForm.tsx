@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
+import { saveSettings } from "@/app/[locale]/admin/actions";
 
 /**
  * Platform settings (brief §8 + business v2 §10): household price, the five
  * business unit prices, emergency fee, linen add-on, rate floor, banned
  * words. Maps onto the `settings` table; stored locally in demo mode.
  */
-type Settings = {
+export type Settings = {
   householdPriceEuro: string;
   unitPrices: Record<BusinessType, string>;
   emergencyHouseholdEuro: string;
@@ -34,39 +35,33 @@ const DEFAULTS: Settings = {
   bannedWords: "",
 };
 
-const KEY = "alieni.admin-settings";
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
-export function SettingsForm() {
+export function SettingsForm({ initial, demo }: { initial: Settings | null; demo: boolean }) {
   const t = useTranslations("admin");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
-  const [settings, setSettings] = useState<Settings>(DEFAULTS);
+  const [settings, setSettings] = useState<Settings>(initial ? { ...DEFAULTS, ...initial, unitPrices: { ...DEFAULTS.unitPrices, ...initial.unitPrices } } : DEFAULTS);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(KEY);
-      // One-time hydration from localStorage; cannot run during SSR render.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setSettings({ ...DEFAULTS, ...JSON.parse(raw), unitPrices: { ...DEFAULTS.unitPrices, ...(JSON.parse(raw).unitPrices ?? {}) } });
-    } catch {
-      // ignore corrupt settings
-    }
-  }, []);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function update(partial: Partial<Settings>) {
     setSettings((prev) => ({ ...prev, ...partial }));
     setSaved(false);
   }
 
-  function save(e: React.FormEvent) {
+  async function save(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(settings));
-    } catch {
-      // storage unavailable
+    setError(null);
+    if (demo) {
+      setSaved(true);
+      return;
     }
-    setSaved(true);
+    setBusy(true);
+    const r = await saveSettings(settings);
+    setBusy(false);
+    if (r.ok) setSaved(true);
+    else setError(r.error === "invalid" ? t("settingsInvalid") : t("actionFailed"));
   }
 
   const field = (label: string, value: string, onChange: (v: string) => void, hint?: string) => (
@@ -120,10 +115,11 @@ export function SettingsForm() {
         </label>
 
         <div className="flex items-center gap-3">
-          <button type="submit" className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white hover:bg-forest-dark">
+          <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white hover:bg-forest-dark disabled:opacity-50">
             {t("save")}
           </button>
           {saved ? <span className="text-sm font-semibold text-forest">{t("savedNote")}</span> : null}
+          {error ? <span className="text-sm font-semibold text-red-700">{error}</span> : null}
         </div>
       </div>
     </form>

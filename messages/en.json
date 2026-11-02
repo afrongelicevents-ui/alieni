@@ -529,7 +529,19 @@
       "error_not_admin": "Only the administrator can change photos.",
       "error_upload_failed": "Upload failed. Has database update 3 been run?",
       "error_save_failed": "Saving failed. Has database update 3 been run?"
-    }
+    },
+    "actionFailed": "Action failed. Please try again.",
+    "settingsInvalid": "Check the amounts (e.g. 14,95).",
+    "vogEmpty": "No VOG documents in the queue.",
+    "vogNoFile": "No file available (not uploaded yet, or already reviewed).",
+    "paymentsEmpty": "No payments yet. They appear once Mollie is connected and the first deal is confirmed.",
+    "pendingVogText": "{count, plural, one {# VOG to review} other {# VOGs to review}}",
+    "colJobs": "Confirmed jobs",
+    "ad_published": "online",
+    "ad_draft": "draft",
+    "ad_hidden": "hidden",
+    "ad_removed": "removed",
+    "role_admin": "administrator"
   },
   "jobs": {
     "title": "Cleaning jobs",

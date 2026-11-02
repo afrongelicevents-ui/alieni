@@ -1,13 +1,9 @@
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { computeKpis } from "@/lib/admin/kpis";
-import {
-  SAMPLE_CONNECTIONS,
-  SAMPLE_COUNTS,
-  SAMPLE_PAYMENTS,
-  SAMPLE_REPORTS,
-} from "@/lib/admin/sample-admin-data";
+import { getAdminOverview } from "@/lib/admin/data";
 import { formatEuro } from "@/lib/money";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage({
   params,
@@ -18,34 +14,30 @@ export default async function AdminDashboardPage({
   setRequestLocale(locale);
   const t = await getTranslations("admin");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
-
-  const kpis = computeKpis(SAMPLE_PAYMENTS, SAMPLE_CONNECTIONS, new Date("2026-11-15T12:00:00Z"));
-  const openReports = SAMPLE_REPORTS.filter((r) => r.status === "open").length;
+  const { kpis, openReports, meetingsThisMonth, newAdsThisMonth, pendingVog } = await getAdminOverview();
 
   const cards = [
     { label: t("kpiRevenueGross"), value: formatEuro(kpis.revenueGrossCents, lang) },
     { label: t("kpiRevenueNet"), value: formatEuro(kpis.revenueNetCents, lang) },
     { label: t("kpiBtw"), value: formatEuro(kpis.revenueBtwCents, lang) },
     { label: t("kpiActiveConnections"), value: String(kpis.activeConnections) },
-    { label: t("kpiMeetings"), value: String(SAMPLE_COUNTS.meetingsRequestedThisMonth) },
-    { label: t("kpiNewAds"), value: String(SAMPLE_COUNTS.newAdsThisMonth) },
+    { label: t("kpiMeetings"), value: String(meetingsThisMonth) },
+    { label: t("kpiNewAds"), value: String(newAdsThisMonth) },
     { label: t("kpiChurn"), value: `${kpis.churnPct}%` },
   ];
+  const needs = openReports + pendingVog;
 
   return (
     <div>
-      {/* needs-you queue */}
-      <Link
-        href="/admin/reports"
-        className="flex items-center justify-between rounded-card-lg border-2 border-sun bg-sun/15 p-5 transition-colors hover:bg-sun/25"
-      >
+      <Link href={openReports > 0 || pendingVog === 0 ? "/admin/reports" : "/admin/vog"} className="flex items-center justify-between rounded-card-lg border-2 border-sun bg-sun/15 p-5 transition-colors hover:bg-sun/25">
         <div>
           <h2 className="font-extrabold text-ink">{t("needsYou")}</h2>
-          <p className="text-sm text-ink/70">{t("needsYouText", { count: openReports })}</p>
+          <p className="text-sm text-ink/70">
+            {t("needsYouText", { count: openReports })}
+            {pendingVog > 0 ? ` · ${t("pendingVogText", { count: pendingVog })}` : ""}
+          </p>
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-ink">
-          {openReports}
-        </span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-ink">{needs}</span>
       </Link>
 
       <h2 className="headline mt-8 text-xl text-ink">{t("kpiTitle")}</h2>

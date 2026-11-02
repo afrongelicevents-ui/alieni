@@ -1,16 +1,16 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { SAMPLE_PAYMENTS } from "@/lib/admin/sample-admin-data";
+import type { AdminPayment } from "@/lib/admin/sample-admin-data";
 import { formatEuro, splitBtw } from "@/lib/money";
 import { toCsv } from "@/lib/csv";
 
-export function PaymentsTable() {
+export function PaymentsTable({ payments }: { payments: AdminPayment[] }) {
   const t = useTranslations("admin");
   const locale = useLocale() as "nl" | "en";
 
   function exportCsv() {
-    const rows = SAMPLE_PAYMENTS.map((p) => {
+    const rows = payments.map((p) => {
       const { netCents, btwCents } = splitBtw(p.amountCents);
       return {
         factuur: p.invoiceNumber ?? "",
@@ -48,6 +48,7 @@ export function PaymentsTable() {
         </button>
       </div>
 
+      {payments.length === 0 ? <p className="mt-4 rounded-card bg-mint p-4 text-sm text-forest">{t("paymentsEmpty")}</p> : null}
       <div className="mt-4 overflow-x-auto rounded-card-lg border border-line bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-section text-xs font-bold text-ink/70">
@@ -61,7 +62,7 @@ export function PaymentsTable() {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {SAMPLE_PAYMENTS.map((p) => (
+            {payments.map((p) => (
               <tr key={p.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{p.invoiceNumber ?? "—"}</td>
                 <td className="px-4 py-3">{p.household}</td>

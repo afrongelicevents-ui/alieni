@@ -529,7 +529,19 @@
       "error_not_admin": "Alleen de beheerder mag foto's wijzigen.",
       "error_upload_failed": "Uploaden mislukt. Is update 3 van de database uitgevoerd?",
       "error_save_failed": "Opslaan mislukt. Is update 3 van de database uitgevoerd?"
-    }
+    },
+    "actionFailed": "Actie mislukt. Probeer het opnieuw.",
+    "settingsInvalid": "Controleer de bedragen (gebruik bijv. 14,95).",
+    "vogEmpty": "Geen VOG-documenten in de wachtrij.",
+    "vogNoFile": "Geen bestand beschikbaar (nog niet geüpload of al beoordeeld).",
+    "paymentsEmpty": "Nog geen betalingen. Deze verschijnen zodra Mollie is gekoppeld en de eerste deal is bevestigd.",
+    "pendingVogText": "{count, plural, one {# VOG te beoordelen} other {# VOG's te beoordelen}}",
+    "colJobs": "Bevestigde klussen",
+    "ad_published": "online",
+    "ad_draft": "concept",
+    "ad_hidden": "verborgen",
+    "ad_removed": "verwijderd",
+    "role_admin": "beheerder"
   },
   "jobs": {
     "title": "Schoonmaakklussen",

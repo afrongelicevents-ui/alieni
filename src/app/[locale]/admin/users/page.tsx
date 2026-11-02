@@ -1,5 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { SAMPLE_USERS } from "@/lib/admin/sample-admin-data";
+import { listUsers } from "@/lib/admin/data";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage({
   params,
@@ -9,6 +11,7 @@ export default async function AdminUsersPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("admin");
+  const { users } = await listUsers();
 
   return (
     <div>
@@ -25,10 +28,10 @@ export default async function AdminUsersPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {SAMPLE_USERS.map((user) => (
+            {users.map((user) => (
               <tr key={user.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{user.name}</td>
-                <td className="px-4 py-3">{user.email}</td>
+                <td className="px-4 py-3">{user.email || "—"}</td>
                 <td className="px-4 py-3">
                   <span className="rounded-full bg-mint px-2.5 py-0.5 text-xs font-bold text-forest">
                     {t(`role_${user.role}` as "role_household")}

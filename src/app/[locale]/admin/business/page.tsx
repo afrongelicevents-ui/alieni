@@ -1,5 +1,8 @@
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { SAMPLE_BUSINESSES, SAMPLE_LINEN_ORDERS } from "@/lib/admin/sample-admin-data";
+import { SAMPLE_LINEN_ORDERS } from "@/lib/admin/sample-admin-data";
+import { listBusinesses } from "@/lib/admin/data";
+
+export const dynamic = "force-dynamic";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS } from "@/lib/business";
 import { formatEuro } from "@/lib/money";
 
@@ -8,9 +11,10 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const t = await getTranslations("admin");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
+  const { businesses, demo } = await listBusinesses();
 
   const mrrByType = Object.fromEntries(BUSINESS_TYPE_KEYS.map((k) => [k, 0])) as Record<string, number>;
-  for (const b of SAMPLE_BUSINESSES) if (b.status === "active") mrrByType[b.type] += b.units * b.unitPriceCents;
+  for (const b of businesses) if (b.status === "active") mrrByType[b.type] += b.units * b.unitPriceCents;
   const totalMrr = Object.values(mrrByType).reduce((a, b) => a + b, 0);
 
   return (
@@ -38,7 +42,7 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
             <tr><th className="px-4 py-3">{t("colCompany")}</th><th className="px-4 py-3">{t("colType")}</th><th className="px-4 py-3">{t("colUnits")}</th><th className="px-4 py-3">{t("colMonthly")}</th><th className="px-4 py-3">{t("colStatus")}</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {SAMPLE_BUSINESSES.map((b) => (
+            {businesses.map((b) => (
               <tr key={b.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{b.company}</td>
                 <td className="px-4 py-3">{BUSINESS_TYPES[b.type].label[lang]}</td>
@@ -51,6 +55,7 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
         </table>
       </section>
 
+      {demo ? (
       <section>
         <h2 className="headline text-xl text-ink">{t("linenTitle")}</h2>
         <p className="mt-1 text-sm text-ink/70">{t("linenText")}</p>
@@ -67,6 +72,7 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
           </table>
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

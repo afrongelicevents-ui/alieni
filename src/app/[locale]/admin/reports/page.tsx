@@ -1,5 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { ReportQueue } from "@/components/admin/ReportQueue";
+import { listReports } from "@/lib/admin/data";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminReportsPage({
   params,
@@ -8,5 +11,6 @@ export default async function AdminReportsPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <ReportQueue />;
+  const { reports, demo } = await listReports();
+  return <ReportQueue reports={reports} demo={demo} />;
 }

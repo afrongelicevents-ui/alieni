@@ -1,5 +1,7 @@
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { SAMPLE_EMERGENCIES } from "@/lib/admin/sample-admin-data";
+import { listEmergencies } from "@/lib/admin/data";
+
+export const dynamic = "force-dynamic";
 import { formatEuro } from "@/lib/money";
 
 export default async function AdminEmergencyPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -7,6 +9,7 @@ export default async function AdminEmergencyPage({ params }: { params: Promise<{
   setRequestLocale(locale);
   const t = await getTranslations("admin");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
+  const { items } = await listEmergencies();
 
   return (
     <div>
@@ -17,7 +20,7 @@ export default async function AdminEmergencyPage({ params }: { params: Promise<{
             <tr><th className="px-4 py-3">{t("colRequester")}</th><th className="px-4 py-3">{t("colCity")}</th><th className="px-4 py-3">{t("colWindow")}</th><th className="px-4 py-3">{t("colStatus")}</th><th className="px-4 py-3">{t("colCleaner")}</th><th className="px-4 py-3 text-right">{t("colFee")}</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {SAMPLE_EMERGENCIES.map((e) => (
+            {items.map((e) => (
               <tr key={e.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{e.requester} <span className="text-xs font-medium text-ink/70">({t(`role_${e.requesterType}` as "role_household")})</span></td>
                 <td className="px-4 py-3">{e.city}</td>

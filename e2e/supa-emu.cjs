@@ -179,6 +179,10 @@ function beforeInsert(tname, row, user) {
   if (tname === "profiles" && row.role === "admin" && !ADMIN_ALLOWLIST.has(user?.email)) throw new Error("role escalation blocked");
 }
 function beforeUpdate(tname, row, patch) {
+  if (tname === "vog_documents" && patch.status && patch.status !== "pending" && row.status === "pending") {
+    if (row.storage_path) objects.delete(`vog/${row.storage_path}`);
+    patch.storage_path = null; patch.reviewed_at = new Date().toISOString();
+  }
   if (tname === "connections") {
     const next = { ...row, ...patch };
     if (next.household_confirmed_at && next.cleaner_confirmed_at && next.status === "pending") {
@@ -334,6 +338,12 @@ const server = http.createServer(async (req, res) => {
     const key = p.slice("/storage/v1/object/public/".length);
     const obj = objects.get(key);
     return obj ? send(res, 200, obj, { "content-type": "image/webp", "cache-control": "public, max-age=60" }) : send(res, 404, { error: "not found" });
+  }
+  if (p.startsWith("/storage/v1/object/sign/") && req.method === "POST") {
+    const u = userFromAuth(req);
+    const key = p.slice("/storage/v1/object/sign/".length);
+    if (!u || roleOf(u.id) !== "admin" || !objects.has(key)) return send(res, 400, { error: "not found" });
+    return send(res, 200, { signedURL: `/object/sign/${key}?token=emu` });
   }
   if (p.startsWith("/storage/v1/object/") && req.method === "POST") {
     const u = userFromAuth(req);
