@@ -9,5 +9,8 @@ NEXT_PUBLIC_SUPABASE_URL=http://localhost:4000 NEXT_PUBLIC_SUPABASE_ANON_KEY=x n
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:4000 NEXT_PUBLIC_SUPABASE_ANON_KEY=x PORT=3100 npx next start -p 3100 &
 mkdir -p e2e/out
 node e2e/flow.cjs    # sign-up → account → admin → photo upload → log out → log in (19 checks)
+node e2e/flow2.cjs   # cleaner ad → search → favourite → meeting → masked chat → deal → unlocked (22 checks)
+node e2e/flow3.cjs   # business sign-up → turnovers → job → response → chat → deal → slots → emergency (19 checks)
+node e2e/flow4.cjs   # VOG upload → report → admin hide/restore → VOG approve → settings → access control (16 checks)
 node e2e/audit.cjs   # crawls every linked page on mobile + desktop: status, console errors, overflow
 ```
