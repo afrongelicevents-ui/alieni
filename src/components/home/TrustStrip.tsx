@@ -31,9 +31,9 @@ export function TrustStrip() {
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-2">
-      <ul className="flex items-center justify-between gap-2 rounded-card-lg bg-section px-4 py-4 sm:justify-around">
+      <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 rounded-card-lg bg-section px-4 py-4 sm:flex-nowrap sm:justify-around">
         {items.map((item, i) => (
-          <li key={item.label} className={`flex items-center gap-2.5 ${i > 0 ? "border-l border-line pl-3 sm:pl-6" : ""}`}>
+          <li key={item.label} className={`flex min-w-0 items-center gap-2.5 ${i > 0 ? "sm:border-l sm:border-line sm:pl-6" : ""}`}>
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-forest text-white">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" aria-hidden="true">
                 {item.icon}

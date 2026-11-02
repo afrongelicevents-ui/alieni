@@ -53,6 +53,7 @@ export function Hero({ imageUrl }: { imageUrl: string | null }) {
               fill
               sizes="(min-width: 768px) 384px, 0px"
               priority
+              unoptimized={imageUrl.startsWith("http")}
               className="rounded-[2rem] object-cover shadow-xl shadow-forest/10"
             />
           ) : (

@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
   images: {
     // Site photos uploaded from Admin → Foto's live in Supabase Storage.
     remotePatterns: supabaseOrigin
-      ? [{ protocol: "https", hostname: new URL(supabaseOrigin).hostname, pathname: "/storage/v1/object/public/**" }]
+      ? [{ protocol: new URL(supabaseOrigin).protocol.replace(":", "") as "http" | "https", hostname: new URL(supabaseOrigin).hostname, port: new URL(supabaseOrigin).port, pathname: "/storage/v1/object/public/**" }]
       : [],
   },
   experimental: {

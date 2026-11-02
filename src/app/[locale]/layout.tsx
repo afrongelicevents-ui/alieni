@@ -46,8 +46,8 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
 
   return (
-    <html lang={locale}>
-      <body className={`${jakarta.variable} font-sans`}>
+    <html lang={locale} className={jakarta.variable}>
+      <body className="font-sans">
         <NextIntlClientProvider>
           <Header />
           <main className="pb-16 md:pb-0">{children}</main>

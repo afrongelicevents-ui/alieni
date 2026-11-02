@@ -88,7 +88,7 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
         </div>
         {photo ? (
           <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[2rem] shadow-xl shadow-forest/10">
-            <Image src={photo} alt="" fill sizes="(min-width: 768px) 480px, 100vw" className="object-cover" />
+            <Image src={photo} alt="" fill sizes="(min-width: 768px) 480px, 100vw" unoptimized={photo.startsWith("http")} className="object-cover" />
           </div>
         ) : null}
         </div>
