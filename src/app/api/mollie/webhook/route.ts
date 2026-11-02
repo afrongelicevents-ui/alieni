@@ -52,11 +52,19 @@ export async function POST(request: Request) {
   // 2. Resolve the household behind the Mollie customer. An unmatched
   // customer (e.g. deleted account) is acknowledged with 200 so Mollie
   // does not retry forever — the payment is simply not recorded.
-  const { data: household } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("mollie_customer_id", payment.customerId ?? "")
-    .maybeSingle();
+  // Household payments carry our own profile id in metadata (set when we
+  // created the payment); the stored customer id must match it. Column
+  // writes are server-only (migration 0018), so a user cannot redirect a
+  // payment to another account.
+  const metaProfileId = typeof payment.metadata?.profile_id === "string" ? payment.metadata.profile_id : null;
+  let household: { id: string } | null = null;
+  if (metaProfileId) {
+    const { data } = await admin.from("profiles").select("id, mollie_customer_id").eq("id", metaProfileId).maybeSingle();
+    if (data && data.mollie_customer_id && data.mollie_customer_id === (payment.customerId ?? "")) household = { id: data.id };
+  } else if (payment.customerId) {
+    const { data } = await admin.from("profiles").select("id").eq("mollie_customer_id", payment.customerId).limit(2);
+    if (data && data.length === 1) household = { id: data[0].id };
+  }
 
   // ---- Business month-end direct debit (brief v2 §4, §11) ----
   if (!household) {
@@ -138,7 +146,8 @@ export async function POST(request: Request) {
     // Mandate in place → charge €14.95 now for each active connection that
     // has no subscription yet, and start the monthly subscription (brief §3.7).
     if (valid) {
-      const webhookUrl = `${new URL(request.url).origin}/api/mollie/webhook`;
+      const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : new URL(request.url).origin);
+      const webhookUrl = `${base}/api/mollie/webhook`;
       const { data: conns } = await admin
         .from("connections")
         .select("id")

@@ -68,6 +68,7 @@ frequencies: `checkins` daily, `ical-sync` `*/30 * * * *`, `emergency`
 
 ## Launch checklist (owner)
 
+0. Supabase → Authentication → Sign In / Providers → Email: **Confirm email ON** before launch (the admin allow-list grants the role at sign-up, so the owner's address must be verified).
 1. Supabase → Authentication → URL configuration: Site URL = the live URL; add `https://<live>/**` to redirect URLs (needed for e-mail confirmation and password reset links).
 2. Vercel env: `SUPABASE_SERVICE_ROLE_KEY` (e-mail notifications, admin e-mail column, crons), `RESEND_API_KEY` (+ verified sending domain), `MOLLIE_API_KEY` (live key, after KYC), `CRON_SECRET`, optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, optional `NEXT_PUBLIC_APP_URL`.
 3. Mollie dashboard: webhook URL `https://<live>/api/mollie/webhook`; enable iDEAL + SEPA Direct Debit.

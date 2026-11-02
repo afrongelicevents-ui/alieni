@@ -20,6 +20,7 @@ type MolliePayment = {
   amount: { currency: string; value: string };
   sequenceType: "first" | "recurring" | "oneoff";
   customerId?: string;
+  metadata?: Record<string, string> | null;
   paidAt?: string;
   amountChargedBack?: { currency: string; value: string } | null;
   _links?: { checkout?: { href: string } };
@@ -63,7 +64,7 @@ export function createMollieClient() {
      * request time (brief §3.4): €0.01 via iDEAL, refunded automatically
      * after the mandate becomes valid. Returns the checkout URL.
      */
-    createMandatePayment(customerId: string, redirectUrl: string, webhookUrl: string) {
+    createMandatePayment(customerId: string, redirectUrl: string, webhookUrl: string, metadata?: Record<string, string>) {
       return mollieFetch<MolliePayment>(key, "/payments", {
         method: "POST",
         body: JSON.stringify({
@@ -73,6 +74,7 @@ export function createMollieClient() {
           description: "Alieni — verificatie betaalmethode",
           redirectUrl,
           webhookUrl,
+          metadata,
         }),
       });
     },

@@ -36,11 +36,15 @@ export async function reserveSlot(slotId: string): Promise<SlotActionState> {
 /** Mark my reserved slot done, with an optional photo (private bucket, EXIF stripped). */
 export async function completeSlot(_prev: SlotActionState, formData: FormData): Promise<SlotActionState> {
   const slotId = String(formData.get("slotId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(slotId)) return { ok: false, error: "invalid" };
   const file = formData.get("file");
   try {
     const { supabase, userId } = await requireUser();
     const me = await myCleanerProfileId(supabase, userId);
     if (!me) return { ok: false, error: "no_ad" };
+    // Only my own reserved slot may be completed; check before any upload.
+    const { data: slot } = await supabase.from("cleaning_slots").select("id").eq("id", slotId).eq("reserved_by", me).eq("status", "reserved").maybeSingle();
+    if (!slot) return { ok: false, error: "not_reserved" };
     let photoPath: string | null = null;
     if (file instanceof File && file.size > 0) {
       if (file.size > 10 * 1024 * 1024) return { ok: false, error: "too_large" };

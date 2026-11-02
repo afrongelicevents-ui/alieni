@@ -133,6 +133,8 @@ export async function uploadVogFile(_prev: AdActionState, formData: FormData): P
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "no_file" };
   if (file.size > 10 * 1024 * 1024) return { ok: false, error: "too_large" };
   if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) return { ok: false, error: "bad_type" };
+  const issued = String(formData.get("issuedAt") ?? "");
+  if (issued && !/^\d{4}-\d{2}-\d{2}$/.test(issued)) return { ok: false, error: "invalid" };
   try {
     const { supabase, userId } = await requireUser();
     const { data: ad } = await supabase.from("cleaner_profiles").select("id").eq("user_id", userId).maybeSingle();
@@ -141,7 +143,6 @@ export async function uploadVogFile(_prev: AdActionState, formData: FormData): P
     const path = `${userId}/vog-${Date.now().toString(36)}.${ext}`;
     const { error: upErr } = await supabase.storage.from("vog").upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type });
     if (upErr) return { ok: false, error: "upload_failed" };
-    const issued = String(formData.get("issuedAt") ?? "");
     const { error: dbErr } = await supabase
       .from("vog_documents")
       .upsert({ cleaner_profile_id: ad.id, storage_path: path, issued_at: issued || new Date().toISOString().slice(0, 10), status: "pending" }, { onConflict: "cleaner_profile_id" });

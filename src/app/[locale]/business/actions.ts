@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
-import { BUSINESS_TYPE_KEYS, BUSINESS_TYPES, type BusinessType } from "@/lib/business";
+import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { isSafeIcalUrl } from "@/lib/url-safety";
 import { dutchPostcodeSchema } from "@/lib/validation";
 
@@ -46,7 +46,7 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
       contact_first_name: b.firstName,
       contact_last_name: b.lastName,
       unit_count: b.unitCount,
-      unit_price_cents: BUSINESS_TYPES[b.businessType].defaultUnitPriceCents,
+      // unit_price_cents is locked by the database from settings at creation
     };
     const { data: saved, error } = existing
       ? await supabase.from("business_profiles").update(row).eq("id", existing.id).select("id").single()

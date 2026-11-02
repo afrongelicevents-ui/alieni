@@ -66,7 +66,7 @@ export type BusinessBundle = {
 export async function getBusinessForUser(userId: string): Promise<BusinessBundle | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data: profile } = await supabase.from("business_profiles").select("*").eq("user_id", userId).maybeSingle();
+  const { data: profile } = await supabase.from("business_profiles").select("id, user_id, company_name, kvk_number, btw_number, business_type, contact_first_name, contact_last_name, unit_count, unit_price_cents, pending_unit_count, billing_started_at, billing_paused_at, billing_ended_at, payment_failed_at, created_at").eq("user_id", userId).maybeSingle();
   if (!profile) return null;
   const [{ data: units }, { data: slots }, { data: invoices }, { data: conns }, { data: jobs }] = await Promise.all([
     supabase.from("business_units").select("id, name, address_line, postcode, city, ical_url, ical_last_synced_at, ical_last_error, checkout_time, checkin_time").eq("business_id", profile.id).order("created_at"),

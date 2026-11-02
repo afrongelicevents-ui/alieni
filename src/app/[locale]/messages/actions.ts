@@ -7,13 +7,16 @@ import { errorCode, requireUser } from "@/lib/auth";
 import { maskContacts } from "@/lib/masking";
 import { meetingRequestEmail } from "@/lib/email";
 import { createMollieClient } from "@/lib/mollie";
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { dealConfirmedNotice, newMessageNotice, notifyUser } from "@/lib/notify";
 
+/** Public site URL: configured value first, then Vercel's production host, then the request host (dev only). */
 async function appUrl(): Promise<string> {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+  const host = h.get("host") ?? "localhost:3000";
+  return `${host.startsWith("localhost") ? "http" : "https"}://${host}`;
 }
 
 export type ChatActionState = { ok: boolean; error?: string; conversationId?: string };
@@ -119,7 +122,10 @@ export async function sendMessage(conversationId: string, body: string): Promise
 /** Cleaner accepts or declines a meeting request. */
 export async function respondMeeting(meetingId: string, status: "accepted" | "declined"): Promise<ChatActionState> {
   try {
-    const { supabase } = await requireUser();
+    const { supabase, userId } = await requireUser();
+    const { data: req } = await supabase.from("meeting_requests").select("id, cleaner_profiles ( user_id )").eq("id", meetingId).maybeSingle();
+    const owner = (req as unknown as { cleaner_profiles: { user_id: string } | null } | null)?.cleaner_profiles?.user_id;
+    if (!req || owner !== userId) return { ok: false, error: "not_member" };
     const { error } = await supabase.from("meeting_requests").update({ status, responded_at: new Date().toISOString() }).eq("id", meetingId);
     if (error) return { ok: false, error: "save_failed" };
     revalidatePath("/", "layout");
@@ -199,25 +205,29 @@ export async function endConnection(conversationId: string): Promise<ChatActionS
  */
 export async function setupHouseholdPayment(conversationId: string): Promise<ChatActionState & { checkoutUrl?: string }> {
   const mollie = createMollieClient();
-  if (!mollie) return { ok: false, error: "payments_not_configured" };
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!mollie || !serviceKey || !supabaseUrl) return { ok: false, error: "payments_not_configured" };
   try {
     const { supabase, userId, email } = await requireUser();
     const member = await membership(supabase, conversationId, userId);
     if (!member || member.role !== "household") return { ok: false, error: "not_member" };
     if (member.conn?.status !== "active") return { ok: false, error: "not_active" };
-    const { data: profile } = await supabase.from("profiles").select("display_name, mollie_customer_id").eq("id", userId).maybeSingle();
+    // Mollie identifiers are server-only columns: read/write them with the service role.
+    const admin = createSupabaseAdmin(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    const { data: profile } = await admin.from("profiles").select("display_name, mollie_customer_id").eq("id", userId).maybeSingle();
     let customerId = profile?.mollie_customer_id as string | null | undefined;
     if (!customerId) {
       const customer = await mollie.createCustomer(profile?.display_name ?? email, email);
       customerId = customer.id;
-      const { error } = await supabase.from("profiles").update({ mollie_customer_id: customerId }).eq("id", userId);
+      const { error } = await admin.from("profiles").update({ mollie_customer_id: customerId }).eq("id", userId);
       if (error) return { ok: false, error: "save_failed" };
     }
     const base = await appUrl();
-    const payment = await mollie.createMandatePayment(customerId, `${base}/messages/${conversationId}?payment=started`, `${base}/api/mollie/webhook`);
+    const payment = await mollie.createMandatePayment(customerId, `${base}/messages/${conversationId}?payment=started`, `${base}/api/mollie/webhook`, { profile_id: userId });
     const checkoutUrl = payment._links?.checkout?.href;
     if (!checkoutUrl) return { ok: false, error: "failed" };
-    await supabase.from("connections").update({ mollie_customer_id: customerId }).eq("id", member.conn.id);
+    await admin.from("connections").update({ mollie_customer_id: customerId }).eq("id", member.conn.id);
     return { ok: true, conversationId, checkoutUrl };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

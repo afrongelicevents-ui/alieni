@@ -61,3 +61,18 @@ public GitHub issue for security reports.
 | Emergency | Street address hidden from the open-requests view; visible to the accepting cleaner only; accept is an atomic SQL function |
 | Mollie | Checkout URL comes from Mollie; connection is claimed (`mollie_subscription_id = 'pending'`) before charging so webhook replays cannot double-charge |
 | Password reset | Supabase recovery flow; the request form always reports "sent" so addresses cannot be enumerated |
+
+## Independent review of the go-live build — fixed in `0018_security_golive.sql`
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Mollie customer/mandate ids on `profiles`/`business_profiles` were readable and writable by the row owner; the webhook resolved the payer by that column | High | Column-level grants: those columns are no longer readable or writable via the API; payment actions use the service role; household payments carry `metadata.profile_id` and the webhook verifies the stored customer id matches |
+| `connections` had no column restrictions: a party could set the other party's confirmation, `status`, or `mollie_subscription_id` | High | Triggers: each party may only change its own confirmation; status only to `ended` or back to `pending`; server-managed columns frozen; activation runs after the guard |
+| Masking applied in the server action only; a direct API insert could store raw contact details | Medium | `enforce_message_masking` now rewrites the body in the database (`mask_contacts_sql`) until a connection is active |
+| "See each other" policies exposed whole profile rows | Medium | Column grants limit API-visible columns to id, role, display name, city, locale, created_at |
+| Host-header-derived URLs for Mollie | Low | `NEXT_PUBLIC_APP_URL` / Vercel production URL preferred; request host only in development |
+| Uploads before validation (slot id, VOG date) | Low | Validate and check ownership before any storage write; vog bucket now has size/mime limits |
+| Household could "accept" its own meeting request | Low | Policy restricted to the cleaner; action re-checks ownership |
+| Open emergency view exposed the full postcode; requester could self-assign a cleaner | Low | View returns the 4-digit area; trigger freezes `accepted_by`/fee, requester may only cancel |
+| `unit_price_cents` sent by the client at business sign-up | Low | Locked by a database trigger from settings at creation |
+| Admin allow-list grants the role at sign-up | Info | Owner must keep "Confirm email" ON in Supabase Auth (README launch checklist) |
