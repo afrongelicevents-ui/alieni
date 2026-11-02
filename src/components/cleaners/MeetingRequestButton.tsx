@@ -3,19 +3,23 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { useConversations, type DayBlockKey, type MeetingType } from "@/lib/chat-store";
+import { requestMeeting } from "@/app/[locale]/messages/actions";
 import type { SampleCleaner, Weekday } from "@/lib/sample-data";
+
+type MeetingType = "in_person" | "video";
+type DayBlockKey = "morning" | "afternoon" | "evening";
 
 /**
  * Meeting request flow (brief §3.4): choose in-person or video plus a slot
  * from the cleaner's availability. The Mollie €0 mandate step plugs in here
  * in the payments phase.
  */
-export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
+export function MeetingRequestButton({ cleaner, signedIn }: { cleaner: SampleCleaner; signedIn: boolean }) {
   const t = useTranslations("meeting");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { requestMeeting } = useConversations();
+  const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<MeetingType>("in_person");
@@ -31,20 +35,22 @@ export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
   }
   slots.sort((a, b) => a.weekday - b.weekday);
 
-  function submit() {
+  async function submit() {
     if (!slot) {
       setError(true);
       return;
     }
+    if (!signedIn) {
+      router.push(`/login?next=${encodeURIComponent(`/cleaners/${cleaner.id}`)}`);
+      return;
+    }
     const [weekday, block] = slot.split(":");
-    const conversationId = requestMeeting(
-      cleaner.id,
-      type,
-      Number(weekday),
-      block as DayBlockKey,
-      message,
-    );
-    router.push(`/messages/${conversationId}`);
+    setBusy(true);
+    setServerError(null);
+    const result = await requestMeeting({ cleanerProfileId: cleaner.id, type, weekday: Number(weekday), block: block as DayBlockKey, message });
+    setBusy(false);
+    if (result.ok && result.conversationId) router.push(`/messages/${result.conversationId}`);
+    else setServerError(result.error ?? "failed");
   }
 
   if (!open) {
@@ -139,14 +145,16 @@ export function MeetingRequestButton({ cleaner }: { cleaner: SampleCleaner }) {
       </label>
 
       <p className="mt-3 rounded-xl bg-sun/25 p-3 text-xs text-ink/70">{t("mandateNote")}</p>
+      {serverError ? <p className="mt-2 text-xs font-semibold text-red-700">{t(`error_${serverError}` as "error_failed")}</p> : null}
 
       <div className="mt-4 flex gap-3">
         <button
           type="button"
           onClick={submit}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark"
+          disabled={busy}
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50"
         >
-          {t("submit")}
+          {busy ? t("sending") : signedIn ? t("submit") : t("submitLogin")}
         </button>
         <button
           type="button"

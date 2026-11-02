@@ -8,6 +8,9 @@ import { AvailabilityGrid } from "@/components/cleaners/AvailabilityGrid";
 import { FavouriteButton } from "@/components/cleaners/FavouriteButton";
 import { MeetingRequestButton } from "@/components/cleaners/MeetingRequestButton";
 import { ReportButton } from "@/components/cleaners/ReportButton";
+import { getSessionUser } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export default async function CleanerProfilePage({
   params,
@@ -21,7 +24,8 @@ export default async function CleanerProfilePage({
   const tCommon = await getTranslations("common");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
 
-  const cleaner = (await fetchLiveCleaner(id)) ?? getCleaner(id);
+  const [live, user] = await Promise.all([fetchLiveCleaner(id), getSessionUser()]);
+  const cleaner = live ?? getCleaner(id);
   if (!cleaner) notFound();
 
   return (
@@ -31,10 +35,15 @@ export default async function CleanerProfilePage({
         <FavouriteButton cleanerId={cleaner.id} className="absolute right-5 top-5" />
         <div className="flex items-center gap-5">
           <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
-            <svg viewBox="0 0 24 24" className="h-14 w-14" fill="currentColor" aria-hidden="true">
-              <circle cx="12" cy="9" r="4" />
-              <path d="M4 21a8 8 0 0 1 16 0" />
-            </svg>
+            {cleaner.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- storage URL, pre-sized 600px square
+              <img src={cleaner.photo} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-14 w-14" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="9" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            )}
           </span>
           <div>
             <h1 className="headline flex flex-wrap items-center gap-2 text-3xl text-ink">
@@ -62,7 +71,7 @@ export default async function CleanerProfilePage({
         </div>
 
         <div className="mt-5">
-          <MeetingRequestButton cleaner={cleaner} />
+          <MeetingRequestButton cleaner={cleaner} signedIn={Boolean(user)} />
         </div>
       </header>
 
@@ -134,9 +143,11 @@ export default async function CleanerProfilePage({
       {/* report */}
       <footer className="mt-8 border-t border-line pt-6">
         <ReportButton subjectId={cleaner.id} />
-        <p className="mt-4 rounded-full bg-sun/30 px-3 py-1 text-center text-xs font-semibold text-ink/70">
-          {tCommon("sampleBadge")}
-        </p>
+        {!live ? (
+          <p className="mt-4 rounded-full bg-sun/30 px-3 py-1 text-center text-xs font-semibold text-ink/70">
+            {tCommon("sampleBadge")}
+          </p>
+        ) : null}
       </footer>
     </article>
   );

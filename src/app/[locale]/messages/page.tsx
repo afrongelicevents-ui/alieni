@@ -1,5 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ConversationList } from "@/components/chat/ConversationList";
+import { ConversationListLive } from "@/components/chat/ConversationListLive";
+import { LoginPrompt } from "@/components/auth/LoginPrompt";
+import { getSessionUser } from "@/lib/auth";
+import { listConversations } from "@/lib/chat-data";
+
+export const dynamic = "force-dynamic";
 
 export default async function MessagesPage({
   params,
@@ -9,18 +14,14 @@ export default async function MessagesPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("chat");
-  const tCommon = await getTranslations("common");
+  const user = await getSessionUser();
+  const conversations = user ? ((await listConversations(user.id)) ?? []) : null;
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="headline text-3xl text-ink">{t("title")}</h1>
-        <span className="rounded-full bg-sun/30 px-3 py-1 text-xs font-semibold text-ink/70">
-          {tCommon("sampleBadge")}
-        </span>
-      </div>
+      <h1 className="headline text-3xl text-ink">{t("title")}</h1>
       <div className="mt-6">
-        <ConversationList />
+        {conversations ? <ConversationListLive conversations={conversations} /> : <LoginPrompt next="/messages" text={t("loginText")} />}
       </div>
     </section>
   );

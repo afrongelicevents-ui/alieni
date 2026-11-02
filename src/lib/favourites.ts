@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { createClient } from "./supabase/client";
 
 /**
- * Favourites, stored locally until accounts are live — then this moves to
- * the `favourites` table in Supabase (same id-based shape).
+ * Favourites. Signed in: the `favourites` table (own rows only, RLS).
+ * Signed out: this device only (localStorage), so browsing still works.
  */
 const KEY = "alieni.favourites";
 const EMPTY: string[] = [];
 
 let cacheRaw: string | null | undefined;
-let cache: string[] = EMPTY;
+let localIds: string[] = EMPTY;
+let remoteIds: string[] | null = null; // null = signed out / not loaded
+let signedIn: boolean | null = null;
+let initialised = false;
 const listeners = new Set<() => void>();
 
 function parse(raw: string | null): string[] {
@@ -23,21 +27,65 @@ function parse(raw: string | null): string[] {
   }
 }
 
-function getSnapshot(): string[] {
-  const raw = window.localStorage.getItem(KEY);
+function readLocal(): string[] {
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(KEY);
+  } catch {
+    raw = null;
+  }
   if (raw !== cacheRaw) {
     cacheRaw = raw;
-    cache = parse(raw);
+    localIds = parse(raw);
   }
-  return cache;
-}
-
-function getServerSnapshot(): string[] {
-  return EMPTY;
+  return localIds;
 }
 
 function notify() {
   for (const listener of listeners) listener();
+}
+
+async function loadRemote() {
+  const supabase = createClient();
+  if (!supabase) return;
+  const { data } = await supabase.from("favourites").select("cleaner_profile_id");
+  remoteIds = (data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id);
+  notify();
+}
+
+function init() {
+  if (initialised) return;
+  initialised = true;
+  const supabase = createClient();
+  if (!supabase) {
+    signedIn = false;
+    return;
+  }
+  supabase.auth.getSession().then(({ data }) => {
+    signedIn = Boolean(data.session);
+    if (signedIn) loadRemote();
+    else notify();
+  });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    const next = Boolean(session);
+    if (next !== signedIn) {
+      signedIn = next;
+      remoteIds = null;
+      if (next) loadRemote();
+      else notify();
+    }
+  });
+}
+
+let snapshot: { ids: string[]; signedIn: boolean | null } = { ids: EMPTY, signedIn: null };
+function getSnapshot() {
+  const ids = signedIn && remoteIds ? remoteIds : readLocal();
+  if (ids !== snapshot.ids || signedIn !== snapshot.signedIn) snapshot = { ids, signedIn };
+  return snapshot;
+}
+const SERVER_SNAPSHOT = { ids: EMPTY, signedIn: null as boolean | null };
+function getServerSnapshot() {
+  return SERVER_SNAPSHOT;
 }
 
 function subscribe(listener: () => void): () => void {
@@ -52,26 +100,43 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-export function useFavourites() {
-  const ids = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const loaded = useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  );
+function writeLocal(next: string[]) {
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    cacheRaw = undefined;
+    localIds = next;
+  }
+  notify();
+}
 
-  const toggle = useCallback((id: string) => {
-    const current = getSnapshot();
-    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-    try {
-      window.localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-      // storage unavailable — favourites live only in memory this session
-      cacheRaw = undefined;
-      cache = next;
+export function useFavourites() {
+  useEffect(init, []);
+  const { ids, signedIn: session } = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const loaded = useSyncExternalStore(subscribe, () => true, () => false);
+
+  const toggle = useCallback(async (id: string) => {
+    const current = getSnapshot().ids;
+    const adding = !current.includes(id);
+    const next = adding ? [...current, id] : current.filter((x) => x !== id);
+    const supabase = createClient();
+    if (signedIn && supabase) {
+      remoteIds = next; // optimistic
+      notify();
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user?.id;
+      const result = adding
+        ? await supabase.from("favourites").insert({ user_id: userId, cleaner_profile_id: id })
+        : await supabase.from("favourites").delete().eq("cleaner_profile_id", id);
+      if (result.error) {
+        // e.g. a sample cleaner that is not in the database: keep it on the device.
+        remoteIds = current;
+        writeLocal(adding ? [...readLocal(), id] : readLocal().filter((x) => x !== id));
+      }
+      return;
     }
-    notify();
+    writeLocal(next);
   }, []);
 
-  return { ids, loaded, toggle, has: (id: string) => ids.includes(id) };
+  return { ids, loaded, signedIn: session, toggle, has: (id: string) => ids.includes(id) };
 }

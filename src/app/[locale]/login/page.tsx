@@ -6,10 +6,10 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ confirmed?: string }>;
+  searchParams: Promise<{ confirmed?: string; next?: string }>;
 }) {
   const { locale } = await params;
-  const { confirmed } = await searchParams;
+  const { confirmed, next } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("auth");
 
@@ -20,7 +20,7 @@ export default async function LoginPage({
         <p className="mt-4 rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("confirmedNotice")}</p>
       ) : null}
       <div className="mt-6">
-        <AuthForm mode="login" />
+        <AuthForm mode="login" next={next} />
       </div>
     </section>
   );

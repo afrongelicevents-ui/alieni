@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { DEFAULT_RATE_FLOOR_CENTS, dutchPostcodeSchema } from "@/lib/validation";
+import { saveCleanerAd, setAdStatus, uploadProfilePhoto, uploadVogFile, type AdActionState, type AdInput } from "@/app/[locale]/cleaners/new/actions";
 import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type JobType, type Weekday } from "@/lib/sample-data";
 
 /**
- * 3-step cleaner ad wizard (brief §5). Drafts are stored locally and map
- * 1:1 onto the `cleaner_profiles` + `availability_slots` tables, so they
- * publish automatically once accounts are live.
+ * 3-step cleaner ad wizard (brief §5). The draft is kept on the device while
+ * editing; "Publish" writes it to `cleaner_profiles` + `availability_slots`
+ * through a server action (signed-in cleaners only).
  */
+
+export type ExistingAd = {
+  adId: string;
+  status: string;
+  photoUrl: string | null;
+  vogStatus: string | null;
+  draft: Partial<Draft>;
+};
 
 type Draft = {
   name: string;
@@ -66,16 +76,21 @@ const chipCls = (on: boolean) =>
     on ? "border-forest bg-forest text-white" : "border-line bg-white text-ink/80 hover:bg-mint"
   }`;
 
-export function AdWizard() {
+export function AdWizard({ signedIn, existing }: { signedIn: boolean; existing: ExistingAd | null }) {
   const t = useTranslations("wizard");
   const tCommon = useTranslations("common");
   const locale = useLocale() as "nl" | "en";
+  const router = useRouter();
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [draft, setDraft] = useState<Draft>(existing ? { ...EMPTY, ...existing.draft } : EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<AdActionState | null>(existing ? { ok: true, adId: existing.adId, status: existing.status } : null);
+  const [busy, setBusy] = useState(false);
+  const [photoState, photoAction, photoBusy] = useActionState(uploadProfilePhoto, { ok: false } as AdActionState);
+  const [vogState, vogAction, vogBusy] = useActionState(uploadVogFile, { ok: false } as AdActionState);
 
   useEffect(() => {
+    if (existing) return; // the database copy wins over a stale device draft
     try {
       const raw = window.localStorage.getItem(DRAFT_KEY);
       // One-time hydration from localStorage; cannot run during SSR render.
@@ -84,7 +99,7 @@ export function AdWizard() {
     } catch {
       // ignore corrupt drafts
     }
-  }, []);
+  }, [existing]);
 
   function persist(next: Draft) {
     setDraft(next);
@@ -117,7 +132,7 @@ export function AdWizard() {
       if (draft.jobTypes.length === 0) e.jobTypes = t("jobTypesError");
       const wantsBusiness = draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j));
       if (wantsBusiness && !/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvk = t("kvkError");
-      if (draft.jobTypes.includes("school") && (!draft.vogFileName || !draft.vogIssuedAt)) e.vog = t("vogError");
+      if (draft.jobTypes.includes("school") && !draft.vogIssuedAt) e.vog = t("vogError");
       if (draft.jobTypes.includes("emergency")) {
         const em = parseRateCents(draft.emergencyRateEuro);
         if (em === null || cents === null || em < Math.ceil(cents * 1.5)) e.emergency = t("emergencyRateError");
@@ -130,24 +145,116 @@ export function AdWizard() {
     return Object.keys(e).length === 0;
   }
 
-  function next() {
+  function toInput(publish: boolean): AdInput {
+    const availability: { weekday: number; block: DayBlock }[] = [];
+    for (const [day, blocks] of Object.entries(draft.availability)) {
+      for (const block of blocks ?? []) availability.push({ weekday: Number(day), block });
+    }
+    return {
+      name: draft.name,
+      city: draft.city,
+      about: draft.about,
+      services: draft.services,
+      languages: draft.languages,
+      jobTypes: draft.jobTypes,
+      kvkNumber: draft.kvkNumber.trim(),
+      emergencyRateCents: parseRateCents(draft.emergencyRateEuro) ?? 0,
+      rateCents: parseRateCents(draft.rateEuro) ?? 0,
+      minHours: draft.minHours,
+      postcode: draft.postcode,
+      radiusKm: draft.radiusKm,
+      availability,
+      vogIssuedAt: draft.vogIssuedAt,
+      publish,
+    };
+  }
+
+  async function next() {
     if (!validateStep(step)) return;
-    if (step < 2) setStep(step + 1);
-    else setSaved(true);
+    if (step < 2) {
+      setStep(step + 1);
+      return;
+    }
+    if (!signedIn) {
+      // Draft stays on the device; come back here after creating the account.
+      router.push("/signup?role=cleaner&next=/cleaners/new");
+      return;
+    }
+    setBusy(true);
+    const result = await saveCleanerAd(toInput(true));
+    setBusy(false);
+    if (result.ok) {
+      setSaved(result);
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+      router.refresh();
+    } else {
+      setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed") });
+    }
+  }
+
+  async function toggleOnline() {
+    if (!saved) return;
+    setBusy(true);
+    const result = await setAdStatus(saved.status === "published" ? "hidden" : "published");
+    setBusy(false);
+    if (result.ok) setSaved({ ...saved, status: result.status });
+    router.refresh();
   }
 
   if (saved) {
+    const online = saved.status === "published";
     return (
-      <div className="rounded-card-lg bg-mint p-8 text-center">
-        <h2 className="headline text-2xl text-ink">{t("savedTitle")}</h2>
-        <p className="mx-auto mt-2 max-w-md text-ink/70">{t("savedText")}</p>
-        <button
-          type="button"
-          onClick={() => setSaved(false)}
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-6 text-sm font-bold text-forest hover:bg-white"
-        >
-          {t("editAgain")}
-        </button>
+      <div className="flex flex-col gap-4">
+        <div className="rounded-card-lg bg-mint p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="headline text-2xl text-ink">{online ? t("liveTitle") : t("offlineTitle")}</h2>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${online ? "bg-forest text-white" : "bg-sun/40 text-ink"}`}>{online ? t("statusOnline") : t("statusOffline")}</span>
+          </div>
+          <p className="mt-2 max-w-md text-ink/70">{online ? t("liveText") : t("offlineText")}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {saved.adId ? (
+              <Link href={`/cleaners/${saved.adId}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white hover:bg-forest-dark">{t("viewAd")}</Link>
+            ) : null}
+            <button type="button" onClick={() => setSaved(null)} className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-6 text-sm font-bold text-forest hover:bg-white">{t("editAgain")}</button>
+            <button type="button" onClick={toggleOnline} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line bg-white px-6 text-sm font-bold text-ink/80 hover:bg-section disabled:opacity-50">{online ? t("takeOffline") : t("putOnline")}</button>
+          </div>
+        </div>
+
+        <form action={photoAction} className="rounded-card-lg border border-line bg-white p-5">
+          <h3 className="font-extrabold text-ink">{t("photoTitle")}</h3>
+          <p className="mt-1 text-sm text-ink/70">{t("photoHint")}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
+              {existing?.photoUrl && !photoState.ok ? (
+                // eslint-disable-next-line @next/next/no-img-element -- storage URL, already sized
+                <img src={existing.photoUrl} alt="" className="h-full w-full object-cover" />
+              ) : photoState.ok ? (
+                <span className="text-xs font-bold text-forest">✓</span>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-12 w-12" fill="currentColor" aria-hidden="true"><circle cx="12" cy="9" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+              )}
+            </span>
+            <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-section file:px-4 file:py-2 file:text-sm file:font-bold file:text-forest" />
+            <button type="submit" disabled={photoBusy} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-bold text-white disabled:opacity-50">{photoBusy ? t("uploading") : t("uploadPhoto")}</button>
+          </div>
+          {photoState.ok ? <p className="mt-2 text-sm font-semibold text-forest">{t("photoSaved")}</p> : null}
+          {!photoState.ok && photoState.error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${photoState.error}` as "error_failed")}</p> : null}
+        </form>
+
+        {draft.jobTypes.includes("school") ? (
+          <form action={vogAction} className="rounded-card-lg border border-forest/30 bg-mint p-5">
+            <h3 className="font-extrabold text-ink">{t("vogLabel")}</h3>
+            <p className="mt-1 text-xs text-ink/70">{t("vogPrivacy")}</p>
+            {existing?.vogStatus ? <p className="mt-2 text-sm font-semibold text-forest">{t(`vogStatus_${existing.vogStatus}` as "vogStatus_pending")}</p> : null}
+            <input type="hidden" name="issuedAt" value={draft.vogIssuedAt} />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-bold file:text-forest" />
+              <button type="submit" disabled={vogBusy} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-bold text-white disabled:opacity-50">{vogBusy ? t("uploading") : t("uploadVog")}</button>
+            </div>
+            {vogState.ok ? <p className="mt-2 text-sm font-semibold text-forest">{t("vogUploaded")}</p> : null}
+            {!vogState.ok && vogState.error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${vogState.error}` as "error_failed")}</p> : null}
+          </form>
+        ) : null}
       </div>
     );
   }
@@ -266,11 +373,7 @@ export function AdWizard() {
                 <legend className="px-1 text-sm font-extrabold text-ink">{t("vogLabel")}</legend>
                 <p className="text-xs text-ink/70">{t("vogIntro")}</p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-semibold text-ink/80">
-                    {t("vogFile")}
-                    <input type="file" accept="application/pdf,image/*" onChange={(e) => persist({ ...draft, vogFileName: e.target.files?.[0]?.name ?? "" })} className="mt-1 block w-full text-sm" />
-                    {draft.vogFileName ? <span className="mt-1 block text-xs text-forest">✓ {draft.vogFileName}</span> : null}
-                  </label>
+                  <p className="text-xs font-semibold text-ink/80">{t("vogAfterPublish")}</p>
                   <label className="text-xs font-semibold text-ink/80">
                     {t("vogIssuedAt")}
                     <input type="date" value={draft.vogIssuedAt} onChange={(e) => persist({ ...draft, vogIssuedAt: e.target.value })} className={`mt-1 ${inputCls}`} />
@@ -424,11 +527,14 @@ export function AdWizard() {
         <button
           type="button"
           onClick={next}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark"
+          disabled={busy}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50"
         >
-          {step === 2 ? t("publish") : t("next")}
+          {busy ? t("publishing") : step === 2 ? (signedIn ? t("publish") : t("publishSignup")) : t("next")}
         </button>
       </div>
+      {errors.submit ? <p className="mt-3 text-sm font-semibold text-red-700">{errors.submit}</p> : null}
+      {!signedIn && step === 2 ? <p className="mt-3 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("signupNote")}</p> : null}
     </div>
   );
 }

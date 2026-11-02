@@ -2,37 +2,29 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { submitReport } from "@/app/[locale]/cleaners/[id]/actions";
 
-/**
- * DSA report flow (brief §6). Stores locally until Supabase is connected;
- * the payload shape matches the `reports` table.
- */
+/** DSA report flow (brief §6): saved to the `reports` table, admin reviews it. */
 const REASONS = ["scam", "inappropriate", "fake", "offensive", "other"] as const;
 
 export function ReportButton({ subjectId }: { subjectId: string }) {
   const t = useTranslations("profile");
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
-  const [reason, setReason] = useState<string>("scam");
+  const [reason, setReason] = useState<"scam" | "inappropriate" | "fake" | "offensive" | "other">("scam");
   const [details, setDetails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    try {
-      const key = "alieni.reports";
-      const existing = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-      existing.push({
-        subject_type: "cleaner_profile",
-        subject_id: subjectId,
-        reason,
-        details: details.slice(0, 1000),
-        created_at: new Date().toISOString(),
-      });
-      window.localStorage.setItem(key, JSON.stringify(existing));
-    } catch {
-      // storage unavailable — report is still acknowledged in the UI
-    }
-    setSent(true);
+    setBusy(true);
+    setError(null);
+    const result = await submitReport({ subjectType: "cleaner_profile", subjectId, reason, details });
+    setBusy(false);
+    if (result.ok) setSent(true);
+    else setError(result.error ?? "failed");
   }
 
   if (sent) {
@@ -83,10 +75,19 @@ export function ReportButton({ subjectId }: { subjectId: string }) {
           className="mt-1 w-full rounded-xl border border-line p-3 text-sm focus:outline-none"
         />
       </label>
+      {error === "not_signed_in" ? (
+        <p className="mt-3 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">
+          {t("reportLogin")}{" "}
+          <Link href="/login" className="font-bold text-forest underline">{t("reportLoginCta")}</Link>
+        </p>
+      ) : error ? (
+        <p className="mt-3 text-sm font-semibold text-red-700">{t(`reportError_${error}` as "reportError_failed")}</p>
+      ) : null}
       <div className="mt-4 flex gap-3">
         <button
           type="submit"
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white hover:bg-forest-dark"
+          disabled={busy}
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white hover:bg-forest-dark disabled:opacity-50"
         >
           {t("reportSubmit")}
         </button>

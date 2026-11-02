@@ -24,10 +24,18 @@ type Row = {
   vog_documents: { status: string; issued_at: string }[] | null;
   profiles: { display_name: string; city: string | null } | null;
   availability_slots: { weekday: number; block: string }[];
+  photo_path: string | null;
 };
 
+/** Public URL of a profile photo in the 'profile-photos' bucket. */
+export function profilePhotoUrl(path: string | null | undefined): string | null {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!path || !base) return null;
+  return `${base}/storage/v1/object/public/profile-photos/${path}`;
+}
+
 const SELECT =
-  "id, rate_cents, min_hours, services, languages, postcode, radius_km, about, verified_jobs_count, job_types, kvk_number, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
+  "id, rate_cents, min_hours, services, languages, postcode, radius_km, about, photo_path, verified_jobs_count, job_types, kvk_number, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
 
 function toCleaner(row: Row): SampleCleaner {
   const availability: Partial<Record<Weekday, DayBlock[]>> = {};
@@ -59,7 +67,7 @@ function toCleaner(row: Row): SampleCleaner {
     about: { nl: about, en: about },
     availability,
     reviews: [],
-    photo: null, // signed URL resolution lands with the upload pipeline
+    photo: profilePhotoUrl(row.photo_path),
   };
 }
 

@@ -64,7 +64,8 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   const heroText = await page.locator("article").first().textContent();
   ok("Admin → Photos: upload saved + 'uploaded' badge", heroText.includes("Saved") || heroText.includes("uploaded"), heroText.slice(0, 120));
   const st2 = await (await fetch(`${EMU}/__emu/state`)).json();
-  ok("Storage: file stored in site-media bucket + row in site_media", st2.objects.length === 1 && st2.siteMedia.length === 1, JSON.stringify({ objects: st2.objects, rows: st2.siteMedia.map((r) => r.slot) }));
+  const siteMedia = await (await fetch(`${EMU}/__emu/table?name=site_media`)).json();
+  ok("Storage: file stored in site-media bucket + row in site_media", st2.objects.length === 1 && siteMedia.length === 1, JSON.stringify({ objects: st2.objects, rows: siteMedia.map((r) => r.slot) }));
   await page.screenshot({ path: `${OUT}/03-after-upload.png`, fullPage: true });
 
   // 6. Home shows uploaded hero (desktop width, hero is hidden on phones by design)

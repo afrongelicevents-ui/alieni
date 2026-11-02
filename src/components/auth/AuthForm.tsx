@@ -10,13 +10,19 @@ import { Turnstile } from "./Turnstile";
  * Login / signup form. Fully wired to Supabase Auth — until the project
  * keys are configured it shows a friendly "not active yet" state instead.
  */
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+/** Only same-site paths may be used as the post-login destination. */
+function safeNext(next: string | undefined): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
+  return next;
+}
+
+export function AuthForm({ mode, defaultRole = "household", next }: { mode: "login" | "signup"; defaultRole?: string; next?: string }) {
   const t = useTranslations("auth");
   const supabase = createClient();
   const locale = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("household");
+  const [role, setRole] = useState(defaultRole);
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
   const [message, setMessage] = useState("");
@@ -72,7 +78,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         setStatus("done");
         // Full reload on purpose: the server must see the fresh auth cookies.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/${locale}/account`);
+        window.location.assign(`/${locale}${safeNext(next) ?? "/account"}`);
         return;
       }
       if (mode === "signup" && result.data.user && (result.data.user.identities?.length ?? 1) === 0) {
@@ -164,7 +170,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         {status === "done" ? (
           <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
             {t("redirecting")}{" "}
-            <a href={`/${locale}/account`} className="underline">{t("goToAccount")}</a>
+            <a href={`/${locale}${safeNext(next) ?? "/account"}`} className="underline">{t("goToAccount")}</a>
           </p>
         ) : null}
 
@@ -180,14 +186,14 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           {mode === "login" ? (
             <>
               {t("noAccount")}{" "}
-              <Link href="/signup" className="font-bold text-forest underline">
+              <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-bold text-forest underline">
                 {t("signupTitle")}
               </Link>
             </>
           ) : (
             <>
               {t("haveAccount")}{" "}
-              <Link href="/login" className="font-bold text-forest underline">
+              <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-bold text-forest underline">
                 {t("loginTitle")}
               </Link>
             </>

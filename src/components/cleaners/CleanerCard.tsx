@@ -21,10 +21,15 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
 
       <div className="flex items-center gap-4">
         <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
-          <svg viewBox="0 0 24 24" className="h-10 w-10" fill="currentColor" aria-hidden="true">
-            <circle cx="12" cy="9" r="4" />
-            <path d="M4 21a8 8 0 0 1 16 0" />
-          </svg>
+          {cleaner.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- storage URL, pre-sized 600px square
+            <img src={cleaner.photo} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-10 w-10" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="9" r="4" />
+              <path d="M4 21a8 8 0 0 1 16 0" />
+            </svg>
+          )}
         </span>
         <div className="pr-10">
           <h3 className="flex flex-wrap items-center gap-2 text-lg font-extrabold text-ink">

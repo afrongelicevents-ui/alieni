@@ -1,0 +1,87 @@
+"use client";
+
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
+import type { ConversationDetail } from "@/lib/chat-data";
+import { confirmDeal, endConnection } from "@/app/[locale]/messages/actions";
+
+/**
+ * Mutual "We have a deal" / "Not a match" (brief §3.7–3.9), both sides.
+ * The database activates the connection once both parties confirmed; the
+ * €14.95 charge hooks in here once Mollie is connected.
+ */
+export function DealPanelLive({ conversation }: { conversation: ConversationDetail }) {
+  const t = useTranslations("deal");
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const conn = conversation.connection;
+
+  async function run(action: () => Promise<{ ok: boolean; error?: string }>) {
+    setBusy(true);
+    setError(null);
+    const r = await action();
+    setBusy(false);
+    if (!r.ok) setError(r.error ?? "failed");
+    router.refresh();
+  }
+
+  const btnPrimary = "inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50";
+  const btnGhost = "inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line px-5 text-sm font-bold text-ink/70 hover:bg-section disabled:opacity-50";
+
+  if (conn?.status === "active") {
+    return (
+      <div className="mt-3 rounded-card-lg border border-forest/30 bg-mint p-4">
+        <h3 className="font-extrabold text-ink">{t("activeTitle")}</h3>
+        <p className="mt-1 text-sm text-ink/70">{conversation.role === "household" ? t("activeText") : t("activeTextCleaner")}</p>
+        <button type="button" disabled={busy} onClick={() => run(() => endConnection(conversation.id))} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-5 text-sm font-bold text-forest hover:bg-white disabled:opacity-50">
+          {t("endConnection")}
+        </button>
+        {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t("error")}</p> : null}
+      </div>
+    );
+  }
+
+  if (conn?.status === "ended") {
+    const wasActive = Boolean(conn.startedAt);
+    return (
+      <div className="mt-3 rounded-card bg-section px-4 py-3 text-sm text-ink/70">
+        <p>{wasActive ? t("endedNote") : t("noMatchNote")}</p>
+        <button type="button" disabled={busy} onClick={() => run(() => confirmDeal(conversation.id))} className="mt-2 text-xs font-bold text-forest underline disabled:opacity-50">
+          {t("reopen")}
+        </button>
+      </div>
+    );
+  }
+
+  const mineConfirmed = conversation.role === "household" ? conn?.householdConfirmedAt : conn?.cleanerConfirmedAt;
+  const otherConfirmed = conversation.role === "household" ? conn?.cleanerConfirmedAt : conn?.householdConfirmedAt;
+
+  if (conn?.status === "pending" && mineConfirmed) {
+    return (
+      <div className="mt-3 rounded-card-lg border border-line bg-white p-4">
+        <p className="text-sm font-semibold text-ink/80">{t("waitingOther", { name: conversation.otherName })}</p>
+        <button type="button" disabled={busy} onClick={() => run(() => endConnection(conversation.id))} className={`mt-3 ${btnGhost}`}>
+          {t("withdraw")}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-card-lg border border-line bg-white p-4">
+      <h3 className="text-sm font-extrabold text-ink">{otherConfirmed ? t("otherConfirmed", { name: conversation.otherName }) : t("question")}</h3>
+      <p className="mt-1 text-xs text-ink/70">{conversation.role === "household" ? t("explain") : t("explainCleaner")}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" disabled={busy} onClick={() => run(() => confirmDeal(conversation.id))} className={btnPrimary}>
+          {t("yes")}
+        </button>
+        <button type="button" disabled={busy} onClick={() => run(() => endConnection(conversation.id))} className={btnGhost}>
+          {t("no")}
+        </button>
+      </div>
+      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t("error")}</p> : null}
+    </div>
+  );
+}
