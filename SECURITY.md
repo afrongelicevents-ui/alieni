@@ -20,6 +20,7 @@ on at launch.
 | Security headers: CSP, HSTS, nosniff, frame denial, referrer & permissions policy | `next.config.ts` |
 | Fee events and work records are written only by security-definer functions/triggers (no insert policies); the service catalogue and pricing rules are admin-only; default pricing model is `none`, so no amount is ever recorded without an active rule | `0020_business_foundations.sql` |
 | Emergency cover: a request can only use the requester's own unit (trigger); open requests are visible only to opted-in cleaners with the right scope inside their travel radius (view + accept function); cancel/attendance run as the requester only; strikes are written by the attendance function only; business requests carry no fixed fee | `0021_cover.sql` |
+| Advert page: a non-published advert is served only to its owner or an admin (RLS plus an explicit owner check in the page); `cleaner_distances()` runs as the caller so RLS still hides unpublished ads | `0022_marketplace_fixes.sql`, `src/lib/cleaners-live.ts` |
 | Server-only secrets (`server-only` import for Mollie; service key only in the webhook route) | `src/lib/mollie.ts` |
 | Input validation with Zod + integer-cent money (no float drift) | `src/lib/validation.ts`, `src/lib/money.ts` |
 | No `dangerouslySetInnerHTML` / `eval`; user content rendered via React escaping | verified in review |

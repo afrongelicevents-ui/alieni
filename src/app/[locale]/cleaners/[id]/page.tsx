@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { getCleaner, isVogValid } from "@/lib/cleaners";
-import { fetchLiveCleaner } from "@/lib/cleaners-live";
+import { fetchLiveCleaner, fetchOwnCleaner } from "@/lib/cleaners-live";
 import { formatHourlyRate } from "@/lib/money";
 import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { AvailabilityGrid } from "@/components/cleaners/AvailabilityGrid";
@@ -25,11 +25,17 @@ export default async function CleanerProfilePage({
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
 
   const [live, user] = await Promise.all([fetchLiveCleaner(id), getSessionUser()]);
-  const cleaner = live ?? getCleaner(id);
+  // The owner (and an admin) can always open the ad, also as a draft or while hidden.
+  const own = !live && user ? await fetchOwnCleaner(id, user) : null;
+  const cleaner = live ?? own ?? getCleaner(id);
   if (!cleaner) notFound();
+  const notPublic = own ? own.status : null;
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
+      {notPublic ? (
+        <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-semibold text-ink/80" data-not-public={notPublic}>{t(`notPublic_${notPublic}` as "notPublic_draft")}</p>
+      ) : null}
       {/* header card */}
       <header className="relative rounded-card-lg border border-line bg-white p-6 shadow-sm">
         <FavouriteButton cleanerId={cleaner.id} className="absolute right-5 top-5" />

@@ -109,7 +109,11 @@
     "reportError_save_failed": "Reporting failed. Please try again.",
     "reportError_invalid": "Check your report.",
     "reportError_sample_subject": "This is a sample profile; reports only work on real ads.",
-    "reportError_not_configured": "Database not configured."
+    "reportError_not_configured": "Database not configured.",
+    "notPublic_draft": "This ad is still a draft and is not visible to customers. Put it online from My profile.",
+    "notPublic_hidden": "This ad is offline and is not visible to customers. Put it online from My profile.",
+    "notPublic_removed": "This ad was removed by Alieni and is not visible to customers.",
+    "notPublic_published": "This ad is visible to customers."
   },
   "favourites": {
     "title": "Favourites",
@@ -218,7 +222,12 @@
     "wt_commercial_contract": "Commercial contract (office, shop, hospitality)",
     "wt_turnover": "Turnovers (Airbnb & hotel)",
     "wt_emergency_cover": "Emergency & cover",
-    "workTypesError": "Pick at least one kind of work."
+    "workTypesError": "Pick at least one kind of work.",
+    "worksAsLabel": "How do you work?",
+    "worksAsHint": "Information for customers only. Alieni does not verify this.",
+    "worksAs_independent": "Independent (self-employed)",
+    "worksAs_company": "As a company",
+    "error_db_outdated": "The database needs an update (run the latest part on the database page) and then try again."
   },
   "auth": {
     "loginTitle": "Log in",
@@ -921,7 +930,8 @@
     "job_filled": "filled",
     "job_expired": "expired",
     "job_removed": "removed",
-    "job_pending_payment": "pending"
+    "job_pending_payment": "pending",
+    "error_db_outdated": "The database needs an update (run the latest part on the database page) and then try again."
   },
   "calendar": {
     "title": "Calendar & checkout cleaning",
@@ -1060,7 +1070,8 @@
     "strikesNote": "Note: {count} strike. At {limit} strikes emergency cover is switched off.",
     "error_not_allowed": "This is not possible (any more).",
     "error_date": "Pick a valid day.",
-    "error_unit": "Pick a location."
+    "error_unit": "Pick a location.",
+    "error_db_outdated": "The database needs an update (run the latest part on the database page) and then try again."
   },
   "businessPages": {
     "airbnb": {

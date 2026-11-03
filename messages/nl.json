@@ -109,7 +109,11 @@
     "reportError_save_failed": "Melden mislukt. Probeer het opnieuw.",
     "reportError_invalid": "Controleer je melding.",
     "reportError_sample_subject": "Dit is een voorbeeldprofiel; melden kan alleen bij echte advertenties.",
-    "reportError_not_configured": "Database niet ingesteld."
+    "reportError_not_configured": "Database niet ingesteld.",
+    "notPublic_draft": "Deze advertentie is nog een concept en is niet zichtbaar voor klanten. Zet hem online via Mijn profiel.",
+    "notPublic_hidden": "Deze advertentie staat offline en is niet zichtbaar voor klanten. Zet hem online via Mijn profiel.",
+    "notPublic_removed": "Deze advertentie is door Alieni verwijderd en is niet zichtbaar voor klanten.",
+    "notPublic_published": "Deze advertentie is zichtbaar voor klanten."
   },
   "favourites": {
     "title": "Favorieten",
@@ -218,7 +222,12 @@
     "wt_commercial_contract": "Zakelijk contract (kantoor, winkel, horeca)",
     "wt_turnover": "Wissels (Airbnb & hotel)",
     "wt_emergency_cover": "Spoed & vervanging",
-    "workTypesError": "Kies minstens één soort werk."
+    "workTypesError": "Kies minstens één soort werk.",
+    "worksAsLabel": "Hoe werk je?",
+    "worksAsHint": "Alleen ter informatie voor klanten. Alieni controleert dit niet.",
+    "worksAs_independent": "Zelfstandig (zzp)",
+    "worksAs_company": "Als bedrijf",
+    "error_db_outdated": "De database moet worden bijgewerkt (voer het laatste deel van de database-pagina uit) en probeer het dan opnieuw."
   },
   "auth": {
     "loginTitle": "Inloggen",
@@ -921,7 +930,8 @@
     "job_filled": "ingevuld",
     "job_expired": "verlopen",
     "job_removed": "verwijderd",
-    "job_pending_payment": "wacht"
+    "job_pending_payment": "wacht",
+    "error_db_outdated": "De database moet worden bijgewerkt (voer het laatste deel van de database-pagina uit) en probeer het dan opnieuw."
   },
   "calendar": {
     "title": "Kalender & checkout-schoonmaak",
@@ -1060,7 +1070,8 @@
     "strikesNote": "Let op: {count} strike. Bij {limit} strikes wordt spoed uitgezet.",
     "error_not_allowed": "Dit kan niet (meer).",
     "error_date": "Kies een geldige dag.",
-    "error_unit": "Kies een locatie."
+    "error_unit": "Kies een locatie.",
+    "error_db_outdated": "De database moet worden bijgewerkt (voer het laatste deel van de database-pagina uit) en probeer het dan opnieuw."
   },
   "businessPages": {
     "airbnb": {

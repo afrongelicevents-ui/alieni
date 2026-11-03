@@ -25,7 +25,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
         <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-mint text-forest"><BusinessTypeIcon type={type} className="h-7 w-7" /></span>
         <dl className="min-w-0 flex-1 text-sm">
           <dt className="sr-only">{t("companyName")}</dt><dd className="text-lg font-extrabold text-ink">{p.company_name}</dd>
-          <dd className="text-ink/70">{cfg.label[lang]} · KvK {p.kvk_number ?? "—"}{p.btw_number ? ` · BTW ${p.btw_number}` : ""}</dd>
+          <dd className="text-ink/70">{cfg.label[lang]}{p.btw_number ? ` · BTW ${p.btw_number}` : ""}</dd>
           <dd className="text-ink/70">{[p.contact_first_name, p.contact_last_name].filter(Boolean).join(" ")}</dd>
         </dl>
       </div>

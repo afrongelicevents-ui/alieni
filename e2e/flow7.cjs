@@ -68,7 +68,6 @@ const AMS = "SRID=4326;POINT(4.8952 52.3702)", GRQ = "SRID=4326;POINT(6.5665 53.
     await b.fill("input[type=email]", `hotel-${sfx}@example.com`);
     await b.fill("input[type=password]", "Test-Password-123");
     await b.fill("input[autocomplete='organization']", `Hotel Damrak ${sfx.toUpperCase()}`);
-    await b.fill("input[placeholder='12345678']", "12345678");
     await b.getByRole("button", { name: "Next" }).click();
     await b.getByRole("button", { name: "Next" }).click();
     await b.fill("input[type=number]", "24");

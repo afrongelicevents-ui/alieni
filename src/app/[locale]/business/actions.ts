@@ -6,6 +6,7 @@ import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { isSafeIcalUrl } from "@/lib/url-safety";
+import { dbErrorCode } from "@/lib/db-errors";
 import { SERVICE_KEYS, assertServiceEnabled, type ServiceKey } from "@/lib/services";
 import { dutchPostcodeSchema } from "@/lib/validation";
 
@@ -21,7 +22,6 @@ const profileSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
   lastName: z.string().trim().min(1).max(60),
   companyName: z.string().trim().min(1).max(120),
-  kvkNumber: z.string().trim().regex(/^[0-9]{8}$/),
   btwNumber: z.string().trim().max(20),
   businessType: z.enum(BUSINESS_TYPE_KEYS as [BusinessType, ...BusinessType[]]),
   unitCount: z.number().int().min(1).max(10000),
@@ -41,7 +41,6 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
     const row = {
       user_id: userId,
       company_name: b.companyName,
-      kvk_number: b.kvkNumber,
       btw_number: b.btwNumber || null,
       business_type: b.businessType,
       contact_first_name: b.firstName,
@@ -52,7 +51,7 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
     const { data: saved, error } = existing
       ? await supabase.from("business_profiles").update(row).eq("id", existing.id).select("id").single()
       : await supabase.from("business_profiles").insert(row).select("id").single();
-    if (error || !saved) return { ok: false, error: "save_failed" };
+    if (error || !saved) return { ok: false, error: dbErrorCode(error) };
 
     if (!existing) {
       const units = await Promise.all(

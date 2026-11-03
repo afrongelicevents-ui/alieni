@@ -38,7 +38,6 @@ async function signUp(page, email, role) {
   await cleaner.getByRole("button", { name: /Regular cleaning/ }).first().click();
   await cleaner.getByText("Both", { exact: true }).click();
   await cleaner.getByRole("button", { name: /^Schools/ }).click();
-  await cleaner.fill("input[placeholder='12345678']", "11112222");
   await cleaner.fill("input[type=date]", "2026-09-01");
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.fill("input[placeholder='1012 AB']", "9711 AB");

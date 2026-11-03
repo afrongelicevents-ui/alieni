@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import sharp from "sharp";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
-import { geocode } from "@/lib/geocode";
+import { geocodePlace } from "@/lib/geocode";
+import { dbErrorCode } from "@/lib/db-errors";
 import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
-import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
+import { JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { WORK_TYPES } from "@/lib/work-types";
 
 export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string };
@@ -21,7 +22,7 @@ const adSchema = z.object({
   workScope: z.enum(["household", "commercial", "both"]).default("household"),
   workTypes: z.array(z.enum(WORK_TYPES)).min(1).default(["household_regular"]),
   experienceYears: z.number().int().min(0).max(60).nullable().default(null),
-  kvkNumber: z.string().trim().regex(/^$|^[0-9]{8}$/),
+  worksAs: z.enum(["independent", "company"]).nullable().default(null),
   emergencyRateCents: z.number().int().min(0).max(50000),
   rateCents: z.number().int().min(DEFAULT_RATE_FLOOR_CENTS).max(50000),
   minHours: z.number().min(1).max(8),
@@ -47,8 +48,6 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
   const parsed = adSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const ad = parsed.data;
-  const wantsBusiness = ad.jobTypes.some((j) => (BUSINESS_JOB_TYPES as readonly string[]).includes(j));
-  if (wantsBusiness && !ad.kvkNumber) return { ok: false, error: "kvk_required" };
   if (ad.jobTypes.includes("emergency") && ad.emergencyRateCents < Math.ceil(ad.rateCents * 1.5)) return { ok: false, error: "emergency_rate" };
 
   try {
@@ -61,7 +60,12 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       .eq("id", userId);
     if (profileError) return { ok: false, error: "save_failed" };
 
-    const point = await geocode(ad.postcode);
+    const place = await geocodePlace(ad.postcode);
+    const point = place ? { lng: place.lng, lat: place.lat } : null;
+    if (!ad.city && place?.town) {
+      // town derived from the postcode, so a town search can find this cleaner
+      await supabase.from("profiles").update({ city: place.town }).eq("id", userId);
+    }
     const row = {
       user_id: userId,
       status: ad.publish ? "published" : "draft",
@@ -77,7 +81,7 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       work_scope: ad.workScope,
       work_types: deriveWorkTypes(ad.workTypes, ad.jobTypes),
       experience_years: ad.experienceYears,
-      kvk_number: ad.kvkNumber || null,
+      works_as: ad.worksAs,
       emergency_opt_in: ad.jobTypes.includes("emergency"),
       emergency_rate_cents: ad.jobTypes.includes("emergency") ? ad.emergencyRateCents : null,
       updated_at: new Date().toISOString(),
@@ -87,7 +91,7 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       .upsert(row, { onConflict: "user_id" })
       .select("id, status")
       .single();
-    if (error || !saved) return { ok: false, error: "save_failed" };
+    if (error || !saved) return { ok: false, error: dbErrorCode(error) };
 
     // Availability: replace the set.
     await supabase.from("availability_slots").delete().eq("cleaner_profile_id", saved.id);

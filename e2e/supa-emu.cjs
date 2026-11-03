@@ -275,7 +275,7 @@ function beforeUpdate(tname, row, patch, user) {
   if (tname === "profiles" && patch.role !== undefined && patch.role !== row.role) throw new Error("role cannot be changed after sign-up");
 }
 const DEFAULTS = {
-  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], work_scope: "household", experience_years: null, emergency_opt_in: false, min_hours: 2, radius_km: 10 }),
+  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], work_scope: "household", works_as: null, experience_years: null, emergency_opt_in: false, min_hours: 2, radius_km: 10 }),
   meeting_requests: () => ({ status: "requested" }),
   connections: () => ({ status: "pending" }),
   messages: () => ({ masked: true }),
@@ -334,6 +334,13 @@ function rest(req, res, url, raw) {
     }
     return send(res, 200, true);
   }
+  // RPC: cleaner_distances (precise km from an origin to every published ad with a location)
+  if (tname === "rpc/cleaner_distances") {
+    const { p_lng, p_lat } = JSON.parse(raw.toString() || "{}");
+    const origin = { lng: Number(p_lng), lat: Number(p_lat) };
+    const rows = table("cleaner_profiles").filter((c) => c.status === "published" && pointOf(c.location)).map((c) => ({ id: c.id, distance_km: Math.round(kmBetween(origin, pointOf(c.location)) * 10) / 10 }));
+    return send(res, 200, rows);
+  }
   // RPC: review_work_record (business/household confirms or disputes own record)
   if (tname === "rpc/review_work_record") {
     const user = userFromAuth(req);
@@ -384,6 +391,7 @@ function rest(req, res, url, raw) {
   try {
     if (req.method === "GET" || req.method === "HEAD") {
       let rows = applyFilters(viewRows ?? table(tname), params);
+      if (tname === "cleaner_profiles") { const me = user?.id; const admin = me && roleOf(me) === "admin"; rows = rows.filter((r) => r.status === "published" || r.user_id === me || admin); } // RLS "published ads are public"
       rows = applyOrder(rows, params.get("order"));
       const total = rows.length;
       const limit = Number(params.get("limit") || 0);

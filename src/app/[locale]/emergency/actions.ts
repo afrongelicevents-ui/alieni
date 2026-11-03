@@ -9,6 +9,7 @@ import { dutchPostcodeSchema } from "@/lib/validation";
 import { isDateAllowed } from "@/lib/cover";
 import { getCoverRules } from "@/lib/cover-data";
 import { notifyUser } from "@/lib/notify";
+import { dbErrorCode } from "@/lib/db-errors";
 
 export type EmergencyActionState = { ok: boolean; error?: string; id?: string };
 
@@ -55,25 +56,22 @@ export async function createEmergencyRequest(input: EmergencyInput): Promise<Eme
       if (!isDateAllowed(start.toISOString().slice(0, 10), new Date(), rules)) return { ok: false, error: "date" };
     }
     const point = await geocode(pc.data);
-    const { data, error } = await supabase
-      .from("emergency_requests")
-      .insert({
-        requester_id: userId,
-        requester_type: bp ? "business" : "household",
-        address_line: address.addressLine,
-        postcode: pc.data,
-        city: address.city,
-        location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null,
-        window_start: start.toISOString(),
-        window_end: end.toISOString(),
-        hours: r.hours,
-        tasks: r.tasks,
-        unit_id: bp ? r.unitId : null,
-        report_to: bp && r.reportTo ? r.reportTo : null,
-      })
-      .select("id")
-      .single();
-    if (error || !data) return { ok: false, error: error?.message?.includes("limit") ? "rate_limit" : "save_failed" };
+    // Households send only the original fields, so the household form never depends on a newer database part.
+    const base = {
+      requester_id: userId,
+      requester_type: bp ? "business" : "household",
+      address_line: address.addressLine,
+      postcode: pc.data,
+      city: address.city,
+      location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null,
+      window_start: start.toISOString(),
+      window_end: end.toISOString(),
+      hours: r.hours,
+      tasks: r.tasks,
+    };
+    const row = bp ? { ...base, unit_id: r.unitId, report_to: r.reportTo || null } : base;
+    const { data, error } = await supabase.from("emergency_requests").insert(row).select("id").single();
+    if (error || !data) return { ok: false, error: dbErrorCode(error) };
     revalidatePath("/emergency");
     return { ok: true, id: data.id };
   } catch (err) {

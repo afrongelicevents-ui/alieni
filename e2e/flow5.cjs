@@ -125,7 +125,6 @@ async function restPatch(token, table, query, body) {
     await b.fill("input[type=email]", `biz-${suffix}@example.com`);
     await b.fill("input[type=password]", "Test-Password-123");
     await b.fill("input[autocomplete='organization']", `Kantoor ${suffix.toUpperCase()}`);
-    await b.fill("input[placeholder='12345678']", "12345678");
     await b.getByRole("button", { name: "Next" }).click();
     await b.getByText("Offices", { exact: false }).first().click();
     await b.getByRole("button", { name: "Next" }).click();

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseFilters, searchCleaners } from "../cleaners";
 import { distanceKm, postcodeToLatLng } from "../geo";
+import { SAMPLE_CLEANERS } from "../sample-data";
 
 describe("postcode geo", () => {
   it("resolves Dutch postcode regions", () => {
@@ -68,5 +69,24 @@ describe("parseFilters", () => {
 
   it("drops invalid values", () => {
     expect(parseFilters({ day: "9", maxRate: "-5", sort: "bogus" })).toEqual({});
+  });
+});
+
+describe("customer-type preference and precise distance (audit fixes)", () => {
+  const base = SAMPLE_CLEANERS[0];
+  const mk = (id: string, workScope: "household" | "commercial" | "both", postcode = "1012 AB", radiusKm = 10) => ({ ...base, id, workScope, postcode, radiusKm, city: "Amsterdam" });
+  const dataset = [mk("h", "household"), mk("c", "commercial"), mk("b", "both")];
+  it("households never see commercial-only cleaners; businesses never see household-only ones", () => {
+    expect(searchCleaners({}, { dataset, viewer: "household" }).map((c) => c.id).sort()).toEqual(["b", "h"]);
+    expect(searchCleaners({}, { dataset, viewer: "business" }).map((c) => c.id).sort()).toEqual(["b", "c"]);
+    expect(searchCleaners({}, { dataset, viewer: "any" }).length).toBe(3);
+  });
+  it("a precise distance replaces the region estimate and uses the real radius", () => {
+    const origin = { lng: 4.9, lat: 52.37 };
+    const distances = new Map([["h", 11.5], ["b", 30]]);
+    const ids = searchCleaners({ q: "1012" }, { dataset, origin, distances, viewer: "any" }).map((c) => c.id);
+    expect(ids).toContain("h"); // 11.5 km within 10 km + 2 km margin
+    expect(ids).not.toContain("b"); // 30 km, precise, outside the radius
+    expect(ids).toContain("c"); // no precise distance: region estimate (same region) with the old tolerance
   });
 });

@@ -3,6 +3,7 @@ import { parseFilters, searchCleaners } from "@/lib/cleaners";
 import { fetchLiveCleaners } from "@/lib/cleaners-live";
 import { getSessionUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
+import { fetchDistances } from "@/lib/cleaners-live";
 import { SearchFilters } from "@/components/search/SearchFilters";
 import { CleanerCard } from "@/components/cleaners/CleanerCard";
 
@@ -28,7 +29,9 @@ export default async function SearchPage({
   ]);
   // Real ads only once there are any, or for every signed-in user; labelled examples for visitors while the platform is empty.
   const showSamples = !user && (live?.length ?? 0) === 0;
-  const results = searchCleaners(filters, { origin, dataset: showSamples ? undefined : (live ?? []) });
+  const distances = origin && !showSamples ? await fetchDistances(origin) : undefined;
+  const viewer = user?.role === "household" ? "household" : user?.role === "business" ? "business" : "any";
+  const results = searchCleaners(filters, { origin, dataset: showSamples ? undefined : (live ?? []), distances, viewer });
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">

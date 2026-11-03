@@ -33,7 +33,8 @@ export type SampleCleaner = {
   services: string[];
   languages: string[];
   jobTypes: JobType[];
-  kvkNumber?: string;
+  kvkNumber?: string; // legacy sample field, no longer collected
+  workScope?: "household" | "commercial" | "both";
   vog?: SampleVog;
   emergencyRateCents?: number;
   about: { nl: string; en: string };

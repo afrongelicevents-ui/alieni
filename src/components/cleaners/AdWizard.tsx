@@ -32,7 +32,7 @@ type Draft = {
   workScope: "household" | "commercial" | "both";
   workTypes: WorkType[];
   experienceYears: number | null;
-  kvkNumber: string;
+  worksAs: "" | "independent" | "company";
   vogFileName: string;
   vogIssuedAt: string;
   emergencyOptIn: boolean;
@@ -54,7 +54,7 @@ const EMPTY: Draft = {
   workScope: "household",
   workTypes: ["household_regular"],
   experienceYears: null,
-  kvkNumber: "",
+  worksAs: "",
   vogFileName: "",
   vogIssuedAt: "",
   emergencyOptIn: false,
@@ -156,8 +156,6 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       if (cents === null || cents < DEFAULT_RATE_FLOOR_CENTS) e.rate = t("rateError");
       if (draft.workScope !== "household" && !draft.jobTypes.some((j) => BUSINESS_ENVIRONMENTS.includes(j))) e.jobTypes = t("environmentsError");
       if (draft.workTypes.length === 0) e.workTypes = t("workTypesError");
-      const wantsBusiness = draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j));
-      if (wantsBusiness && !/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvk = t("kvkError");
       if (draft.jobTypes.includes("school") && !draft.vogIssuedAt) e.vog = t("vogError");
       if (draft.jobTypes.includes("emergency")) {
         const em = parseRateCents(draft.emergencyRateEuro);
@@ -186,7 +184,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       workScope: draft.workScope,
       workTypes: draft.workTypes,
       experienceYears: draft.experienceYears,
-      kvkNumber: draft.kvkNumber.trim(),
+      worksAs: draft.worksAs || null,
       emergencyRateCents: parseRateCents(draft.emergencyRateEuro) ?? 0,
       rateCents: parseRateCents(draft.rateEuro) ?? 0,
       minHours: draft.minHours,
@@ -422,14 +420,17 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
               <span>{JOB_TYPE_LABELS.emergency[locale]} <span className="block text-xs font-medium text-ink/60">{t("emergencyHint")}</span></span>
             </label>
 
-            {draft.jobTypes.some((j) => BUSINESS_JOB_TYPES.includes(j)) ? (
-              <label className="text-sm font-semibold text-ink/80">
-                {t("kvkLabel")}
-                <input type="text" inputMode="numeric" value={draft.kvkNumber} onChange={(e) => persist({ ...draft, kvkNumber: e.target.value })} placeholder="12345678" className={`mt-1 ${inputCls}`} />
-                <p className="mt-1 text-xs font-medium text-ink/70">{t("kvkHint")}</p>
-                {errors.kvk ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.kvk}</p> : null}
-              </label>
-            ) : null}
+            <fieldset>
+              <legend className="text-sm font-semibold text-ink/80">{t("worksAsLabel")} <span className="block text-xs font-medium text-ink/60">{t("worksAsHint")}</span></legend>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {(["independent", "company"] as const).map((w) => (
+                  <label key={w} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border-2 px-3 text-center text-sm font-bold ${draft.worksAs === w ? "border-forest bg-mint text-forest" : "border-line bg-white text-ink/70"}`}>
+                    <input type="radio" name="works-as" value={w} checked={draft.worksAs === w} onChange={() => persist({ ...draft, worksAs: draft.worksAs === w ? "" : w })} className="sr-only" />
+                    {t(`worksAs_${w}` as "worksAs_independent")}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
             {draft.jobTypes.includes("school") ? (
               <fieldset className="rounded-xl border border-forest/30 bg-mint p-4">

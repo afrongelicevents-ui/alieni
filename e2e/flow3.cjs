@@ -41,7 +41,6 @@ async function signUp(page, email, role) {
   await cleaner.getByText("Both", { exact: true }).click();
   await cleaner.getByRole("button", { name: /^Hotels/ }).click();
   await cleaner.getByLabel(/Emergency jobs/).check();
-  await cleaner.fill("input[placeholder='12345678']", "12345678");
   await cleaner.fill("input[inputmode='decimal'] >> nth=0", "30,00");
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.fill("input[placeholder='1012 AB']", "1012 AB");
@@ -49,7 +48,7 @@ async function signUp(page, email, role) {
   await cleaner.getByRole("button", { name: /Save ad|Publish/ }).click();
   await cleaner.waitForSelector("text=Your ad is live", { timeout: 15000 });
   const ad = (await tbl("cleaner_profiles"))[0];
-  ok("Cleaner: ad with hotel job type, KvK and emergency opt-in", ad?.status === "published" && ad.emergency_opt_in === true && ad.kvk_number === "12345678", JSON.stringify({ jt: ad?.job_types, em: ad?.emergency_rate_cents }));
+  ok("Cleaner: ad with hotel job type and emergency opt-in, no KvK asked", ad?.status === "published" && ad.emergency_opt_in === true && ad.kvk_number == null, JSON.stringify({ jt: ad?.job_types, em: ad?.emergency_rate_cents }));
 
   // ---------- Business sign-up (signed out) ----------
   const bizCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -60,7 +59,6 @@ async function signUp(page, email, role) {
   await biz.fill("input[type=email]", "hotel@example.com");
   await biz.fill("input[type=password]", "Test-Password-123");
   await biz.fill("input[autocomplete='organization']", "Hotel De Linde");
-  await biz.fill("input[placeholder='12345678']", "87654321");
   await biz.getByRole("button", { name: "Next" }).click(); // type (hotel preselected)
   await biz.getByRole("button", { name: "Next" }).click(); // how many
   await biz.fill("input[type=number]", "24");

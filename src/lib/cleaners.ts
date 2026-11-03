@@ -28,7 +28,7 @@ export function isVogValid(vog: SampleVog | undefined, now: Date, maxAgeMonths: 
   return new Date(vog.issuedAt) >= cutoff;
 }
 
-export type CleanerResult = SampleCleaner & { distanceKm: number | null };
+export type CleanerResult = SampleCleaner & { distanceKm: number | null; preciseDistance?: boolean };
 
 export function searchCleaners(
   filters: CleanerFilters,
@@ -39,6 +39,10 @@ export function searchCleaners(
     dataset?: SampleCleaner[];
     now?: Date;
     vogMaxAgeMonths?: number;
+    /** Precise distances (km) from the database, by cleaner id; cleaners missing here fall back to the region table. */
+    distances?: Map<string, number>;
+    /** Who is searching: cleaners choose whether they work for households, businesses or both. */
+    viewer?: "household" | "business" | "any";
   } = {},
 ): CleanerResult[] {
   const origin =
@@ -46,21 +50,29 @@ export function searchCleaners(
   const dataset = options.dataset ?? SAMPLE_CLEANERS;
   const qLower = filters.q?.trim().toLowerCase() ?? "";
   const isTownQuery = qLower !== "" && !/\d/.test(qLower);
+  const viewer = options.viewer ?? "any";
 
   let results: CleanerResult[] = dataset.map((c) => {
+    const precise = options.distances?.get(c.id);
     const loc = postcodeToLatLng(c.postcode);
-    return {
-      ...c,
-      distanceKm: origin && loc ? Math.round(distanceKm(origin, loc) * 10) / 10 : null,
-    };
+    const estimate = origin && loc ? Math.round(distanceKm(origin, loc) * 10) / 10 : null;
+    return { ...c, distanceKm: precise ?? estimate, preciseDistance: precise !== undefined };
   });
+
+  // Customer type: a cleaner who only works for households is not shown to businesses, and the other way round.
+  if (viewer !== "any") {
+    results = results.filter((c) => {
+      const scope = c.workScope ?? "household";
+      return scope === "both" || scope === viewer || (viewer === "business" && scope === "commercial");
+    });
+  }
 
   if (isTownQuery && !origin) {
     results = results.filter((c) => c.city.toLowerCase().includes(qLower));
   } else if (origin) {
-    // Within the cleaner's own travel radius (+ small tolerance for the
-    // region-level approximation of sample data).
-    results = results.filter((c) => c.distanceKm !== null && c.distanceKm <= c.radiusKm + 15);
+    // Within the cleaner's own travel radius. A precise distance gets a 2 km margin;
+    // the region-level estimate (first two postcode digits) keeps a 15 km tolerance.
+    results = results.filter((c) => c.distanceKm !== null && c.distanceKm <= c.radiusKm + (c.preciseDistance ? 2 : 15));
   }
 
   if (filters.service) {

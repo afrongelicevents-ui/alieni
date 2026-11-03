@@ -22,6 +22,36 @@ type PdokDoc = {
 
 const cache = new Map<string, LatLng | null>();
 
+export type GeoPlace = LatLng & { town: string | null };
+const placeCache = new Map<string, GeoPlace | null>();
+
+/** Coordinates plus the town name (PDOK "woonplaatsnaam"); region-table fallback has no town. */
+export async function geocodePlace(query: string): Promise<GeoPlace | null> {
+  const normalized = query.trim().toLowerCase().slice(0, 60);
+  if (!normalized) return null;
+  const cached = placeCache.get(normalized);
+  if (cached !== undefined) return cached;
+  let result: GeoPlace | null = null;
+  try {
+    const params = new URLSearchParams({ q: normalized, rows: "1", fq: "type:(postcode OR woonplaats)", fl: "type,centroide_ll,woonplaatsnaam" });
+    const res = await fetch(`${PDOK_URL}?${params}`, { signal: AbortSignal.timeout(2500), headers: { Accept: "application/json" }, next: { revalidate: 60 * 60 * 24 * 30 } });
+    if (res.ok) {
+      const data = (await res.json()) as { response?: { docs?: (PdokDoc & { woonplaatsnaam?: string })[] } };
+      const doc = data.response?.docs?.[0];
+      const match = doc?.centroide_ll?.match(POINT_RE);
+      if (match) result = { lng: Number(match[1]), lat: Number(match[2]), town: doc?.woonplaatsnaam ?? null };
+    }
+  } catch {
+    // PDOK unreachable — region table below
+  }
+  if (!result) {
+    const region = postcodeToLatLng(normalized);
+    result = region ? { ...region, town: null } : null;
+  }
+  placeCache.set(normalized, result);
+  return result;
+}
+
 export async function geocode(query: string): Promise<LatLng | null> {
   const normalized = query.trim().toLowerCase().slice(0, 60);
   if (!normalized) return null;

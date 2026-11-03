@@ -18,7 +18,6 @@ type Draft = {
   email: string;
   password: string;
   companyName: string;
-  kvkNumber: string;
   btwNumber: string;
   businessType: BusinessType;
   unitCount: string;
@@ -38,7 +37,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft>({
-    firstName: "", lastName: "", email: knownEmail ?? "", password: "", companyName: "", kvkNumber: "", btwNumber: "",
+    firstName: "", lastName: "", email: knownEmail ?? "", password: "", companyName: "", btwNumber: "",
     businessType: initialType ?? "airbnb", unitCount: "1",
     units: [{ id: "u1", name: "", addressLine: "", postcode: "", city: "" }],
   });
@@ -60,7 +59,6 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         if (draft.password.length < 8) e.password = t("passwordError");
       }
       if (!draft.companyName.trim()) e.companyName = t("required");
-      if (!/^\d{8}$/.test(draft.kvkNumber.trim())) e.kvkNumber = t("kvkError");
     }
     if (step === 2 && !(Number(draft.unitCount) >= 1)) e.unitCount = t("required");
     if (step === 3) {
@@ -101,7 +99,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
       }
       const result = await saveBusinessProfile({
         firstName: draft.firstName.trim(), lastName: draft.lastName.trim(),
-        companyName: draft.companyName.trim(), kvkNumber: draft.kvkNumber.trim(), btwNumber: draft.btwNumber.trim(),
+        companyName: draft.companyName.trim(), btwNumber: draft.btwNumber.trim(),
         businessType: draft.businessType, unitCount: unitCountNum,
         units: draft.units.map((u) => ({ name: u.name.trim(), addressLine: u.addressLine.trim(), postcode: u.postcode, city: u.city.trim() })),
       });
@@ -167,10 +165,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
             )}
             <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("companyName")}
               <input className={`mt-1 ${inputCls}`} value={draft.companyName} onChange={(e) => set({ companyName: e.target.value })} autoComplete="organization" />{err("companyName")}</label>
-            <label className="text-sm font-semibold text-ink/80">{t("kvk")}
-              <input inputMode="numeric" className={`mt-1 ${inputCls}`} value={draft.kvkNumber} onChange={(e) => set({ kvkNumber: e.target.value })} placeholder="12345678" />
-              <span className="mt-1 block text-xs font-medium text-ink/70">{t("kvkNote")}</span>{err("kvkNumber")}</label>
-            <label className="text-sm font-semibold text-ink/80">{t("btwOptional")}
+            <label className="text-sm font-semibold text-ink/80 sm:col-span-2">{t("btwOptional")}
               <input className={`mt-1 ${inputCls}`} value={draft.btwNumber} onChange={(e) => set({ btwNumber: e.target.value })} placeholder="NL123456789B01" /></label>
           </div>
         ) : null}

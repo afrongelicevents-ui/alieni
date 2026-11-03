@@ -74,7 +74,6 @@ const inHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
     await b.fill("input[type=email]", `host-${suffix}@example.com`);
     await b.fill("input[type=password]", "Test-Password-123");
     await b.fill("input[autocomplete='organization']", `Canal Stays ${suffix.toUpperCase()}`);
-    await b.fill("input[placeholder='12345678']", "12345678");
     await b.getByRole("button", { name: "Next" }).click();
     ok(`[${label}] Sign-up step 2: type cards say "Price to be announced"`, (await b.getByText("Price to be announced").count()) >= 5);
     await b.getByRole("button", { name: "Next" }).click();

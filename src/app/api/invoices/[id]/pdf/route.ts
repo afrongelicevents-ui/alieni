@@ -22,8 +22,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   let customer = "";
   if (invoice.business_id) {
-    const { data: b } = await supabase.from("business_profiles").select("company_name, kvk_number, btw_number").eq("id", invoice.business_id).maybeSingle();
-    customer = b ? `${b.company_name}${b.kvk_number ? ` · KvK ${b.kvk_number}` : ""}${b.btw_number ? ` · BTW ${b.btw_number}` : ""}` : "";
+    const { data: b } = await supabase.from("business_profiles").select("company_name, btw_number").eq("id", invoice.business_id).maybeSingle();
+    customer = b ? `${b.company_name}${b.btw_number ? ` · BTW ${b.btw_number}` : ""}` : "";
   } else if (invoice.household_id) {
     const { data: p } = await supabase.from("profiles").select("display_name").eq("id", invoice.household_id).maybeSingle();
     customer = p?.display_name ?? "";

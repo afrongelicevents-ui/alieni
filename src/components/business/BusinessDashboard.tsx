@@ -34,7 +34,7 @@ export function BusinessDashboard({ bundle, tiles, unitPriceCents }: { bundle: B
         <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-mint text-forest"><BusinessTypeIcon type={type} className="h-7 w-7" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-extrabold text-ink">{profile.company_name}</h2>
-          <p className="text-sm text-ink/70">{cfg.label[lang]}{profile.kvk_number ? ` · KvK ${profile.kvk_number}` : ""} · {profile.unit_count} {profile.unit_count === 1 ? cfg.unit[lang] : cfg.unitPlural[lang]}</p>
+          <p className="text-sm text-ink/70">{cfg.label[lang]} · {profile.unit_count} {profile.unit_count === 1 ? cfg.unit[lang] : cfg.unitPlural[lang]}</p>
         </div>
         <Link href="/business/profile" className="rounded-full border border-line px-4 py-2 text-xs font-bold text-forest hover:bg-mint">{t("navProfile")}</Link>
       </div>
