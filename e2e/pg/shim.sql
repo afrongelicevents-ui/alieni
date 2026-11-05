@@ -1,6 +1,7 @@
 -- Minimal stand-ins for what Supabase provides, so the real migrations run on a plain Postgres.
 create schema if not exists auth;
 create schema if not exists storage;
+grant usage on schema auth to anon, authenticated, service_role;
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;

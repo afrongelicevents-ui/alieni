@@ -139,6 +139,50 @@ begin
   exception when others then reset role; insert into probe_results values ('flow', 'household', 'cannot see business work, fees or units', false, sqlstate || ' ' || sqlerrm); end;
 end $$;
 
+
+-- 5: isolation between two businesses + a household, and the dashboard reads
+do $$
+declare b1 uuid; b2 uuid; hh uuid; n int; b1bp uuid;
+begin
+  select uid into b1 from probe_users where role = 'business';
+  select uid into hh from probe_users where role = 'household';
+  select id into b1bp from business_profiles where user_id = b1;
+  insert into auth.users (email, raw_user_meta_data) values ('biz2@probe.test', '{"role":"business","display_name":"BIZ2"}') returning id into b2;
+  begin
+    perform set_config('request.jwt.claim.sub', b2::text, true);
+    set local role authenticated;
+    insert into business_profiles (user_id, company_name, business_type, contact_first_name, contact_last_name, unit_count) values (b2, 'Second BV', 'hotel', 'C', 'D', 1);
+    with u as (update business_profiles set company_name = 'HACKED' where id = b1bp returning 1) select count(*) into n from u;      if n <> 0 then raise exception 'edited another company'; end if;
+    with d as (delete from business_profiles where id = b1bp returning 1) select count(*) into n from d;                          if n <> 0 then raise exception 'deleted another company'; end if;
+    with d as (delete from business_units where business_id = b1bp returning 1) select count(*) into n from d;                   if n <> 0 then raise exception 'deleted another units'; end if;
+    select count(*) into n from business_units where business_id = b1bp;                                                         if n <> 0 then raise exception 'sees another units'; end if;
+    select count(*) into n from fee_events;                                                                                       if n <> 0 then raise exception 'sees another fee events'; end if;
+    select count(*) into n from emergency_requests where requester_id = b1;                                                       if n <> 0 then raise exception 'sees another emergency requests'; end if;
+    begin insert into business_units (business_id, name, address_line, postcode, city) values (b1bp, 'x', 'x', '1011 AB', 'x'); raise exception 'added a unit to another company';
+    exception when insufficient_privilege then null; when others then if sqlstate not in ('42501') then raise; end if; end;
+    reset role;
+    insert into probe_results values ('flow', 'business', 'a second business cannot read, edit, delete or add to another company', true, null);
+  exception when others then reset role; insert into probe_results values ('flow', 'business', 'a second business cannot read, edit, delete or add to another company', false, sqlstate || ' ' || sqlerrm); end;
+  begin
+    perform set_config('request.jwt.claim.sub', hh::text, true);
+    set local role authenticated;
+    with u as (update business_profiles set company_name = 'HACKED' returning 1) select count(*) into n from u; if n <> 0 then raise exception 'household edited a company'; end if;
+    reset role;
+    insert into probe_results values ('flow', 'household', 'cannot edit a company', true, null);
+  exception when others then reset role; insert into probe_results values ('flow', 'household', 'cannot edit a company', false, sqlstate || ' ' || sqlerrm); end;
+  begin
+    perform set_config('request.jwt.claim.sub', b1::text, true);
+    set local role authenticated;
+    update business_profiles set unit_count = 2 where user_id = b1;
+    insert into business_units (business_id, name, address_line, postcode, city) values (b1bp, 'Second', 'Kade 5', '1011 AB', 'Amsterdam');
+    perform id, user_id, company_name, kvk_number, btw_number, business_type, contact_first_name, contact_last_name, unit_count, unit_price_cents, pending_unit_count, billing_started_at, billing_paused_at, billing_ended_at, payment_failed_at, created_at from business_profiles where user_id = b1;
+    perform 1 from profiles where id = b1;
+    perform 1 from cleaning_slots; perform 1 from invoices; perform 1 from jobs j left join job_responses r on r.job_id = j.id; perform 1 from fee_events; perform 1 from work_records; perform 1 from emergency_requests where requester_id = b1;
+    reset role;
+    insert into probe_results values ('flow', 'business', 'dashboard reads + unit count + second address', true, null);
+  exception when others then reset role; insert into probe_results values ('flow', 'business', 'dashboard reads + unit count + second address', false, sqlstate || ' ' || sqlerrm); end;
+end $$;
+
 select case when ok then 'PASS' else 'FAIL' end || '  ' || kind || '  ' || who || '  ' || subject || coalesce('  — ' || detail, '')
   from probe_results where not ok or kind = 'flow' order by ok, kind, who, subject;
 select 'summary: ' || count(*) filter (where ok) || ' ok, ' || count(*) filter (where not ok) || ' failed, of ' || count(*) from probe_results;
