@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "./supabase/server";
+import { businessNames } from "./business-public";
 import type { BusinessType } from "./business";
 
 /** Business account data for the signed-in business user (RLS-scoped). */
@@ -143,11 +144,13 @@ export async function getWorkForCleaner(cleanerProfileId: string): Promise<(Work
   if (!supabase) return [];
   const { data } = await supabase
     .from("work_records")
-    .select("id, business_id, household_id, cleaner_profile_id, service_key, reference_table, reference_id, scheduled_start, scheduled_end, started_at, completed_at, business_confirmed_at, outcome, notes, business_profiles ( company_name )")
+    .select("id, business_id, household_id, cleaner_profile_id, service_key, reference_table, reference_id, scheduled_start, scheduled_end, started_at, completed_at, business_confirmed_at, outcome, notes")
     .eq("cleaner_profile_id", cleanerProfileId)
     .order("scheduled_start", { ascending: false })
     .limit(100);
-  return ((data ?? []) as unknown as (WorkRecordRow & { business_profiles: { company_name: string } | null })[]).map(({ business_profiles, ...w }) => ({ ...w, company: business_profiles?.company_name ?? null }));
+  const rows = (data ?? []) as unknown as WorkRecordRow[];
+  const companyOf = await businessNames(supabase, rows.map((w) => w.business_id));
+  return rows.map((w) => ({ ...w, company: w.business_id ? companyOf.get(w.business_id) ?? null : null }));
 }
 
 /** Slots a cleaner may see: connected businesses' turnovers (RLS). */
@@ -156,14 +159,16 @@ export async function getSlotsForCleaner(): Promise<(SlotRow & { unitName: strin
   if (!supabase) return [];
   const { data: slots } = await supabase
     .from("cleaning_slots")
-    .select("id, unit_id, business_id, source, slot_date, starts_at, ends_at, status, reserved_by, reserved_at, reminder_sent_at, done_at, done_photo_path, business_units ( name, address_line ), business_profiles ( company_name )")
+    .select("id, unit_id, business_id, source, slot_date, starts_at, ends_at, status, reserved_by, reserved_at, reminder_sent_at, done_at, done_photo_path, business_units ( name, address_line )")
     .gte("slot_date", new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10))
     .neq("status", "cancelled")
     .order("starts_at")
     .limit(200);
-  return ((slots ?? []) as unknown as (SlotRow & { business_units: { name: string; address_line: string } | null; business_profiles: { company_name: string } | null })[]).map((s) => ({
+  const rows = (slots ?? []) as unknown as (SlotRow & { business_units: { name: string; address_line: string } | null })[];
+  const companyOf = await businessNames(supabase, rows.map((s) => s.business_id));
+  return rows.map((s) => ({
     ...s,
     unitName: s.business_units?.name || s.business_units?.address_line || "",
-    company: s.business_profiles?.company_name ?? "",
+    company: companyOf.get(s.business_id) ?? "",
   }));
 }

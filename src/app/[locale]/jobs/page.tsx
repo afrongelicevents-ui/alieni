@@ -5,13 +5,13 @@ import { SAMPLE_JOBS } from "@/lib/jobs";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { businessNames } from "@/lib/business-public";
 
 export const dynamic = "force-dynamic";
 
 type JobRow = {
   id: string; business_id: string; space_type: BoardJob["spaceType"]; size_m2: number | null; postcode: string; city: string | null;
   frequency: BoardJob["frequency"]; schedule_note: string | null; description: string; budget_cents: number;
-  business_profiles: { company_name: string; user_id: string } | null;
   job_responses: { id: string; cleaner_profile_id: string; rate_cents: number; message: string }[] | null;
 };
 
@@ -31,6 +31,7 @@ export default async function JobsPage({
 
   let myCleanerProfileId: string | null = null;
   let isBusiness = false;
+  let myBusinessId: string | null = null;
   let jobs: BoardJob[] = [];
 
   if (supabase) {
@@ -41,14 +42,17 @@ export default async function JobsPage({
       ]);
       myCleanerProfileId = cp?.id ?? null;
       isBusiness = Boolean(bp);
+      myBusinessId = bp?.id ?? null;
     }
     const { data } = await supabase
       .from("jobs")
-      .select("id, business_id, space_type, size_m2, postcode, city, frequency, schedule_note, description, budget_cents, business_profiles ( company_name, user_id ), job_responses ( id, cleaner_profile_id, rate_cents, message )")
+      .select("id, business_id, space_type, size_m2, postcode, city, frequency, schedule_note, description, budget_cents, job_responses ( id, cleaner_profile_id, rate_cents, message )")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(100);
     const rows = (data ?? []) as unknown as JobRow[];
+    // company names come from the restricted public view; nothing else about a company is readable here
+    const companyOf = await businessNames(supabase, rows.map((r) => r.business_id));
     const responderIds = [...new Set(rows.flatMap((r) => (r.job_responses ?? []).map((x) => x.cleaner_profile_id)))];
     const nameOf = new Map<string, string>();
     if (responderIds.length) {
@@ -56,12 +60,12 @@ export default async function JobsPage({
       for (const c of (cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]) nameOf.set(c.id, c.profiles?.display_name ?? "—");
     }
     jobs = rows.map((r) => {
-      const mine = Boolean(user) && r.business_profiles?.user_id === user?.id;
+      const mine = myBusinessId !== null && r.business_id === myBusinessId;
       const responses = r.job_responses ?? [];
       const myResponse = myCleanerProfileId ? responses.find((x) => x.cleaner_profile_id === myCleanerProfileId) : undefined;
       return {
         id: r.id,
-        companyName: r.business_profiles?.company_name ?? "—",
+        companyName: companyOf.get(r.business_id) ?? "—",
         spaceType: r.space_type,
         sizeM2: r.size_m2,
         postcode: r.postcode,

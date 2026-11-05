@@ -191,6 +191,19 @@ function parseSelect(select) {
   if (buf.trim()) cols.push(buf.trim());
   return { cols, embeds };
 }
+let ctxUser = null; // the user of the request being answered (for row-level rules inside embeds)
+// business_profiles rows are readable by their owner and admins only (Part 14); everyone else uses business_public
+function canSeeBusiness(row) { return Boolean(ctxUser) && (row.user_id === ctxUser.id || roleOf(ctxUser.id) === "admin"); }
+function businessPublic(me) {
+  const admin = me && roleOf(me.id) === "admin";
+  const myCp = me && table("cleaner_profiles").find((c) => c.user_id === me.id);
+  return table("business_profiles").filter((b) =>
+    table("jobs").some((j) => j.business_id === b.id && j.status === "published") ||
+    (me && b.user_id === me.id) || admin ||
+    (myCp && table("work_records").some((w) => w.business_id === b.id && w.cleaner_profile_id === myCp.id)) ||
+    (me && table("connections").some((c) => c.household_id === b.user_id && c.cleaner_id === me.id && c.status === "active"))
+  ).map((b) => ({ id: b.id, company_name: b.company_name, business_type: b.business_type }));
+}
 function project(tname, row, select) {
   const { cols, embeds } = parseSelect(select);
   const out = {};
@@ -202,7 +215,7 @@ function project(tname, row, select) {
     if (fkToTarget) {
       const [col] = fkToTarget;
       const trow = table(target).find((r) => r[PK[target] ?? "id"] === row[col]);
-      out[target] = trow ? project(target, trow, e.select) : null;
+      out[target] = trow && (target !== "business_profiles" || canSeeBusiness(trow)) ? project(target, trow, e.select) : null;
       continue;
     }
     const fkFromTarget = Object.entries(FK[target] ?? {}).find(([, t]) => t === tname);
@@ -370,7 +383,12 @@ function rest(req, res, url, raw) {
   }
   if (tname.startsWith("rpc/")) return send(res, 404, { message: `unknown rpc ${tname}` });
   // view: open emergency requests without the street address
+  ctxUser = userFromAuth(req);
   let viewRows = null;
+  if (tname === "business_public") {
+    tname = "business_profiles";
+    viewRows = businessPublic(ctxUser);
+  }
   if (tname === "emergency_requests_open") {
     tname = "emergency_requests";
     const me = userFromAuth(req); const cpMe = me && table("cleaner_profiles").find((c) => c.user_id === me.id);
@@ -391,6 +409,7 @@ function rest(req, res, url, raw) {
   try {
     if (req.method === "GET" || req.method === "HEAD") {
       let rows = applyFilters(viewRows ?? table(tname), params);
+      if (tname === "business_profiles" && !viewRows) rows = rows.filter(canSeeBusiness); // RLS: owner and admin only
       if (tname === "cleaner_profiles") { const me = user?.id; const admin = me && roleOf(me) === "admin"; rows = rows.filter((r) => r.status === "published" || r.user_id === me || admin); } // RLS "published ads are public"
       rows = applyOrder(rows, params.get("order"));
       const total = rows.length;

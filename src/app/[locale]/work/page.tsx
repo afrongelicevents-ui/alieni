@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSlotsForCleaner, getWorkForCleaner } from "@/lib/business-data";
 import { MyWorkList } from "@/components/cleaners/MyWorkList";
 import { getCoverRules } from "@/lib/cover-data";
+import { businessNames } from "@/lib/business-public";
 import { JobsBoard, type BoardJob } from "@/components/jobs/JobsBoard";
 import { SlotsList } from "@/components/cleaners/SlotsList";
 import { EmergencyCleanerList, type MineRequest, type OpenRequest } from "@/components/emergency/EmergencyCleanerList";
@@ -70,12 +71,14 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   if (current === "jobs") {
     const spaceTypes = spaceTypesFor(profile.job_types);
     const { data } = spaceTypes.length
-      ? await supabase.from("jobs").select("id, space_type, size_m2, postcode, city, frequency, schedule_note, description, budget_cents, business_profiles ( company_name, user_id ), job_responses ( id, cleaner_profile_id, rate_cents, message )").eq("status", "published").in("space_type", spaceTypes).order("published_at", { ascending: false }).limit(100)
+      ? await supabase.from("jobs").select("id, business_id, space_type, size_m2, postcode, city, frequency, schedule_note, description, budget_cents, job_responses ( id, cleaner_profile_id, rate_cents, message )").eq("status", "published").in("space_type", spaceTypes).order("published_at", { ascending: false }).limit(100)
       : { data: [] };
-    type Row = { id: string; space_type: BoardJob["spaceType"]; size_m2: number | null; postcode: string; city: string | null; frequency: BoardJob["frequency"]; schedule_note: string | null; description: string; budget_cents: number; business_profiles: { company_name: string } | null; job_responses: { id: string; cleaner_profile_id: string; rate_cents: number; message: string }[] | null };
-    jobs = ((data ?? []) as unknown as Row[]).map((r) => {
+    type Row = { id: string; business_id: string; space_type: BoardJob["spaceType"]; size_m2: number | null; postcode: string; city: string | null; frequency: BoardJob["frequency"]; schedule_note: string | null; description: string; budget_cents: number; job_responses: { id: string; cleaner_profile_id: string; rate_cents: number; message: string }[] | null };
+    const jobRows = (data ?? []) as unknown as Row[];
+    const companyOf = await businessNames(supabase, jobRows.map((r) => r.business_id));
+    jobs = jobRows.map((r) => {
       const my = (r.job_responses ?? []).find((x) => x.cleaner_profile_id === profile.id);
-      return { id: r.id, companyName: r.business_profiles?.company_name ?? "—", spaceType: r.space_type, sizeM2: r.size_m2, postcode: r.postcode, city: r.city ?? "", frequency: r.frequency, scheduleNote: r.schedule_note, description: r.description, budgetCents: r.budget_cents, mine: false, sample: false, myResponse: my ? { rateCents: my.rate_cents } : null, responses: [] };
+      return { id: r.id, companyName: companyOf.get(r.business_id) ?? "—", spaceType: r.space_type, sizeM2: r.size_m2, postcode: r.postcode, city: r.city ?? "", frequency: r.frequency, scheduleNote: r.schedule_note, description: r.description, budgetCents: r.budget_cents, mine: false, sample: false, myResponse: my ? { rateCents: my.rate_cents } : null, responses: [] };
     });
   }
   if (current === "turnovers") slots = await getSlotsForCleaner();
