@@ -9,9 +9,9 @@ import { dutchPostcodeSchema } from "@/lib/validation";
 import { isDateAllowed } from "@/lib/cover";
 import { getCoverRules } from "@/lib/cover-data";
 import { notifyUser } from "@/lib/notify";
-import { dbErrorCode } from "@/lib/db-errors";
+import { dbErrorCode, detailOf } from "@/lib/db-errors";
 
-export type EmergencyActionState = { ok: boolean; error?: string; id?: string };
+export type EmergencyActionState = { ok: boolean; error?: string; id?: string; detail?: string };
 
 const requestSchema = z.object({
   addressLine: z.string().trim().max(200).default(""),
@@ -71,7 +71,7 @@ export async function createEmergencyRequest(input: EmergencyInput): Promise<Eme
     };
     const row = bp ? { ...base, unit_id: r.unitId, report_to: r.reportTo || null } : base;
     const { data, error } = await supabase.from("emergency_requests").insert(row).select("id").single();
-    if (error || !data) return { ok: false, error: dbErrorCode(error) };
+    if (error || !data) return { ok: false, error: dbErrorCode(error), detail: detailOf(error, "emergency_requests") };
     revalidatePath("/emergency");
     return { ok: true, id: data.id };
   } catch (err) {

@@ -829,7 +829,7 @@
     "error_exists": "Dit e-mailadres heeft al een account. Log eerst in en kom dan terug.",
     "error_failed": "Er ging iets mis. Probeer het opnieuw.",
     "error_invalid": "Controleer de ingevulde velden.",
-    "error_save_failed": "Opslaan mislukt. Zijn deel 5 t/m 8 van de database-setup uitgevoerd?",
+    "error_save_failed": "Opslaan is niet gelukt. Probeer het opnieuw; blijft het misgaan, stuur dan de technische melding hieronder door.",
     "error_not_signed_in": "Je bent uitgelogd. Log opnieuw in.",
     "error_not_configured": "Database niet ingesteld.",
     "error_no_business": "Geen zakelijk account gevonden.",

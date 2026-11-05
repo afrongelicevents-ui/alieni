@@ -829,7 +829,7 @@
     "error_exists": "This email already has an account. Log in first, then come back.",
     "error_failed": "Something went wrong. Please try again.",
     "error_invalid": "Check the fields you filled in.",
-    "error_save_failed": "Saving failed. Have parts 5 to 8 of the database setup been run?",
+    "error_save_failed": "Saving failed. Try again; if it keeps happening, send the technical note below.",
     "error_not_signed_in": "You are signed out. Log in again.",
     "error_not_configured": "Database not configured.",
     "error_no_business": "No business account found.",

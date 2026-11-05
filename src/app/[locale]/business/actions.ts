@@ -6,11 +6,11 @@ import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { isSafeIcalUrl } from "@/lib/url-safety";
-import { dbErrorCode } from "@/lib/db-errors";
+import { dbErrorCode, detailOf } from "@/lib/db-errors";
 import { SERVICE_KEYS, assertServiceEnabled, type ServiceKey } from "@/lib/services";
 import { dutchPostcodeSchema } from "@/lib/validation";
 
-export type BusinessActionState = { ok: boolean; error?: string; id?: string };
+export type BusinessActionState = { ok: boolean; error?: string; id?: string; detail?: string };
 
 const unitSchema = z.object({
   name: z.string().trim().max(120),
@@ -51,7 +51,7 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
     const { data: saved, error } = existing
       ? await supabase.from("business_profiles").update(row).eq("id", existing.id).select("id").single()
       : await supabase.from("business_profiles").insert(row).select("id").single();
-    if (error || !saved) return { ok: false, error: dbErrorCode(error) };
+    if (error || !saved) return { ok: false, error: dbErrorCode(error), detail: detailOf(error, "business_profiles") };
 
     if (!existing) {
       const units = await Promise.all(
@@ -68,12 +68,12 @@ export async function saveBusinessProfile(input: BusinessProfileInput): Promise<
         }),
       );
       const { error: unitErr } = await supabase.from("business_units").insert(units);
-      if (unitErr) return { ok: false, error: "save_failed" };
+      if (unitErr) return { ok: false, error: dbErrorCode(unitErr), detail: detailOf(unitErr, "business_units") };
     }
     revalidatePath("/", "layout");
     return { ok: true, id: saved.id };
   } catch (err) {
-    return { ok: false, error: errorCode(err) };
+    return { ok: false, error: errorCode(err), detail: err instanceof Error ? err.message : undefined };
   }
 }
 

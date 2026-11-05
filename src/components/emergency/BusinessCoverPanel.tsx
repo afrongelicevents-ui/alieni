@@ -65,7 +65,7 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
       hours: Number(hours), tasks: tasks.trim(), unitId: unitId || null, reportTo: reportTo.trim(),
     });
     setBusy(null);
-    if (!r.ok) setErrors({ submit: t(`error_${r.error ?? "failed"}` as "error_failed") });
+    if (!r.ok) setErrors({ submit: t(`error_${r.error ?? "failed"}` as "error_failed"), detail: r.detail ?? "" });
     else { setOpen(false); setTasks(""); setReportTo(""); router.refresh(); }
   }
   async function doCancel(id: string) {
@@ -133,7 +133,7 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
             <input className={`mt-1 ${inputCls}`} value={reportTo} onChange={(e) => setReportTo(e.target.value)} maxLength={200} placeholder={t("reportToPlaceholder")} data-cover-report-to /></label>
           <p className="rounded-xl bg-sun/25 p-3 text-xs text-ink/80">{ruleAmountCents ? t("feeNoteRule", { fee: formatEuro(ruleAmountCents, lang) }) : t("feeNoteNone")} {t("cancelWindowNote", { hours: rules.cancelWindowHours })}</p>
           <p className="text-xs text-ink/70">{t("addressNote")}</p>
-          {errors.submit ? <p className="text-sm font-semibold text-red-700">{errors.submit}</p> : null}
+          {errors.submit ? <p className="text-sm font-semibold text-red-700">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
           <div className="flex flex-wrap gap-2">
             <button type="submit" disabled={busy === "new"} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{busy === "new" ? t("sending") : t("submit")}</button>
             {requests.length ? <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-12 items-center rounded-full border border-line px-5 text-sm font-bold text-ink/70">{t("cancel").replace(/ .*/, "")}</button> : null}

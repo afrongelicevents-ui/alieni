@@ -104,7 +104,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         units: draft.units.map((u) => ({ name: u.name.trim(), addressLine: u.addressLine.trim(), postcode: u.postcode, city: u.city.trim() })),
       });
       if (!result.ok) {
-        setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed") });
+        setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed"), detail: result.detail ?? "" });
         return;
       }
       // Full reload so the server sees the new session cookies.
@@ -234,7 +234,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         ) : null}
       </div>
 
-      {errors.submit ? <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{errors.submit}</p> : null}
+      {errors.submit ? <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
 
       <div className="mt-5 flex justify-between gap-3">
         <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0 || busy}

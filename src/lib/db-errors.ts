@@ -14,3 +14,10 @@ export function dbErrorCode(error: DbErrorLike, fallback: string = "save_failed"
   if (/limit reached|limit \(/.test(msg)) return "rate_limit";
   return fallback;
 }
+
+/** Short technical line for the form (table + Postgres message), so a failure can be diagnosed from a screenshot. */
+export function detailOf(error: DbErrorLike, table: string): string | undefined {
+  if (!error) return undefined;
+  const parts = [table, error.code ?? "", (error.message ?? "").slice(0, 200)].filter(Boolean);
+  return parts.join(" · ");
+}

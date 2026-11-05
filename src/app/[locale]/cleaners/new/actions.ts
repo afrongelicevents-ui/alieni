@@ -5,12 +5,12 @@ import sharp from "sharp";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
 import { geocodePlace } from "@/lib/geocode";
-import { dbErrorCode } from "@/lib/db-errors";
+import { dbErrorCode, detailOf } from "@/lib/db-errors";
 import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
 import { JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { WORK_TYPES } from "@/lib/work-types";
 
-export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string };
+export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string; detail?: string };
 
 const adSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -91,7 +91,7 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       .upsert(row, { onConflict: "user_id" })
       .select("id, status")
       .single();
-    if (error || !saved) return { ok: false, error: dbErrorCode(error) };
+    if (error || !saved) return { ok: false, error: dbErrorCode(error), detail: detailOf(error, "cleaner_profiles") };
 
     // Availability: replace the set.
     await supabase.from("availability_slots").delete().eq("cleaner_profile_id", saved.id);
@@ -99,7 +99,7 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       const { error: slotError } = await supabase
         .from("availability_slots")
         .insert(ad.availability.map((s) => ({ cleaner_profile_id: saved.id, weekday: s.weekday, block: s.block })));
-      if (slotError) return { ok: false, error: "save_failed" };
+      if (slotError) return { ok: false, error: dbErrorCode(slotError), detail: detailOf(slotError, "availability_slots") };
     }
 
     // VOG issue date (file upload handled separately; status stays pending until admin review).

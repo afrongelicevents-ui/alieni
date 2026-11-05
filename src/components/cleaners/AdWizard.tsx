@@ -215,7 +215,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       router.refresh();
     } else {
-      setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed") });
+      setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed"), detail: result.detail ?? "" });
     }
   }
 
@@ -597,7 +597,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
           {busy ? t("publishing") : step === 2 ? (signedIn ? t("publish") : t("publishSignup")) : t("next")}
         </button>
       </div>
-      {errors.submit ? <p className="mt-3 text-sm font-semibold text-red-700">{errors.submit}</p> : null}
+      {errors.submit ? <p className="mt-3 text-sm font-semibold text-red-700">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
       {!signedIn && step === 2 ? <p className="mt-3 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("signupNote")}</p> : null}
     </div>
   );
