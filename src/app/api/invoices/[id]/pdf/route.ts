@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
-import { COMPANY_DETAILS } from "@/lib/invoices";
+import { companyLine } from "@/lib/company";
 import { formatEuro } from "@/lib/money";
 
 /**
@@ -40,7 +40,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   draw("Alieni", 50, 780, 26, bold, forest);
   draw("Connect · Clean · Thrive", 50, 762, 10, font, forest);
-  draw(`${COMPANY_DETAILS.name} · ${COMPANY_DETAILS.kvk} · ${COMPANY_DETAILS.btw}`, 50, 745, 9);
+  draw(companyLine(), 50, 745, 9);
 
   draw("FACTUUR", 400, 780, 18, bold);
   draw(`Nummer: ${invoice.number}`, 400, 760, 10);

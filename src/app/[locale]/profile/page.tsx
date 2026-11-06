@@ -19,14 +19,17 @@ export default async function CleanerProfilePage({
   const { locale } = await params;
   const { step, edit } = await searchParams;
   setRequestLocale(locale);
-  const user = await requireRole(locale, ["cleaner"], "/profile");
+  const nextQuery = new URLSearchParams();
+  if (step) nextQuery.set("step", step);
+  if (edit) nextQuery.set("edit", edit);
+  const user = await requireRole(locale, ["cleaner"], `/profile${nextQuery.size ? `?${nextQuery}` : ""}`, { adminAllowed: false });
   const t = await getTranslations("wizard");
   const supabase = (await createClient())!;
 
   let existing: ExistingAd | null = null;
   const { data: ad } = await supabase
     .from("cleaner_profiles")
-    .select("id, status, rate_cents, min_hours, services, languages, postcode, radius_km, about, photo_path, job_types, works_as, emergency_rate_cents, experience_years, work_scope, work_types, availability_slots ( weekday, block ), vog_documents ( status, issued_at )")
+    .select("id, status, rate_cents, min_hours, services, languages, radius_km, about, photo_path, job_types, works_as, emergency_rate_cents, experience_years, work_scope, work_types, availability_slots ( weekday, block ), vog_documents ( status, issued_at )")
     .eq("user_id", user.id)
     .maybeSingle();
   if (ad) {
@@ -34,6 +37,9 @@ export default async function CleanerProfilePage({
     for (const s of (ad.availability_slots as { weekday: number; block: string }[]) ?? []) (availability[s.weekday] ??= []).push(s.block);
     const vog = (ad.vog_documents as { status: string; issued_at: string }[] | null)?.[0];
     const { data: profile } = await supabase.from("profiles").select("city").eq("id", user.id).maybeSingle();
+    // Part 16 hides the full postcode behind this function; before it has been run the column is still readable
+    const rpcResult = await supabase.rpc("my_cleaner_postcode");
+    const ownPostcode = rpcResult.error ? (await supabase.from("cleaner_profiles").select("postcode").eq("user_id", user.id).maybeSingle()).data?.postcode : rpcResult.data;
     existing = {
       adId: ad.id,
       status: ad.status,
@@ -53,7 +59,7 @@ export default async function CleanerProfilePage({
         emergencyRateEuro: ad.emergency_rate_cents ? euro(ad.emergency_rate_cents) : "",
         rateEuro: euro(ad.rate_cents),
         minHours: Number(ad.min_hours),
-        postcode: ad.postcode,
+        postcode: typeof ownPostcode === "string" ? ownPostcode : "",
         radiusKm: ad.radius_km,
         availability,
         vogIssuedAt: vog?.issued_at ?? "",
@@ -67,7 +73,7 @@ export default async function CleanerProfilePage({
       <h1 className="headline mt-1 text-3xl text-ink">{existing ? t("myAdTitle") : t("title")}</h1>
       <p className="mt-2 text-ink/70">{existing ? t("myAdIntro") : t("intro")}</p>
       <div className="mt-6">
-        <AdWizard signedIn existing={existing} initialStep={step ? Number(step) : undefined} startEditing={edit === "1"} />
+        <AdWizard existing={existing} initialStep={step ? Number(step) : undefined} startEditing={edit === "1"} />
       </div>
     </section>
   );

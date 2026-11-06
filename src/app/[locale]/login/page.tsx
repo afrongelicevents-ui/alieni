@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { redirectIfSignedIn } from "@/lib/guard";
 
 export default async function LoginPage({
   params,
@@ -11,6 +12,7 @@ export default async function LoginPage({
   const { locale } = await params;
   const { confirmed, next } = await searchParams;
   setRequestLocale(locale);
+  await redirectIfSignedIn(locale, next);
   const t = await getTranslations("auth");
 
   return (

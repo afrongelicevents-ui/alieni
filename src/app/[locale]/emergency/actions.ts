@@ -8,7 +8,7 @@ import { geocode } from "@/lib/geocode";
 import { dutchPostcodeSchema } from "@/lib/validation";
 import { isDateAllowed } from "@/lib/cover";
 import { getCoverRules } from "@/lib/cover-data";
-import { notifyUser } from "@/lib/notify";
+import { appBaseUrl, emergencyAcceptedNotice, emergencyAlertTargets, emergencyCancelledNotice, emergencyNearbyNotice, notifyUser } from "@/lib/notify";
 import { dbErrorCode, detailOf } from "@/lib/db-errors";
 
 export type EmergencyActionState = { ok: boolean; error?: string; id?: string; detail?: string };
@@ -38,6 +38,9 @@ export async function createEmergencyRequest(input: EmergencyInput): Promise<Eme
   if (start.getTime() < Date.now() - 5 * 60e3) return { ok: false, error: "past" };
   try {
     const { supabase, userId } = await requireUser();
+    // only households and businesses ask for emergency cover (cleaners and admins do not)
+    const { data: me } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+    if (me?.role !== "household" && me?.role !== "business") return { ok: false, error: "not_allowed" };
     const { data: bp } = await supabase.from("business_profiles").select("id, business_type").eq("user_id", userId).maybeSingle();
     // Businesses: the 'cover' service must be switched on for their sector (households are unaffected).
     if (bp && !(await assertServiceEnabled("cover", bp.business_type))) return { ok: false, error: "service_disabled" };
@@ -72,6 +75,16 @@ export async function createEmergencyRequest(input: EmergencyInput): Promise<Eme
     const row = bp ? { ...base, unit_id: r.unitId, report_to: r.reportTo || null } : base;
     const { data, error } = await supabase.from("emergency_requests").insert(row).select("id").single();
     if (error || !data) return { ok: false, error: dbErrorCode(error), detail: detailOf(error, "emergency_requests") };
+    // Alert eligible cleaners nearby (best effort, max 25 by the database function; no address in the e-mail).
+    try {
+      const targets = await emergencyAlertTargets(data.id);
+      if (targets.length > 0) {
+        const base = await appBaseUrl();
+        await Promise.all(targets.map((uid) => notifyUser(uid, (lang) => emergencyNearbyNotice(base, lang))));
+      }
+    } catch {
+      console.warn("createEmergencyRequest: cleaner alert failed");
+    }
     revalidatePath("/emergency");
     return { ok: true, id: data.id };
   } catch (err) {
@@ -100,7 +113,10 @@ export async function acceptEmergencyRequest(id: string): Promise<EmergencyActio
     if (!data) return { ok: false, error: "taken" };
     // best-effort e-mail to the requester (no chat text, brief §7)
     const { data: req } = await supabase.from("emergency_requests").select("requester_id").eq("id", id).maybeSingle();
-    if (req?.requester_id) void notifyUser(req.requester_id, "Je spoedaanvraag is geaccepteerd — Alieni", ["Hoi!", "", "Een schoonmaker heeft je spoedaanvraag geaccepteerd. Log in om de details te zien:", `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/emergency`, "", "Groetjes, Alieni"].join("\n"));
+    if (req?.requester_id) {
+      const base = await appBaseUrl();
+      await notifyUser(req.requester_id, (lang) => emergencyAcceptedNotice(base, lang));
+    }
     revalidatePath("/cleaners/emergency");
     revalidatePath("/emergency");
     return { ok: true, id };
@@ -124,7 +140,10 @@ export async function cancelCover(id: string, reason: string): Promise<CancelRes
     if (data !== "cancelled_free" && data !== "cancelled_late") return { ok: false, error: "not_allowed" };
     if (before?.status === "accepted" && before.accepted_by) {
       const { data: cp } = await supabase.from("cleaner_profiles").select("user_id").eq("id", before.accepted_by).maybeSingle();
-      if (cp?.user_id) void notifyUser(cp.user_id, "Spoedklus geannuleerd — Alieni", ["Hoi!", "", "De klant heeft een door jou geaccepteerde spoedklus geannuleerd. Bekijk je klussen:", `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/work?tab=emergency`, "", "Groetjes, Alieni"].join("\n"));
+      if (cp?.user_id) {
+        const base = await appBaseUrl();
+        await notifyUser(cp.user_id, (lang) => emergencyCancelledNotice(base, lang));
+      }
     }
     revalidatePath("/emergency");
     revalidatePath("/business/dashboard");

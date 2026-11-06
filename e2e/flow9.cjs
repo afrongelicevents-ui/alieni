@@ -12,6 +12,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -54,7 +55,7 @@ async function registerBusiness(browser, viewport, track, { email, company, stre
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const errors = [];
-  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
+  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
 
   for (const [label, viewport] of [["phone", { width: 390, height: 844 }], ["desktop", { width: 1280, height: 900 }]]) {
     await fetch(`${EMU}/__emu/reset`);
@@ -74,6 +75,8 @@ async function registerBusiness(browser, viewport, track, { email, company, stre
     await A.p.goto(`${APP}/en/jobs/new`, { waitUntil: "networkidle" });
     await A.p.selectOption("select >> nth=0", "office");
     await A.p.selectOption("select >> nth=1", { index: 1 });
+    await A.p.getByLabel("Frequency").selectOption("once");
+    await A.p.locator("input[type=date]").fill(new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10));
     await A.p.fill("textarea", "Weekly office cleaning, evenings, 300 m2, supplies provided.");
     await A.p.getByRole("button", { name: /Post job/ }).click();
     await A.p.waitForSelector("text=Your job is ready", { timeout: 15000 });

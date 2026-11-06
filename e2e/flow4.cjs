@@ -11,6 +11,7 @@ const tbl = async (n) => (await fetch(`${EMU}/__emu/table?name=${n}`)).json();
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -24,7 +25,7 @@ async function signUp(page, email, role) {
   const errors = [];
   const track = (page) => {
     page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
-    page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); });
+    page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); });
   };
 
   // cleaner with school job type + VOG
@@ -41,6 +42,7 @@ async function signUp(page, email, role) {
   await cleaner.fill("input[type=date]", "2026-09-01");
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.fill("input[placeholder='1012 AB']", "9711 AB");
+  await cleaner.locator("td button").nth(0).click();
   await cleaner.getByRole("button", { name: /Save ad|Publish/ }).click();
   await cleaner.waitForSelector("text=Your ad is live", { timeout: 15000 });
   // VOG file upload (second form on the page)

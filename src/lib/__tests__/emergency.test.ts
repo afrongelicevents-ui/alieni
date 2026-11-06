@@ -22,10 +22,10 @@ describe("emergency acceptance (brief v2 §8)", () => {
     expect(acceptRequest(first!, "cleaner-b", now)).toBeNull();
   });
 
-  it("charges the booking fee only once accepted", () => {
+  it("records a booking fee only once accepted (0 until a price is set)", () => {
     expect(base.feeCents).toBeNull();
-    expect(acceptRequest(base, "c", now)?.feeCents).toBe(995);
-    expect(acceptRequest({ ...base, requesterType: "business" }, "c", now)?.feeCents).toBe(1495);
+    expect(acceptRequest(base, "c", now)?.feeCents).toBe(0);
+    expect(acceptRequest({ ...base, requesterType: "business" }, "c", now)?.feeCents).toBe(0);
     expect(emergencyFeeCents("business", { householdInclBtwCents: 500, businessExclBtwCents: 2000 })).toBe(2000);
   });
 

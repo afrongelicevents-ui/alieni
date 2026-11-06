@@ -58,20 +58,20 @@ Vercel's Hobby plan allows **two** cron jobs per project, each **once a day**
 (any other `vercel.json` fails the whole deploy). So `vercel.json` schedules:
 
 - `/api/cron/business-billing` daily at 20:45 UTC (month-end direct debit)
-- `/api/cron/daily` daily at 05:17 UTC, which runs check-ins, iCal sync and
-  emergency clean-up in one go
+- `/api/cron/daily` daily at 05:17 UTC, which runs check-ins, iCal sync,
+  emergency clean-up and job housekeeping (expired jobs, next visits of regular contracts) in one go
 
 On Vercel Pro, replace the bundle with the individual routes at their intended
 frequencies: `checkins` daily, `ical-sync` `*/30 * * * *`, `emergency`
-`*/10 * * * *`. Emergency requests still expire correctly inside the app
+`*/10 * * * *`, `jobs` daily. Emergency requests still expire correctly inside the app
 (`expireIfDue` runs on every read); only the clean-up is daily until then.
 
 ## Launch checklist (owner)
 
 0. Supabase → Authentication → Sign In / Providers → Email: **Confirm email ON** before launch (the admin allow-list grants the role at sign-up, so the owner's address must be verified).
 1. Supabase → Authentication → URL configuration: Site URL = the live URL; add `https://<live>/**` to redirect URLs (needed for e-mail confirmation and password reset links).
-2. Vercel env: `SUPABASE_SERVICE_ROLE_KEY` (e-mail notifications, admin e-mail column, crons), `RESEND_API_KEY` (+ verified sending domain), `MOLLIE_API_KEY` (live key, after KYC), `CRON_SECRET`, optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, optional `NEXT_PUBLIC_APP_URL`.
+2. Vercel env: `SUPABASE_SERVICE_ROLE_KEY` (e-mail notifications, admin e-mail column, crons), `RESEND_API_KEY` (+ verified sending domain), `MOLLIE_API_KEY` and `PAYMENTS_ACTIVE=true` (both are needed before anything can be charged, and a price must also be set in Admin; leave both unset until payments are decided), `CRON_SECRET`, optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, optional `NEXT_PUBLIC_APP_URL`.
 3. Mollie dashboard: webhook URL `https://<live>/api/mollie/webhook`; enable iDEAL + SEPA Direct Debit.
-4. Fill `COMPANY_DETAILS` in `src/lib/invoices.ts` (KvK, BTW) before the first invoice.
+4. Vercel env (public company details, shown on the legal pages, invoices and footer; lines that are not set are left out): `COMPANY_NAME`, `COMPANY_KVK`, `COMPANY_BTW`, `CONTACT_EMAIL`.
 5. Admin → Settings: confirm prices; Admin → Photos: upload final photos.
 6. Run the e2e suite (see `e2e/README.md`) before every release.

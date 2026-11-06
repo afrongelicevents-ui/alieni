@@ -22,9 +22,9 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
   const checks = adRow
     ? [
         { key: "photo", done: Boolean(adRow.photo_path), href: "/profile" },
-        { key: "about", done: Boolean(adRow.about && adRow.about.length >= 40), href: "/profile" },
-        { key: "availability", done: (adRow.availability_slots?.length ?? 0) > 0, href: "/profile?step=3" },
-        { key: "vog", done: !adRow.job_types.includes("school") || adRow.vog_documents?.[0]?.status === "approved", href: "/profile" },
+        { key: "about", done: Boolean(adRow.about && adRow.about.length >= 40), href: "/profile?step=1&edit=1" },
+        { key: "availability", done: (adRow.availability_slots?.length ?? 0) > 0, href: "/profile?step=3&edit=1" },
+        { key: "vog", done: !adRow.job_types.includes("school") || adRow.vog_documents?.[0]?.status === "approved", href: "/profile?step=2&edit=1" },
       ]
     : [];
   const completeness = adRow ? Math.round((checks.filter((c) => c.done).length / checks.length) * 100) : 0;

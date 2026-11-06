@@ -35,6 +35,7 @@ export async function requireUser() {
   return { supabase, userId: data.user.id, email: data.user.email ?? "" };
 }
 
+/** Typed error code for UIs (`t("error_" + code)`); anything that is not a snake_case code becomes "failed". */
 export function errorCode(err: unknown): string {
-  return err instanceof Error ? err.message : "failed";
+  return err instanceof Error && /^[a-z][a-z0-9_]*$/.test(err.message) ? err.message : "failed";
 }

@@ -2,14 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { ICON_PATHS, NAV } from "@/lib/nav";
+import { ICON_PATHS, NAV, type NavRole } from "@/lib/nav";
 import { useNavRole } from "./useNavRole";
 
-export function BottomNav() {
+export function BottomNav({ initialRole = null }: { initialRole?: NavRole | null }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const role = useNavRole();
-  const items = NAV[role ?? "guest"];
+  const role = useNavRole(initialRole);
+  const items = role ? NAV[role] : [];
+  if (items.length === 0) return null; // role not known yet: no role-specific entries
 
   return (
     <nav aria-label={t("menu")} className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] md:hidden">

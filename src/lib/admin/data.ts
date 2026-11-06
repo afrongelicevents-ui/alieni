@@ -19,20 +19,37 @@ function monthStartIso(now = new Date()) {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
-/** E-mail per user id, when the service role key is configured (auth.users is not readable otherwise). */
-export async function emailsByUserId(ids: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+/** E-mail and suspension per user id, when the service role key is configured (auth.users is not readable otherwise). */
+export async function authInfoByUserId(ids: string[]): Promise<Map<string, { email: string; suspended: boolean }>> {
+  const map = new Map<string, { email: string; suspended: boolean }>();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key || ids.length === 0) return map;
   try {
     const admin = createSupabaseAdmin(url, key, { auth: { persistSession: false } });
-    const { data } = await admin.auth.admin.listUsers({ perPage: 1000 });
-    for (const u of data?.users ?? []) if (u.email && ids.includes(u.id)) map.set(u.id, u.email);
+    const wanted = new Set(ids);
+    const perPage = 1000;
+    // Page through all users until a short page (the default call only returns the first page).
+    for (let page = 1; page <= 100; page++) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+      if (error) break;
+      const users = data?.users ?? [];
+      for (const u of users) {
+        if (!wanted.has(u.id)) continue;
+        const until = (u as { banned_until?: string | null }).banned_until;
+        map.set(u.id, { email: u.email ?? "", suspended: Boolean(until && new Date(until).getTime() > Date.now()) });
+      }
+      if (users.length < perPage || map.size >= wanted.size) break;
+    }
   } catch {
     // service role unavailable: leave e-mails blank
   }
   return map;
+}
+
+export async function emailsByUserId(ids: string[]): Promise<Map<string, string>> {
+  const info = await authInfoByUserId(ids);
+  return new Map([...info].filter(([, v]) => v.email).map(([k, v]) => [k, v.email]));
 }
 
 export async function getAdminOverview(): Promise<AdminOverview> {
@@ -62,6 +79,9 @@ export async function listReports(): Promise<{ demo: boolean; reports: AdminRepo
   const { data } = await supabase.from("reports").select("id, reporter_id, subject_type, subject_id, reason, details, status, created_at").order("created_at", { ascending: false }).limit(200);
   const rows = (data ?? []) as { id: string; reporter_id: string | null; subject_type: AdminReport["subjectType"]; subject_id: string; reason: string; details: string | null; status: string; created_at: string }[];
   const cleanerIds = rows.filter((r) => r.subject_type === "cleaner_profile").map((r) => r.subject_id);
+  const jobIds = rows.filter((r) => r.subject_type === "job").map((r) => r.subject_id);
+  const { data: jobRows } = jobIds.length ? await supabase.from("jobs").select("id, space_type, city, frequency").in("id", jobIds) : { data: [] };
+  const jobLabel = new Map(((jobRows ?? []) as { id: string; space_type: string; city: string | null; frequency: string }[]).map((j) => [j.id, `${j.space_type} · ${j.city ?? ""} · ${j.frequency}`]));
   const reporterIds = rows.map((r) => r.reporter_id).filter((x): x is string => Boolean(x));
   const [{ data: cleaners }, { data: reporters }] = await Promise.all([
     cleanerIds.length ? supabase.from("cleaner_profiles").select("id, status, profiles ( display_name )").in("id", cleanerIds) : Promise.resolve({ data: [] }),
@@ -74,7 +94,7 @@ export async function listReports(): Promise<{ demo: boolean; reports: AdminRepo
     demo: false,
     reports: rows.map((r) => ({
       id: r.id,
-      subject: r.subject_type === "cleaner_profile" ? `Ad: ${cleanerName.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : `${r.subject_type} ${r.subject_id.slice(0, 8)}`,
+      subject: r.subject_type === "cleaner_profile" ? `Ad: ${cleanerName.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : r.subject_type === "job" ? `Job: ${jobLabel.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : `${r.subject_type} ${r.subject_id.slice(0, 8)}`,
       subjectType: r.subject_type,
       reason: r.reason,
       details: r.details ?? "",
@@ -104,8 +124,8 @@ export async function listUsers(): Promise<{ demo: boolean; users: AdminUser[] }
   if (!supabase) return { demo: true, users: SAMPLE_USERS };
   const { data } = await supabase.from("profiles").select("id, display_name, role, city, created_at").order("created_at", { ascending: false }).limit(500);
   const rows = (data ?? []) as { id: string; display_name: string; role: AdminUser["role"] | "admin"; city: string | null; created_at: string }[];
-  const emails = await emailsByUserId(rows.map((r) => r.id));
-  return { demo: false, users: rows.map((r) => ({ id: r.id, name: r.display_name, email: emails.get(r.id) ?? "", role: r.role as AdminUser["role"], city: r.city ?? "", createdAt: r.created_at.slice(0, 10) })) };
+  const info = await authInfoByUserId(rows.map((r) => r.id));
+  return { demo: false, users: rows.map((r) => ({ id: r.id, name: r.display_name, email: info.get(r.id)?.email ?? "", role: r.role as AdminUser["role"], city: r.city ?? "", createdAt: r.created_at.slice(0, 10), suspended: info.get(r.id)?.suspended ?? false })) };
 }
 
 export type AdminAd = { id: string; name: string; city: string; rateCents: number; status: string; verifiedJobs: number; createdAt: string };
@@ -197,9 +217,9 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
       coverCancelHours: String(cover.cancelWindowHours),
       coverStrikeLimit: String(cover.strikeLimit),
       coverMaxDays: String(cover.maxDaysAhead),
-      householdPriceEuro: euro(num(map.get("household_fee_cents"), 1495)),
-      emergencyHouseholdEuro: euro(num(em.household_incl_btw, 995)),
-      emergencyBusinessEuro: euro(num(em.business_excl_btw, 1495)),
+      householdPriceEuro: euro(num(map.get("household_fee_cents"), 0)),
+      emergencyHouseholdEuro: euro(num(em.household_incl_btw, 0)),
+      emergencyBusinessEuro: euro(num(em.business_excl_btw, 0)),
       linenEnabled: Boolean(linen.enabled),
       linenPriceEuro: euro(num(linen.price_per_unit_cents, 400)),
       rateFloorEuro: euro(num(map.get("rate_floor_cents"), 1500)),

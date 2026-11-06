@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { homeFor } from "@/lib/guard";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { HouseholdOnboarding } from "@/components/home-role/HouseholdOnboarding";
+import { AccountDanger } from "@/components/auth/AccountDanger";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   const rows: { href: string; label: string; strong?: boolean }[] = [
     { href: homeFor(user.role), label: t(`goHome_${user.role}` as "goHome_household"), strong: true },
     ...(user.role === "cleaner" ? [{ href: "/profile", label: t("myProfile") }, { href: "/work", label: t("work") }] : []),
-    ...(user.role === "business" ? [{ href: "/business/dashboard", label: t("businessDashboard") }, { href: "/jobs/new", label: t("postJob") }] : []),
+    ...(user.role === "business" ? [{ href: "/business/dashboard", label: t("businessDashboard") }, { href: "/jobs/new", label: t("postJob") }, { href: "/favourites", label: t("favourites") }] : []),
     ...(user.role === "household" ? [{ href: "/favourites", label: t("favourites") }, { href: "/search", label: t("findCleaner") }] : []),
     { href: "/messages", label: t("messages") },
     { href: "/reset-password", label: t("changePassword") },
@@ -68,6 +69,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
           <li key={r.href + r.label}><Row {...r} /></li>
         ))}
       </ul>
+      <AccountDanger email={user.email} isAdmin={user.role === "admin"} />
       <p className="mt-4 text-xs text-ink/60">{t("privacyNote")} <Link href="/privacy" className="font-bold text-forest underline">{t("privacyLink")}</Link></p>
     </section>
   );

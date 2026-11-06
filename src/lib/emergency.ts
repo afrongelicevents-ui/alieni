@@ -18,7 +18,8 @@ export type EmergencyRequest = {
 };
 
 export type EmergencyFees = { householdInclBtwCents: number; businessExclBtwCents: number };
-export const DEFAULT_EMERGENCY_FEES: EmergencyFees = { householdInclBtwCents: 995, businessExclBtwCents: 1495 };
+/** No booking fee until an admin sets one (Admin → Settings). */
+export const DEFAULT_EMERGENCY_FEES: EmergencyFees = { householdInclBtwCents: 0, businessExclBtwCents: 0 };
 
 export function emergencyFeeCents(requesterType: "household" | "business", fees: EmergencyFees = DEFAULT_EMERGENCY_FEES): number {
   return requesterType === "household" ? fees.householdInclBtwCents : fees.businessExclBtwCents;

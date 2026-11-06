@@ -25,7 +25,7 @@ export type AdminConnection = {
 export type AdminReport = {
   id: string;
   subject: string;
-  subjectType: "cleaner_profile" | "review" | "message";
+  subjectType: "cleaner_profile" | "review" | "message" | "job";
   reason: string;
   details: string;
   reporter: string;
@@ -40,6 +40,7 @@ export type AdminUser = {
   role: "household" | "cleaner" | "business";
   city: string;
   createdAt: string;
+  suspended?: boolean;
 };
 
 // November 2026 is "this month" for the sample KPIs.

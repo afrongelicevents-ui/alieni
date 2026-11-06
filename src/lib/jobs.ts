@@ -91,3 +91,51 @@ export const SAMPLE_JOBS: SampleJob[] = [
     publishedAt: "2026-10-25T10:00:00Z",
   },
 ];
+
+/** Frequencies that repeat on a schedule (the 'contract' service). 'once' is the one-off service; 'per_checkout' follows the turnover calendar. */
+export const RECURRING_FREQUENCIES: Frequency[] = ["daily", "weekly", "biweekly", "monthly"];
+export const isRecurring = (f: Frequency): boolean => RECURRING_FREQUENCIES.includes(f);
+
+/** Which service in the catalogue a job belongs to (mirrors job_service_key() in the database). */
+export function jobServiceKey(f: Frequency): "oneoff" | "contract" | "turnover" {
+  return f === "once" ? "oneoff" : f === "per_checkout" ? "turnover" : "contract";
+}
+
+/** ISO weekdays: 1 = Monday … 7 = Sunday. */
+export const WEEKDAYS: { n: number; nl: string; en: string }[] = [
+  { n: 1, nl: "Ma", en: "Mon" }, { n: 2, nl: "Di", en: "Tue" }, { n: 3, nl: "Wo", en: "Wed" }, { n: 4, nl: "Do", en: "Thu" },
+  { n: 5, nl: "Vr", en: "Fri" }, { n: 6, nl: "Za", en: "Sat" }, { n: 7, nl: "Zo", en: "Sun" },
+];
+
+export type JobSchedule = {
+  startDate: string | null; // YYYY-MM-DD
+  endDate: string | null;
+  weekdays: number[];
+  visitStart: string | null; // HH:MM
+  visitHours: number | null;
+};
+
+export type QuoteStatus = "sent" | "accepted" | "declined";
+
+const fmtDate = (iso: string, lang: "nl" | "en") => new Date(`${iso}T12:00:00Z`).toLocaleDateString(lang === "en" ? "en-GB" : "nl-NL", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+/** One readable line about when the work happens, e.g. "Mon, Thu · 07:00 · 2 h per visit · from 12 Nov 2026". */
+export function scheduleSummary(frequency: Frequency, s: JobSchedule, lang: "nl" | "en"): string {
+  const parts: string[] = [];
+  if (isRecurring(frequency) && s.weekdays.length && frequency !== "monthly") parts.push(WEEKDAYS.filter((d) => s.weekdays.includes(d.n)).map((d) => d[lang]).join(", "));
+  if (s.visitStart) parts.push(s.visitStart.slice(0, 5));
+  if (s.visitHours) parts.push(lang === "nl" ? `${String(s.visitHours).replace(".", ",")} uur per keer` : `${s.visitHours} h per visit`);
+  if (s.startDate) parts.push(`${isRecurring(frequency) ? (lang === "nl" ? "vanaf" : "from") : (lang === "nl" ? "op" : "on")} ${fmtDate(s.startDate, lang)}`);
+  if (s.endDate) parts.push(`${lang === "nl" ? "tot" : "until"} ${fmtDate(s.endDate, lang)}`);
+  return parts.join(" · ");
+}
+
+/** What one visit costs at an hourly rate, in cents; null when the job has no hours per visit. */
+export function visitTotalCents(rateCents: number, hours: number | null): number | null {
+  return hours && hours > 0 ? Math.round(rateCents * hours) : null;
+}
+
+export function quoteExpired(validUntil: string | null, now: Date = new Date()): boolean {
+  if (!validUntil) return false;
+  return validUntil < now.toISOString().slice(0, 10);
+}

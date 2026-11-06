@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -9,14 +9,16 @@ import { createClient } from "@/lib/supabase/server";
  * role 'admin' (2FA is enforced on this account via Supabase Auth MFA at
  * launch). Without Supabase it runs in clearly-labelled demo mode.
  */
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
   const t = await getTranslations("admin");
   const supabase = await createClient();
   let demoMode = true;
 
   if (supabase) {
     const { data } = await supabase.auth.getUser();
-    if (!data.user) notFound();
+    // signed out: ask for a login (and come back); a signed-in non-admin still gets a 404
+    if (!data.user) redirect(`/${locale}/login?next=${encodeURIComponent("/admin")}`);
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -54,12 +56,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ) : null}
       </div>
 
-      <nav aria-label={t("title")} className="mt-4 flex flex-wrap gap-2 border-b border-line pb-3">
+      <nav aria-label={t("title")} className="mt-4 flex gap-2 overflow-x-auto border-b border-line pb-3 md:flex-wrap md:overflow-visible">
         {tabs.map(({ href, key }) => (
           <Link
             key={href}
             href={href}
-            className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-forest transition-colors hover:bg-mint"
+            className="shrink-0 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-forest transition-colors hover:bg-mint"
           >
             {t(key)}
           </Link>

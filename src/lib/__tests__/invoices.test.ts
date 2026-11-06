@@ -8,8 +8,8 @@ describe("invoices (brief §6)", () => {
     expect(formatInvoiceNumber(2027, 10001)).toBe("ALI-2027-10001");
   });
 
-  it("builds the household fee invoice with the exact btw split", () => {
-    const invoice = buildInvoice({ seq: 1, issuedAt: new Date("2026-11-01"), description: "Alieni verbinding november" });
+  it("builds an invoice with the exact btw split of the amount charged", () => {
+    const invoice = buildInvoice({ seq: 1, grossCents: 1495, issuedAt: new Date("2026-11-01"), description: "Alieni verbinding november" });
     expect(invoice.number).toBe("ALI-2026-0001");
     expect(invoice.grossCents).toBe(1495);
     expect(invoice.netCents).toBe(1236);

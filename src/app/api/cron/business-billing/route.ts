@@ -5,6 +5,7 @@ import { createMollieClient } from "@/lib/mollie";
 import { computeBillingPeriod } from "@/lib/business";
 import { applyPendingUnits, isLastDayOfMonthAmsterdam } from "@/lib/billing";
 import { invoiceEmail, sendEmail } from "@/lib/email";
+import { userLocale } from "@/lib/notify";
 import { getActiveRules, ruleFor } from "@/lib/services";
 
 /**
@@ -104,14 +105,15 @@ export async function GET(request: Request) {
     // 4. Email + pending unit count
     const { data: user } = await admin.auth.admin.getUserById(b.user_id);
     if (user?.user?.email && invoice) {
+      const lang = await userLocale(b.user_id);
       const mail = invoiceEmail({
         number: invoice.number,
         netCents: invoice.net_cents,
         btwCents: invoice.btw_cents,
         grossCents: invoice.gross_cents,
         issuedAt: invoice.issued_at,
-        description: `Alieni zakelijk — ${period.unitCount} eenheden, ${period.periodStart} t/m ${period.periodEnd}`,
-      });
+        description: lang === "en" ? `Alieni business — ${period.unitCount} units, ${period.periodStart} to ${period.periodEnd}` : `Alieni zakelijk — ${period.unitCount} eenheden, ${period.periodStart} t/m ${period.periodEnd}`,
+      }, lang);
       await sendEmail(user.user.email, mail.subject, mail.text);
     }
     const { data: fresh } = await admin.from("business_profiles").select("pending_unit_count").eq("id", b.business_id).single();

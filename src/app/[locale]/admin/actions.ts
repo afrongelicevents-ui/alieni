@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { errorCode, requireUser } from "@/lib/auth";
-import { reporterUpdateEmail, sendEmail } from "@/lib/email";
+import { reporterUpdateEmail } from "@/lib/email";
+import { adModeratedNotice, appBaseUrl, cleanerOwnerUserId, notifyUser, vogReviewedNotice } from "@/lib/notify";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { z } from "zod";
 import { PRICING_MODELS, SERVICE_KEYS } from "@/lib/services";
@@ -29,25 +30,55 @@ export async function resolveReport(reportId: string, outcome: "hidden" | "remov
     const { data: report } = await supabase.from("reports").select("id, subject_type, subject_id, reporter_id").eq("id", reportId).maybeSingle();
     if (!report) return { ok: false, error: "not_found" };
     const statusMap = { hidden: "resolved_hidden", removed: "resolved_removed", dismissed: "dismissed", open: "open" } as const;
+    // Apply the content change first: if it fails the report must not show as resolved (the action is safe to repeat).
+    let contentChanged = false;
+    let ownerToTell: { userId: string; status: "hidden" | "removed" } | null = null;
+    if (report.subject_type === "cleaner_profile") {
+      const { data: ad, error: adReadErr } = await supabase.from("cleaner_profiles").select("status, moderated, user_id").eq("id", report.subject_id).maybeSingle();
+      if (adReadErr) return { ok: false, error: "save_failed" };
+      if (ad) {
+        let next: "hidden" | "removed" | "published" | null = null;
+        if (outcome === "removed") next = "removed";
+        else if (outcome === "hidden") next = ad.status === "removed" ? null : "hidden";
+        // dismissed / re-opened: only give back an ad that an admin hid (moderated); never touch drafts or owner-hidden ads
+        else if (ad.status === "hidden" && ad.moderated === true) next = "published";
+        if (next && next !== ad.status) {
+          const { error: adErr } = await supabase.from("cleaner_profiles").update({ status: next }).eq("id", report.subject_id);
+          if (adErr) return { ok: false, error: "save_failed" };
+          if (next !== "published" && ad.user_id) ownerToTell = { userId: ad.user_id as string, status: next };
+        }
+        const finalStatus = next ?? ad.status;
+        contentChanged = (outcome === "hidden" || outcome === "removed") && (finalStatus === "hidden" || finalStatus === "removed");
+      }
+    } else if (report.subject_type === "job" && (outcome === "hidden" || outcome === "removed")) {
+      const { data: job, error: jobReadErr } = await supabase.from("jobs").select("status").eq("id", report.subject_id).maybeSingle();
+      if (jobReadErr) return { ok: false, error: "save_failed" };
+      // An awarded ('filled') job is locked by the database; it is left as it is.
+      if (job && job.status !== "filled") {
+        if (job.status !== "removed") {
+          const { error: jobErr } = await supabase.from("jobs").update({ status: "removed" }).eq("id", report.subject_id);
+          if (jobErr) return { ok: false, error: "save_failed" };
+        }
+        contentChanged = true;
+      }
+    } else if (report.subject_type === "review") {
+      // a reported review is hidden from the public (and given back when the report is dismissed or re-opened)
+      const { error: revErr } = await supabase.from("reviews").update({ hidden: outcome === "hidden" || outcome === "removed" }).eq("id", report.subject_id);
+      if (revErr) return { ok: false, error: "save_failed" };
+      contentChanged = outcome === "hidden" || outcome === "removed";
+    }
     const { error } = await supabase.from("reports").update({ status: statusMap[outcome], resolved_at: outcome === "open" ? null : new Date().toISOString() }).eq("id", reportId);
     if (error) return { ok: false, error: "save_failed" };
-    if (report.subject_type === "cleaner_profile") {
-      const adStatus = outcome === "hidden" ? "hidden" : outcome === "removed" ? "removed" : "published";
-      await supabase.from("cleaner_profiles").update({ status: adStatus }).eq("id", report.subject_id);
+    if (ownerToTell) {
+      const base = await appBaseUrl();
+      const adStatus = ownerToTell.status;
+      await notifyUser(ownerToTell.userId, (lang) => adModeratedNotice(base, adStatus, lang));
     }
     await audit(supabase, userId, `report_${outcome}`, `report:${reportId}`, { subject_type: report.subject_type, subject_id: report.subject_id });
     // DSA: tell the reporter the outcome (needs the service role to look up the e-mail).
-    if (outcome !== "open" && report.reporter_id && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      try {
-        const admin = createSupabaseAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-        const { data: u } = await admin.auth.admin.getUserById(report.reporter_id);
-        if (u?.user?.email) {
-          const mail = reporterUpdateEmail(outcome);
-          await sendEmail(u.user.email, mail.subject, mail.text);
-        }
-      } catch {
-        // e-mail is best effort
-      }
+    if (outcome !== "open" && report.reporter_id) {
+      // notifyUser is best effort and never throws; it sends in the reporter's own language.
+      await notifyUser(report.reporter_id, (lang) => reporterUpdateEmail(outcome, contentChanged, lang));
     }
     revalidatePath("/", "layout");
     return { ok: true };
@@ -60,9 +91,16 @@ export async function resolveReport(reportId: string, outcome: "hidden" | "remov
 export async function reviewVog(vogId: string, status: "approved" | "rejected"): Promise<AdminActionState> {
   try {
     const { supabase, userId } = await requireAdmin();
-    const { error } = await supabase.from("vog_documents").update({ status }).eq("id", vogId);
+    const { data: rows, error } = await supabase.from("vog_documents").update({ status }).eq("id", vogId).select("cleaner_profile_id");
     if (error) return { ok: false, error: "save_failed" };
     await audit(supabase, userId, `vog_${status}`, `vog:${vogId}`);
+    // Tell the cleaner (best effort; the service role resolves the owner of the ad).
+    const profileId = rows?.[0]?.cleaner_profile_id as string | undefined;
+    const owner = profileId ? await cleanerOwnerUserId(profileId) : null;
+    if (owner) {
+      const base = await appBaseUrl();
+      await notifyUser(owner, (lang) => vogReviewedNotice(base, status === "approved", lang));
+    }
     revalidatePath("/", "layout");
     return { ok: true };
   } catch (err) {
@@ -88,9 +126,15 @@ export async function vogSignedUrl(vogId: string): Promise<AdminActionState> {
 export async function setAdStatusAdmin(adId: string, status: "published" | "hidden" | "removed"): Promise<AdminActionState> {
   try {
     const { supabase, userId } = await requireAdmin();
+    const { data: before } = await supabase.from("cleaner_profiles").select("status, user_id").eq("id", adId).maybeSingle();
     const { error } = await supabase.from("cleaner_profiles").update({ status }).eq("id", adId);
     if (error) return { ok: false, error: "save_failed" };
     await audit(supabase, userId, `ad_${status}`, `ad:${adId}`);
+    // Tell the cleaner why the ad went offline (best effort).
+    if ((status === "hidden" || status === "removed") && before?.user_id && before.status !== status) {
+      const base = await appBaseUrl();
+      await notifyUser(before.user_id as string, (lang) => adModeratedNotice(base, status, lang));
+    }
     revalidatePath("/", "layout");
     return { ok: true };
   } catch (err) {
@@ -221,6 +265,34 @@ export async function waiveFeeEvent(eventId: string, reason: string): Promise<Ad
     if (error) return { ok: false, error: "save_failed" };
     await audit(supabase, userId, "fee_event_waived", eventId, { reason });
     revalidatePath("/admin/fees");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/**
+ * Suspend or restore an account. A suspended person cannot sign in (the login is banned) and their ad is hidden;
+ * restoring lifts the ban but leaves the ad for an admin to restore separately. Administrators cannot be suspended.
+ */
+export async function setUserSuspended(targetId: string, suspended: boolean): Promise<AdminActionState> {
+  if (!/^[0-9a-f-]{36}$/i.test(targetId)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    if (targetId === userId) return { ok: false, error: "self" };
+    const { data: target } = await supabase.from("profiles").select("role").eq("id", targetId).maybeSingle();
+    if (!target) return { ok: false, error: "not_found" };
+    if (target.role === "admin") return { ok: false, error: "is_admin" };
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) return { ok: false, error: "not_configured" };
+    const admin = createSupabaseAdmin(url, key, { auth: { persistSession: false } });
+    const { error } = await admin.auth.admin.updateUserById(targetId, { ban_duration: suspended ? "876000h" : "none" });
+    if (error) return { ok: false, error: "failed" };
+    if (suspended) await supabase.from("cleaner_profiles").update({ status: "hidden" }).eq("user_id", targetId).eq("status", "published");
+    await audit(supabase, userId, suspended ? "user_suspended" : "user_restored", targetId);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/ads");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

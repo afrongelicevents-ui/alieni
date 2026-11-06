@@ -2,6 +2,7 @@ import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { BusinessSubnav } from "@/components/business/BusinessSubnav";
 import { BusinessTypeIcon } from "@/components/business/BusinessTypeCard";
 import { UnitsManager } from "@/components/business/UnitsManager";
+import { BusinessDetailsForm } from "@/components/business/BusinessDetailsForm";
 import { BUSINESS_TYPES } from "@/lib/business";
 import { loadBusinessPage } from "@/lib/business-page";
 
@@ -28,6 +29,7 @@ export default async function BusinessProfilePage({ params }: { params: Promise<
           <dd className="text-ink/70">{cfg.label[lang]}{p.btw_number ? ` · BTW ${p.btw_number}` : ""}</dd>
           <dd className="text-ink/70">{[p.contact_first_name, p.contact_last_name].filter(Boolean).join(" ")}</dd>
         </dl>
+        <BusinessDetailsForm initial={{ companyName: p.company_name, btwNumber: p.btw_number ?? "", firstName: p.contact_first_name ?? "", lastName: p.contact_last_name ?? "" }} />
       </div>
       <div className="mt-6"><UnitsManager bundle={bundle} /></div>
     </section>

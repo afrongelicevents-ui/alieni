@@ -1,5 +1,6 @@
 "use server";
 
+import { findBannedWord, getBannedWords, getRateFloorCents } from "@/lib/site-settings";
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
 import { z } from "zod";
@@ -10,7 +11,16 @@ import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation"
 import { JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { WORK_TYPES } from "@/lib/work-types";
 
-export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string; detail?: string };
+export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string; detail?: string; moderated?: boolean };
+
+type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
+
+/** True when a moderator hid/removed this ad (cleaner_profiles.moderated); false before that column exists. */
+async function readModerated(supabase: Supabase, userId: string, status: string): Promise<boolean> {
+  const { data, error } = await supabase.from("cleaner_profiles").select("moderated").eq("user_id", userId).maybeSingle();
+  if (error) return false;
+  return Boolean((data as { moderated?: boolean } | null)?.moderated) && (status === "hidden" || status === "removed");
+}
 
 const adSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -48,10 +58,18 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
   const parsed = adSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const ad = parsed.data;
+  // an ad without availability cannot be contacted (a meeting request needs a slot): drafts may be saved without
+  if (ad.publish && ad.availability.length === 0) return { ok: false, error: "no_availability" };
   if (ad.jobTypes.includes("emergency") && ad.emergencyRateCents < Math.ceil(ad.rateCents * 1.5)) return { ok: false, error: "emergency_rate" };
+  if (ad.rateCents < (await getRateFloorCents())) return { ok: false, error: "rate_floor" };
+  if (findBannedWord(`${ad.name} ${ad.about}`, await getBannedWords())) return { ok: false, error: "banned_word" };
 
   try {
     const { supabase, userId } = await requireUser();
+
+    // Only cleaners write a cleaner ad (an admin or household would otherwise get their display name changed first).
+    const { data: me } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+    if (me?.role !== "cleaner") return { ok: false, error: "not_allowed" };
 
     // Display name + city live on the profile (shown on the ad).
     const { error: profileError } = await supabase
@@ -75,7 +93,8 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       languages: ad.languages,
       postcode: ad.postcode,
       radius_km: ad.radiusKm,
-      location: point ? `SRID=4326;POINT(${point.lng} ${point.lat})` : null,
+      // a failed lookup must not wipe a stored location
+      ...(point ? { location: `SRID=4326;POINT(${point.lng} ${point.lat})` } : {}),
       about: ad.about || null,
       job_types: ad.jobTypes,
       work_scope: ad.workScope,
@@ -110,7 +129,8 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
     }
 
     revalidatePath("/", "layout");
-    return { ok: true, adId: saved.id, status: saved.status };
+    // the real status: the database keeps 'hidden'/'removed' when a moderator set it
+    return { ok: true, adId: saved.id, status: saved.status, moderated: await readModerated(supabase, userId, saved.status) };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
   }
@@ -174,10 +194,12 @@ export async function uploadVogFile(_prev: AdActionState, formData: FormData): P
 export async function setAdStatus(status: "published" | "hidden"): Promise<AdActionState> {
   try {
     const { supabase, userId } = await requireUser();
-    const { error } = await supabase.from("cleaner_profiles").update({ status }).eq("user_id", userId);
+    const { data: row, error } = await supabase.from("cleaner_profiles").update({ status }).eq("user_id", userId).select("id, status").maybeSingle();
     if (error) return { ok: false, error: "save_failed" };
+    if (!row) return { ok: false, error: "no_ad" };
     revalidatePath("/", "layout");
-    return { ok: true, status };
+    // the real status: the database keeps 'hidden'/'removed' when a moderator set it
+    return { ok: true, adId: row.id, status: row.status, moderated: await readModerated(supabase, userId, row.status) };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
   }

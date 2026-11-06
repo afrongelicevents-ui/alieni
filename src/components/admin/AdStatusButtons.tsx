@@ -9,10 +9,13 @@ export function AdStatusButtons({ adId, status }: { adId: string; status: string
   const t = useTranslations("admin");
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
   async function set(next: "published" | "hidden" | "removed") {
     setBusy(true);
-    await setAdStatusAdmin(adId, next);
+    setError(false);
+    const r = await setAdStatusAdmin(adId, next);
     setBusy(false);
+    if (!r.ok) { setError(true); return; }
     router.refresh();
   }
   const btn = "rounded-full px-3 py-1 text-xs font-bold disabled:opacity-50";
@@ -26,6 +29,7 @@ export function AdStatusButtons({ adId, status }: { adId: string; status: string
       {status !== "removed" ? (
         <button type="button" disabled={busy} onClick={() => set("removed")} className={`${btn} bg-red-700 text-white`}>{t("actionRemove")}</button>
       ) : null}
+      {error ? <span role="alert" className="text-xs font-semibold text-red-700">{t("actionFailed")}</span> : null}
     </>
   );
 }

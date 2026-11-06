@@ -25,7 +25,7 @@ export type PricingRule = {
 };
 
 /** What the catalogue looks like before Part 10 has run (and in demo mode). */
-export const DEFAULT_CATALOG: CatalogRow[] = SERVICE_KEYS.map((k, i) => ({ service_key: k, enabled: k !== "oneoff" && k !== "contract", business_types: [], sort_order: i }));
+export const DEFAULT_CATALOG: CatalogRow[] = SERVICE_KEYS.map((k, i) => ({ service_key: k, enabled: true, business_types: [], sort_order: i }));
 
 export function enabledFor(catalog: CatalogRow[], service: ServiceKey, type: BusinessType | null): boolean {
   const row = catalog.find((c) => c.service_key === service);

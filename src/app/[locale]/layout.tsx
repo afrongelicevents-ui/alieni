@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
+import { getSessionUser } from "@/lib/auth";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
@@ -44,15 +45,18 @@ export default async function LocaleLayout({
     notFound();
   }
   setRequestLocale(locale);
+  // the server already knows who is signed in: the menus start with the right role
+  const user = await getSessionUser();
+  const initialRole = user?.role ?? "guest";
 
   return (
     <html lang={locale} className={jakarta.variable}>
       <body className="font-sans">
         <NextIntlClientProvider>
-          <Header />
+          <Header initialRole={initialRole} />
           <main className="pb-16 md:pb-0">{children}</main>
           <Footer />
-          <BottomNav />
+          <BottomNav initialRole={initialRole} />
         </NextIntlClientProvider>
       </body>
     </html>

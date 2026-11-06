@@ -51,6 +51,23 @@ async function loadRemote() {
   const { data } = await supabase.from("favourites").select("cleaner_profile_id");
   remoteIds = (data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id);
   notify();
+  await mergeLocal(supabase);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Hearts given while signed out move into the account on sign-in (example cleaners stay on the device). */
+async function mergeLocal(supabase: NonNullable<ReturnType<typeof createClient>>) {
+  const local = readLocal().filter((id) => UUID.test(id) && !(remoteIds ?? []).includes(id));
+  if (!local.length) return;
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return;
+  const { error } = await supabase.from("favourites").upsert(local.map((id) => ({ user_id: userId, cleaner_profile_id: id })), { onConflict: "user_id,cleaner_profile_id", ignoreDuplicates: true });
+  if (error) return; // not allowed for this account type: keep them on the device
+  const { data } = await supabase.from("favourites").select("cleaner_profile_id");
+  remoteIds = (data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id);
+  writeLocal(readLocal().filter((id) => !UUID.test(id)));
 }
 
 function init() {

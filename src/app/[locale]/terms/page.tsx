@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { COMPANY_DETAILS } from "@/lib/invoices";
+import { companyLine } from "@/lib/company";
 
 /**
  * Gebruiksvoorwaarden / Terms of use (brief §6).
@@ -18,25 +18,25 @@ const nl = {
       ],
     },
     {
-      h: "2. Geen verificatie — controleer elkaar",
+      h: "2. Geen controle door Alieni — controleer elkaar",
       p: [
-        "Alieni verifieert geen identiteitsbewijzen, KvK-nummers of VOG's. Gebruikers zijn zelf verantwoordelijk voor het controleren van elkaars identiteit, kwalificaties en betrouwbaarheid, bijvoorbeeld tijdens de kennismaking.",
+        "Voor schoolwerk beoordeelt Alieni geüploade VOG-documenten van schoonmakers; het bestand wordt na de beoordeling verwijderd en Alieni bewaart alleen de uitkomst en de afgiftedatum. Verder verifieert Alieni de identiteit, kwalificaties of verzekering van schoonmakers niet. Gebruikers zijn zelf verantwoordelijk voor het controleren van elkaars identiteit, kwalificaties en betrouwbaarheid, bijvoorbeeld tijdens de kennismaking.",
         "Reviews op Alieni zijn afkomstig van verbindingen die beide partijen in de app hebben bevestigd.",
       ],
     },
     {
       h: "3. Accounts en advertenties",
       p: [
-        "Een account is persoonlijk. Je gegevens moeten juist en actueel zijn. Schoonmakers plaatsen gratis een advertentie met een uurtarief van minimaal het platformminimum (op dit moment €15 per uur).",
+        "Een account is persoonlijk. Je gegevens moeten juist en actueel zijn. Schoonmakers plaatsen gratis een advertentie met een uurtarief van minimaal het minimale uurtarief dat het platform vaststelt (zichtbaar wanneer je je advertentie maakt).",
         "Niet toegestaan: misleidende of valse advertenties, discriminerende uitingen, het omzeilen van het platform door contactgegevens te delen vóór een bevestigde deal, en elk gebruik dat in strijd is met de wet.",
       ],
     },
     {
       h: "4. Kosten",
       p: [
-        "Zoeken, chatten en kennismaken is gratis. Pas wanneer een huishouden en een schoonmaker allebei een deal bevestigen, start voor het huishouden een abonnement van €14,95 per maand (inclusief 21% btw) per actieve verbinding.",
-        "Opzeggen kan op elk moment met één druk op de knop; het abonnement stopt dan aan het einde van de lopende maand. Voor schoonmakers is Alieni altijd gratis — zij houden 100% van hun tarief, er is geen commissie.",
-        "Bedrijven betalen een vast maandbedrag per eenheid (listing, kamer, locatie of vestiging), exclusief btw, dat pas start bij de eerste bevestigde deal. Facturatie vindt achteraf plaats aan het einde van elke maand en wordt via SEPA-incasso geïnd; de eerste maand naar rato. Wijzigingen in het aantal eenheden gelden vanaf de volgende maand. Opzeggen kan altijd per einde van de lopende maand.",
+        "Zoeken, chatten, kennismaken en adverteren is gratis. Op dit moment brengt Alieni geen kosten in rekening en worden er geen betalingen, abonnementen of incasso's verwerkt.",
+        "Als Alieni in de toekomst kosten gaat rekenen, kondigen we dat vooraf aan en is daarvoor jouw toestemming nodig. Zonder jouw toestemming gaat er niets betaald worden en eindigt of wijzigt er niets in je gebruik van het platform.",
+        "Schoonmakers houden 100% van hun tarief en er is geen commissie. Huishoudens en bedrijven betalen de schoonmaker rechtstreeks; Alieni zit niet tussen die betaling.",
       ],
     },
     {
@@ -54,7 +54,7 @@ const nl = {
     {
       h: "7. Toepasselijk recht",
       p: [
-        `Op deze voorwaarden is Nederlands recht van toepassing. ${COMPANY_DETAILS.name} · ${COMPANY_DETAILS.kvk} · ${COMPANY_DETAILS.btw}.`,
+        `Op deze voorwaarden is Nederlands recht van toepassing. ${companyLine()}.`,
       ],
     },
   ],
@@ -72,25 +72,25 @@ const en = {
       ],
     },
     {
-      h: "2. No verification — check each other",
+      h: "2. No checks by Alieni — check each other",
       p: [
-        "Alieni does not verify identity documents, KvK numbers or VOG certificates. Users are responsible for checking each other's identity, qualifications and reliability, for example during the introduction meeting.",
+        "For school work, Alieni reviews VOG documents uploaded by cleaners; the file is deleted after review and Alieni keeps only the outcome and the issue date. Otherwise Alieni does not verify cleaners' identity, qualifications or insurance. Users are responsible for checking each other's identity, qualifications and reliability, for example during the introduction meeting.",
         "Reviews on Alieni come from connections that both parties confirmed in the app.",
       ],
     },
     {
       h: "3. Accounts and ads",
       p: [
-        "An account is personal. Your details must be accurate and up to date. Cleaners post a free ad with an hourly rate of at least the platform minimum (currently €15 per hour).",
+        "An account is personal. Your details must be accurate and up to date. Cleaners post a free ad with an hourly rate of at least the minimum hourly rate set by the platform (shown when you create your ad).",
         "Not allowed: misleading or false ads, discriminatory content, bypassing the platform by sharing contact details before a confirmed deal, and any use contrary to the law.",
       ],
     },
     {
       h: "4. Fees",
       p: [
-        "Searching, chatting and meeting is free. Only when a household and a cleaner both confirm a deal does a subscription of €14.95 per month (including 21% VAT) per active connection start for the household.",
-        "You can cancel at any time with one tap; the subscription then stops at the end of the current month. For cleaners, Alieni is always free — they keep 100% of their rate, there is no commission.",
-        "Businesses pay a fixed monthly fee per unit (listing, room, location or site), excluding VAT, which only starts at the first confirmed deal. Invoicing happens in arrears at the end of each month and is collected by SEPA direct debit; the first month is pro-rated. Changes to the number of units apply from the next month. Cancel any time, effective at the end of the current month.",
+        "Searching, chatting, meeting and posting an ad is free. At the moment Alieni charges no fees and processes no payments, subscriptions or direct debits.",
+        "If Alieni starts charging fees in the future, we will announce this in advance and it will need your consent. Without your consent nothing will be charged, and nothing about your use of the platform will end or change.",
+        "Cleaners keep 100% of their rate and there is no commission. Households and businesses pay the cleaner directly; Alieni is not part of that payment.",
       ],
     },
     {
@@ -108,7 +108,7 @@ const en = {
     {
       h: "7. Governing law",
       p: [
-        `These terms are governed by Dutch law. ${COMPANY_DETAILS.name} · ${COMPANY_DETAILS.kvk} · ${COMPANY_DETAILS.btw}.`,
+        `These terms are governed by Dutch law. ${companyLine()}.`,
       ],
     },
   ],

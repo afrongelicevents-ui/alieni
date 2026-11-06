@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ import { dutchPostcodeSchema, emailSchema } from "@/lib/validation";
 import { saveBusinessProfile } from "@/app/[locale]/business/actions";
 import { BusinessTypeCard } from "./BusinessTypeCard";
 
+const DRAFT_KEY = "alieni-business-draft";
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
 type UnitDraft = { id: string; name: string; addressLine: string; postcode: string; city: string };
@@ -29,7 +30,22 @@ type Draft = {
  * step 1 (Supabase Auth); the profile and units are saved through a server
  * action at the end. Signed-in users skip the account fields.
  */
-export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitPrices = {} }: { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>> }) {
+type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>> };
+
+const subscribeNothing = () => () => {};
+const readSaved = () => { try { return window.localStorage.getItem(DRAFT_KEY); } catch { return null; } };
+
+/** Reads the answers kept during the e-mail confirmation round trip (client only), then renders the form with them. */
+export function BusinessSignup(props: SignupProps) {
+  const saved = useSyncExternalStore(subscribeNothing, readSaved, () => null);
+  let restored: Partial<Draft> | undefined;
+  if (props.signedIn && saved) {
+    try { restored = JSON.parse(saved) as Partial<Draft>; } catch { restored = undefined; }
+  }
+  return <BusinessSignupForm key={restored ? "restored" : "fresh"} {...props} restored={restored} />;
+}
+
+function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPrices = {}, restored }: SignupProps & { restored?: Partial<Draft> }) {
   const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
 
@@ -37,11 +53,17 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft>({
-    firstName: "", lastName: "", email: knownEmail ?? "", password: "", companyName: "", btwNumber: "",
+    firstName: "", lastName: "", companyName: "", btwNumber: "",
     businessType: initialType ?? "airbnb", unitCount: "1",
     units: [{ id: "u1", name: "", addressLine: "", postcode: "", city: "" }],
+    ...restored,
+    email: knownEmail ?? restored?.email ?? "",
+    password: "",
   });
   const set = (partial: Partial<Draft>) => setDraft((d) => ({ ...d, ...partial }));
+  const [accountCreated, setAccountCreated] = useState(false); // the login exists: a retry must not sign up again
+  const [notice, setNotice] = useState<string | null>(null);
+
 
   const unitCountNum = Math.max(1, Math.min(10000, Math.round(Number(draft.unitCount) || 0)));
   const unitPrice = unitPrices[draft.businessType] ?? null; // only with an active monthly rule (Admin → Pricing)
@@ -76,7 +98,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
     setBusy(true);
     setErrors({});
     try {
-      if (!signedIn) {
+      if (!signedIn && !accountCreated) {
         const supabase = createClient();
         if (!supabase) {
           setErrors({ submit: t("error_not_configured") });
@@ -85,17 +107,25 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         const { data, error } = await supabase.auth.signUp({
           email: draft.email.trim().toLowerCase(),
           password: draft.password,
-          options: { data: { role: "business", display_name: draft.companyName.trim() } },
+          options: { data: { role: "business", display_name: draft.companyName.trim() }, emailRedirectTo: `${window.location.origin}/${lang}/login?confirmed=1&next=${encodeURIComponent("/business/signup")}` },
         });
         if (error) {
           setErrors({ submit: /already/i.test(error.message) ? t("error_exists") : error.message });
           return;
         }
         if (!data.session) {
-          // E-mail confirmation is on: finish after confirming.
-          setErrors({ submit: t("confirmEmailFirst") });
+          // E-mail confirmation is on: keep the answers, finish after confirming and logging in.
+          try {
+            const { password: _pw, ...rest } = draft;
+            void _pw;
+            window.localStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
+          } catch {
+            // storage unavailable: the person fills the steps in again
+          }
+          setNotice(t("confirmEmailFirst"));
           return;
         }
+        setAccountCreated(true);
       }
       const result = await saveBusinessProfile({
         firstName: draft.firstName.trim(), lastName: draft.lastName.trim(),
@@ -107,6 +137,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         setErrors({ submit: t(`error_${result.error ?? "failed"}` as "error_failed"), detail: result.detail ?? "" });
         return;
       }
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       // Full reload so the server sees the new session cookies.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/${lang}/business/dashboard`);
@@ -234,6 +265,7 @@ export function BusinessSignup({ initialType, signedIn, email: knownEmail, unitP
         ) : null}
       </div>
 
+      {notice ? <p className="mt-3 rounded-xl bg-mint p-3 text-sm font-semibold text-forest" role="status">{notice}</p> : null}
       {errors.submit ? <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
 
       <div className="mt-5 flex justify-between gap-3">

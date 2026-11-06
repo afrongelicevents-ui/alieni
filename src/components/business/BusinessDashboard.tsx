@@ -21,11 +21,11 @@ export function BusinessDashboard({ bundle, tiles, unitPriceCents }: { bundle: B
   const monthNet = counted.reduce((a, e) => a + e.amount_cents, 0);
   const toConfirm = workRecords.filter((w) => w.outcome === "done" && !w.business_confirmed_at).length;
   const searching = emergencies.filter((e) => e.status === "searching").length;
-  const responses = jobs.reduce((a, j) => a + j.responses, 0);
+  const responses = jobs.filter((j) => j.status === "published").reduce((a, j) => a + j.quotes.filter((q) => q.status === "sent").length, 0);
   const waiting = [
     toConfirm ? { key: "waitingConfirm", count: toConfirm, href: "/business/work" } : null,
     searching ? { key: "waitingSearching", count: searching, href: "/emergency" } : null,
-    responses ? { key: "waitingResponses", count: responses, href: "/jobs" } : null,
+    responses ? { key: "waitingResponses", count: responses, href: "/business/requests" } : null,
   ].filter(Boolean) as { key: "waitingConfirm" | "waitingSearching" | "waitingResponses"; count: number; href: string }[];
 
   return (

@@ -14,6 +14,7 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
   const locale = useLocale() as "nl" | "en";
   const t = useTranslations("home");
   const tSearch = useTranslations("search");
+  const tProfile = useTranslations("profile");
 
   return (
     <article className="relative flex h-full flex-col gap-3 rounded-card-lg border border-line bg-white p-5 shadow-sm">
@@ -35,16 +36,20 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
           <h3 className="flex flex-wrap items-center gap-2 text-lg font-extrabold text-ink">
             {cleaner.name}
             {isVogValid(cleaner.vog, new Date()) ? (
-              <span className="rounded-full bg-forest px-2 py-0.5 text-[11px] font-bold text-white" title="VOG goedgekeurd">VOG ✓</span>
+              <span className="rounded-full bg-forest px-2 py-0.5 text-[11px] font-bold text-white" title={tSearch("vogApproved")}>VOG ✓</span>
             ) : null}
           </h3>
-          <p className="flex items-center gap-1.5 text-sm text-ink/70">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
-              <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
-            </svg>
-            <strong className="text-ink">{cleaner.rating.toFixed(1)}</strong>
-            <span>({t("reviewsCount", { count: cleaner.reviewCount })})</span>
-          </p>
+          {cleaner.reviewCount > 0 ? (
+            <p className="flex items-center gap-1.5 text-sm text-ink/70">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
+                <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
+              </svg>
+              <strong className="text-ink">{cleaner.rating.toFixed(1)}</strong>
+              <span>({t("reviewsCount", { count: cleaner.reviewCount })})</span>
+            </p>
+          ) : cleaner.verifiedJobs > 0 ? (
+            <p className="text-sm text-ink/70">{tProfile("verifiedJobs", { count: cleaner.verifiedJobs })}</p>
+          ) : <p className="text-sm text-ink/70">{tProfile("noReviews")}</p>}
           <p className="text-sm font-bold text-forest">
             {formatHourlyRate(cleaner.rateCents, locale)}
             <span className="font-medium text-ink/70">{t("perHour")}</span>

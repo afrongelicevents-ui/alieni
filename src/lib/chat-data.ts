@@ -1,3 +1,5 @@
+import { paymentsActive } from "./mollie";
+import { getPublicHouseholdFeeCents } from "./site-settings";
 import "server-only";
 import { createClient } from "./supabase/server";
 import { profilePhotoUrl } from "./cleaners-live";
@@ -44,6 +46,10 @@ export type ConversationDetail = {
   } | null;
   /** Mollie is configured on the server, so the household can set up payment. */
   paymentsEnabled: boolean;
+  /** The monthly household price to show, or null while no price is active (copy stays price-neutral). */
+  householdFeeCents: number | null;
+  /** The signed-in user is a business: it never sees the household payment prompt. */
+  isBusiness: boolean;
   messages: ChatMessage[];
 };
 
@@ -61,6 +67,16 @@ function connStatus(row: { status: string; household_confirmed_at: string | null
   if (row.status === "active" || row.status === "paused") return "active";
   if (row.status === "ended") return "ended";
   return "pending";
+}
+
+/**
+ * Payment counts as set up for a real Mollie subscription id or the
+ * 'charged-no-subscription' state (already charged; ops finish the subscription).
+ * 'pending' (claim in flight) and 'cancelled:…' (ended) do not count.
+ */
+function subscriptionSetUp(value: string | null | undefined): boolean {
+  if (!value || value === "pending" || value.startsWith("cancelled:")) return false;
+  return true;
 }
 
 export async function listConversations(userId: string): Promise<ConversationSummary[] | null> {
@@ -124,7 +140,7 @@ export async function getConversation(id: string, userId: string): Promise<Conve
   const role = conv.household_id === userId ? "household" : "cleaner";
   const otherId = role === "household" ? conv.cleaner_id : conv.household_id;
 
-  const [{ data: other }, { data: cp }, { data: meeting }, { data: conn }, { data: msgs }] = await Promise.all([
+  const [{ data: other }, { data: cp }, { data: meeting }, { data: conn }, { data: msgs }, { data: bp }] = await Promise.all([
     supabase.from("profiles").select("display_name, city").eq("id", otherId).maybeSingle(),
     supabase.from("cleaner_profiles").select("id, rate_cents, photo_path, profiles ( city )").eq("user_id", conv.cleaner_id).maybeSingle(),
     conv.meeting_request_id
@@ -132,6 +148,7 @@ export async function getConversation(id: string, userId: string): Promise<Conve
       : Promise.resolve({ data: null }),
     supabase.from("connections").select("id, status, household_confirmed_at, cleaner_confirmed_at, started_at, ended_at, mollie_subscription_id").eq("household_id", conv.household_id).eq("cleaner_id", conv.cleaner_id).maybeSingle(),
     supabase.from("messages").select("id, sender_id, body, masked, created_at").eq("conversation_id", conv.id).order("created_at", { ascending: true }).limit(500),
+    supabase.from("business_profiles").select("id").eq("user_id", userId).maybeSingle(),
   ]);
 
   const cleanerRow = cp as { id: string; rate_cents: number; photo_path: string | null; profiles: { city: string | null } | null } | null;
@@ -147,9 +164,11 @@ export async function getConversation(id: string, userId: string): Promise<Conve
       ? { id: meeting.id, type: meeting.type, weekday: meeting.proposed_weekday, block: meeting.proposed_block, status: meeting.status }
       : null,
     connection: conn
-      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: Boolean(conn.mollie_subscription_id), paused: conn.status === "paused" }
+      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: subscriptionSetUp(conn.mollie_subscription_id), paused: conn.status === "paused" }
       : null,
-    paymentsEnabled: Boolean(process.env.MOLLIE_API_KEY),
+    paymentsEnabled: paymentsActive(),
+    householdFeeCents: await getPublicHouseholdFeeCents(),
+    isBusiness: Boolean(bp),
     messages: ((msgs ?? []) as { id: string; sender_id: string; body: string; masked: boolean; created_at: string }[]).map((m) => ({
       id: m.id,
       mine: m.sender_id === userId,

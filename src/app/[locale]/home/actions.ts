@@ -19,6 +19,9 @@ export async function saveHouseholdProfile(input: z.input<typeof schema>): Promi
   const v = parsed.data;
   try {
     const { supabase, userId } = await requireUser();
+    // household preferences belong to household accounts only
+    const { data: me } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
+    if (me?.role !== "household") return { ok: false, error: "not_allowed" };
     if (v.name) await supabase.from("profiles").update({ display_name: v.name }).eq("id", userId);
     const { error } = await supabase.from("household_profiles").upsert(
       { user_id: userId, postcode_area: v.postcodeArea || null, needs: v.needs, home_type: v.homeType || null, updated_at: new Date().toISOString() },

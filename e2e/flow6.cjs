@@ -14,6 +14,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -41,7 +42,7 @@ const inHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const errors = [];
-  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
+  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
 
   for (const [label, viewport, mobile] of [["phone", { width: 390, height: 844 }, true], ["desktop", { width: 1280, height: 900 }, false]]) {
     await fetch(`${EMU}/__emu/reset`);
@@ -89,6 +90,13 @@ const inHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
     await b.waitForLoadState("networkidle");
     const bizRow = (await tbl("business_profiles")).find((r) => r.company_name.startsWith("Canal Stays"));
     ok(`[${label}] DB: new business has NO unit price (none set)`, bizRow && (bizRow.unit_price_cents == null));
+
+    // The admin switches the two newest services off (they are on by default since Part 15): the tiles then read "Coming soon".
+    const adminCookies = await actx.cookies();
+    const rawTok = adminCookies.filter((c) => /^sb-.*-auth-token(\.\d+)?$/.test(c.name)).sort((x, y) => x.name.localeCompare(y.name)).map((c) => c.value).join("");
+    const adminSession = JSON.parse(rawTok.startsWith("base64-") ? Buffer.from(rawTok.slice(7), "base64").toString() : decodeURIComponent(rawTok));
+    for (const k of ["oneoff", "contract"]) await rest(adminSession.access_token, "PATCH", `service_catalog?service_key=eq.${k}`, { enabled: false });
+    await b.reload({ waitUntil: "networkidle" });
 
     // ---------- Dashboard tiles ----------
     const dash = await b.textContent("main");

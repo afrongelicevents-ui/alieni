@@ -6,12 +6,14 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { maskContacts } from "@/lib/masking";
 import { formatHourlyRate } from "@/lib/money";
 import type { ConversationDetail } from "@/lib/chat-data";
-import { respondMeeting, sendMessage } from "@/app/[locale]/messages/actions";
+import { answerMeetingProposal, proposeMeetingTime, respondMeeting, sendMessage, withdrawMeeting } from "@/app/[locale]/messages/actions";
+import { createClient } from "@/lib/supabase/client";
 import { DealPanelLive } from "./DealPanelLive";
 
-const POLL_MS = 8000;
+const POLL_MS = 8000; // fallback while realtime is not connected
+const POLL_REALTIME_MS = 60000; // slow safety net once it is
 
-/** Live chat thread: server data in, server actions out, refreshes every few seconds. */
+/** Live chat thread: server data in, server actions out; new messages arrive through realtime, with polling as the fallback. */
 export function ChatThreadLive({ conversation }: { conversation: ConversationDetail }) {
   const t = useTranslations("chat");
   const tMeeting = useTranslations("meeting");
@@ -24,13 +26,26 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Poll for new messages while the thread is open.
+  // New messages arrive through Supabase realtime; polling stays as the fallback (fast until realtime connects, slow after).
+  const [live, setLive] = useState(false);
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+    const channel = supabase
+      .channel(`chat-${conversation.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` }, () => router.refresh())
+      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [conversation.id, router]);
+
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState === "visible") router.refresh();
-    }, POLL_MS);
+    }, live ? POLL_REALTIME_MS : POLL_MS);
     return () => clearInterval(id);
-  }, [router]);
+  }, [router, live]);
 
   // Drop optimistic messages once the server copy arrives.
   useEffect(() => {
@@ -68,12 +83,27 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
   async function respond(status: "accepted" | "declined") {
     if (!conversation.meeting) return;
     setBusy(true);
-    await respondMeeting(conversation.meeting.id, status);
+    setError(null);
+    const r = await respondMeeting(conversation.meeting.id, status);
     setBusy(false);
+    if (!r.ok) { setError(r.error ?? "failed"); return; }
     router.refresh();
   }
 
   const meeting = conversation.meeting;
+  const [proposing, setProposing] = useState(false);
+  const [propDay, setPropDay] = useState(0);
+  const [propBlock, setPropBlock] = useState<"morning" | "afternoon" | "evening">("morning");
+
+  async function runMeeting(action: () => Promise<{ ok: boolean; error?: string }>) {
+    setBusy(true);
+    setError(null);
+    const r = await action();
+    setBusy(false);
+    if (!r.ok) { setError(r.error ?? "failed"); return; }
+    setProposing(false);
+    router.refresh();
+  }
 
   return (
     <div className="flex flex-col">
@@ -105,7 +135,7 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
           )}
           {conversation.role === "household" && conversation.cleaner ? (
             <span className="block text-xs text-ink/70">
-              {formatHourlyRate(conversation.cleaner.rateCents, locale)}/{locale === "nl" ? "uur" : "hr"}
+              {formatHourlyRate(conversation.cleaner.rateCents, locale)}/{t("hourUnit")}
               {conversation.cleaner.city ? ` · ${conversation.cleaner.city}` : ""}
             </span>
           ) : (
@@ -127,10 +157,36 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
             block: tCommon(meeting.block).toLowerCase(),
           })}
           <span className="rounded-full bg-white px-2 py-0.5 text-xs">{tMeeting(`status_${meeting.status}` as "status_requested")}</span>
-          {conversation.role === "cleaner" && meeting.status === "requested" ? (
-            <span className="ml-auto flex gap-2">
-              <button type="button" disabled={busy} onClick={() => respond("accepted")} className="rounded-full bg-forest px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{tMeeting("accept")}</button>
-              <button type="button" disabled={busy} onClick={() => respond("declined")} className="rounded-full border border-forest/40 bg-white px-3 py-1 text-xs font-bold text-forest disabled:opacity-50">{tMeeting("decline")}</button>
+          {conversation.role === "cleaner" && (meeting.status === "requested" || meeting.status === "accepted" || meeting.status === "rescheduled") ? (
+            <span className="ml-auto flex flex-wrap gap-2">
+              {meeting.status === "requested" ? (
+                <>
+                  <button type="button" disabled={busy} onClick={() => respond("accepted")} className="rounded-full bg-forest px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{tMeeting("accept")}</button>
+                  <button type="button" disabled={busy} onClick={() => respond("declined")} className="rounded-full border border-forest/40 bg-white px-3 py-1 text-xs font-bold text-forest disabled:opacity-50">{tMeeting("decline")}</button>
+                </>
+              ) : null}
+              <button type="button" disabled={busy} onClick={() => setProposing((v) => !v)} className="rounded-full border border-forest/40 bg-white px-3 py-1 text-xs font-bold text-forest disabled:opacity-50" data-propose-time>{tMeeting("proposeOther")}</button>
+            </span>
+          ) : null}
+          {conversation.role === "household" && meeting.status === "rescheduled" ? (
+            <span className="ml-auto flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-ink/80">{tMeeting("proposedByCleaner")}</span>
+              <button type="button" disabled={busy} onClick={() => runMeeting(() => answerMeetingProposal(meeting.id, true))} className="rounded-full bg-forest px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{tMeeting("acceptProposal")}</button>
+              <button type="button" disabled={busy} onClick={() => runMeeting(() => answerMeetingProposal(meeting.id, false))} className="rounded-full border border-forest/40 bg-white px-3 py-1 text-xs font-bold text-forest disabled:opacity-50">{tMeeting("declineProposal")}</button>
+            </span>
+          ) : null}
+          {conversation.role === "household" && (meeting.status === "requested" || meeting.status === "accepted" || meeting.status === "rescheduled") ? (
+            <button type="button" disabled={busy} onClick={() => runMeeting(() => withdrawMeeting(meeting.id))} className="rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-bold text-red-800 disabled:opacity-50">{tMeeting("withdraw")}</button>
+          ) : null}
+          {proposing && conversation.role === "cleaner" ? (
+            <span className="flex w-full flex-wrap items-center gap-2 rounded-xl bg-white p-3 text-ink">
+              <select value={propDay} onChange={(e) => setPropDay(Number(e.target.value))} aria-label={tMeeting("proposeDay")} className="min-h-10 rounded-xl border border-line bg-white px-3 text-sm">
+                {[0, 1, 2, 3, 4, 5, 6].map((d) => <option key={d} value={d}>{tCommon(`day${d}` as "day0")}</option>)}
+              </select>
+              <select value={propBlock} onChange={(e) => setPropBlock(e.target.value as "morning" | "afternoon" | "evening")} aria-label={tMeeting("proposeBlock")} className="min-h-10 rounded-xl border border-line bg-white px-3 text-sm">
+                {(["morning", "afternoon", "evening"] as const).map((b) => <option key={b} value={b}>{tCommon(b)}</option>)}
+              </select>
+              <button type="button" disabled={busy} onClick={() => runMeeting(() => proposeMeetingTime(meeting.id, propDay, propBlock))} className="rounded-full bg-forest px-4 py-2 text-xs font-bold text-white disabled:opacity-50" data-send-proposal>{tMeeting("proposeSend")}</button>
             </span>
           ) : null}
         </div>
@@ -182,7 +238,7 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
         <div ref={bottomRef} />
       </ol>
 
-      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${error}` as "error_failed")}</p> : null}
+      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t.has(`error_${error}` as "error_failed") ? t(`error_${error}` as "error_failed") : t("error_failed")}</p> : null}
 
       {/* composer */}
       <form

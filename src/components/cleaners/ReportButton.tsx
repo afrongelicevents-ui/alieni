@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { submitReport } from "@/app/[locale]/cleaners/[id]/actions";
 
 /** DSA report flow (brief §6): saved to the `reports` table, admin reviews it. */
 const REASONS = ["scam", "inappropriate", "fake", "offensive", "other"] as const;
 
-export function ReportButton({ subjectId }: { subjectId: string }) {
+export function ReportButton({ subjectId, subjectType = "cleaner_profile" }: { subjectId: string; subjectType?: "cleaner_profile" | "job" | "review" }) {
   const t = useTranslations("profile");
+  const pathname = usePathname();
+  const sfx = subjectType === "job" ? "Job" : subjectType === "review" ? "Review" : "";
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   const [reason, setReason] = useState<"scam" | "inappropriate" | "fake" | "offensive" | "other">("scam");
@@ -21,7 +23,7 @@ export function ReportButton({ subjectId }: { subjectId: string }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const result = await submitReport({ subjectType: "cleaner_profile", subjectId, reason, details });
+    const result = await submitReport({ subjectType, subjectId, reason, details });
     setBusy(false);
     if (result.ok) setSent(true);
     else setError(result.error ?? "failed");
@@ -41,15 +43,15 @@ export function ReportButton({ subjectId }: { subjectId: string }) {
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" aria-hidden="true">
           <path d="M5 21V4m0 1h13l-2.5 4L18 13H5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        {t("report")}
+        {t(`report${sfx}` as "report")}
       </button>
     );
   }
 
   return (
     <form onSubmit={submit} className="rounded-card-lg border border-line bg-white p-5">
-      <h3 className="text-lg font-extrabold text-ink">{t("reportTitle")}</h3>
-      <p className="mt-1 text-sm text-ink/70">{t("reportIntro")}</p>
+      <h3 className="text-lg font-extrabold text-ink">{t(`reportTitle${sfx}` as "reportTitle")}</h3>
+      <p className="mt-1 text-sm text-ink/70">{t(`reportIntro${sfx}` as "reportIntro")}</p>
       <fieldset className="mt-4 flex flex-col gap-2">
         {REASONS.map((r) => (
           <label key={r} className="flex min-h-11 items-center gap-3 rounded-xl border border-line px-3 text-sm font-medium text-ink has-[:checked]:border-forest has-[:checked]:bg-mint">
@@ -78,7 +80,7 @@ export function ReportButton({ subjectId }: { subjectId: string }) {
       {error === "not_signed_in" ? (
         <p className="mt-3 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">
           {t("reportLogin")}{" "}
-          <Link href="/login" className="font-bold text-forest underline">{t("reportLoginCta")}</Link>
+          <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="font-bold text-forest underline">{t("reportLoginCta")}</Link>
         </p>
       ) : error ? (
         <p className="mt-3 text-sm font-semibold text-red-700">{t(`reportError_${error}` as "reportError_failed")}</p>

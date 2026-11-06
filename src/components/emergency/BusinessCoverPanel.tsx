@@ -8,18 +8,22 @@ import type { CoverRequestRow } from "@/lib/cover-data";
 import { formatEuro } from "@/lib/money";
 import { cancelCover, createEmergencyRequest, openCoverChat, reportAttendance } from "@/app/[locale]/emergency/actions";
 
+/** YYYY-MM-DD in Dutch local time (not UTC, which is a day behind/ahead around midnight). Deterministic on server and client. */
+const nlDateIso = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 export type CoverUnit = { id: string; name: string; address_line: string; postcode: string; city: string };
 
 /** Business side of emergency & replacement cover: request form + own requests with cancel / chat / attendance. */
 export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, serverNow }: { units: CoverUnit[]; requests: CoverRequestRow[]; rules: CoverRules; ruleAmountCents: number | null; serverNow: string }) {
   const t = useTranslations("emergency");
+  const tb = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const router = useRouter();
   const loc = lang === "en" ? "en-GB" : "nl-NL";
   const now = new Date(serverNow); // rendered on the server; keeps the component pure
-  const todayIso = now.toISOString().slice(0, 10);
-  const maxIso = new Date(now.getTime() + rules.maxDaysAhead * 864e5).toISOString().slice(0, 10);
+  const todayIso = nlDateIso(now);
+  const maxIso = nlDateIso(new Date(now.getTime() + rules.maxDaysAhead * 864e5));
 
   const [open, setOpen] = useState(requests.length === 0);
   const [unitId, setUnitId] = useState(units[0]?.id ?? "");
@@ -118,10 +122,10 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
               <input type="date" min={todayIso} max={maxIso} value={date} onChange={(e) => setDate(e.target.value)} className={`mt-1 ${inputCls}`} data-cover-date />{err("date")}</label>
             <fieldset>
               <legend className="text-sm font-semibold text-ink/80">{t("windowDay")}</legend>
-              <div className="mt-1 grid grid-cols-3 gap-2">
+              <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <input type="time" value={from} onChange={(e) => setFrom(e.target.value)} className={inputCls} aria-label={t("from")} />
                 <input type="time" value={to} onChange={(e) => setTo(e.target.value)} className={inputCls} aria-label={t("to")} />
-                <select value={hours} onChange={(e) => setHours(e.target.value)} className={inputCls} aria-label={t("hours")}>
+                <select value={hours} onChange={(e) => setHours(e.target.value)} className={`${inputCls} col-span-2 sm:col-span-1`} aria-label={t("hours")}>
                   {[1, 2, 3, 4, 5, 6, 8, 10, 12].map((h) => <option key={h} value={h}>{h} {t("hoursShort")}</option>)}
                 </select>
               </div>{err("window")}
@@ -157,7 +161,7 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
                   </div>
                   <p className="mt-1 text-sm text-ink/80">{r.tasks}{r.report_to ? ` · ${t("reportToShown", { reportTo: r.report_to })}` : ""}</p>
                   {r.status === "accepted" ? <p className="mt-1 text-sm font-semibold text-forest">{t("acceptedBy", { cleaner: r.cleanerName ?? "—", rate: formatEuro(r.cleanerRateCents ?? 0, lang) })}</p> : null}
-                  {r.feeAmountCents !== null ? <p className="mt-1 text-xs text-ink/70">{formatEuro(r.feeAmountCents, lang)} · {r.feeStatus}</p> : null}
+                  {r.feeAmountCents !== null ? <p className="mt-1 text-xs text-ink/70">{formatEuro(r.feeAmountCents, lang)}{r.feeStatus && tb.has(`fee_${r.feeStatus}` as "fee_pending") ? ` · ${tb(`fee_${r.feeStatus}` as "fee_pending")}` : ""}</p> : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {r.status === "accepted" ? <button type="button" disabled={busy === r.id} onClick={() => chat(r.id)} className="inline-flex min-h-10 items-center rounded-full bg-forest px-4 text-xs font-bold text-white disabled:opacity-50">{t("message")}</button> : null}
                     {(r.status === "searching" || (r.status === "accepted" && now < start)) && cancelling !== r.id ? (

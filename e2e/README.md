@@ -12,6 +12,13 @@ node e2e/flow.cjs    # sign-up → account → admin → photo upload → log ou
 node e2e/flow2.cjs   # cleaner ad → search → favourite → meeting → masked chat → deal → unlocked (22 checks)
 node e2e/flow3.cjs   # business sign-up → turnovers → job → response → chat → deal → slots → emergency (19 checks)
 node e2e/flow4.cjs   # VOG upload → report → admin hide/restore → VOG approve → settings → access control (16 checks)
+node e2e/flow5.cjs … flow9.cjs   # roles, business foundations, cover, privacy of company data (see each file's header)
+node e2e/flow10.cjs  # one-off cleaning, quotations, regular schedules: post, quote, accept, visits, cancel (61 checks)
+# flow11 needs the service key (account export and deletion), so run a second instance on port 3101:
+SUPABASE_SERVICE_ROLE_KEY=emu-service-key NEXT_PUBLIC_SUPABASE_URL=http://localhost:4000 NEXT_PUBLIC_SUPABASE_ANON_KEY=emu-anon-key npx next start -p 3101 &
+node e2e/flow11.cjs  # download my data, delete my account, public ad privacy, no placeholders on the legal pages
+node e2e/flow12.cjs  # reviews, business edits, turnover release, emergency screen, banned words, suspend (31 checks; port 3101 too)
+node e2e/flow13.cjs  # price-neutral copy, meeting lifecycle (propose/agree/withdraw), job report (31 checks)
 node e2e/audit.cjs   # crawls every linked page on mobile + desktop: status, console errors, overflow
 ```
 
@@ -23,7 +30,9 @@ wrong policies are therefore invisible to it. `e2e/pg/rls-check.sh` closes that 
 scratch database on a real Postgres (with small stand-ins for Supabase's auth/storage and PostGIS), then
 
 1. reads every table and view as anon, household, cleaner, business and admin (this plans every rule, so a loop shows up),
-2. runs the business sign-up, job, emergency-cover (accept, work record, fee event, cancel) path as real users.
+2. runs the business sign-up, job, emergency-cover (accept, work record, fee event, cancel) path as real users,
+3. runs the quotation, award, regular-schedule and cancel flows (Part 15) and the hardening checks of Part 16 (forged requests, self-approved VOG, moderation, privacy of a cleaner's home, erasure),
+4. `UPGRADE=1` loads 0001–0023 with data first and then applies the later parts on top, like the live database.
 
 Needs a running Postgres 16 and a role that can create a database:
 `PGHOST=<socket dir or host> PGPORT=5432 PGUSER=<role> npm run test:rls`. Run it after every new migration.

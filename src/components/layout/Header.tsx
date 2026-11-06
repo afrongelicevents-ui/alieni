@@ -5,16 +5,16 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { LogoLockup } from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui/Button";
-import { NAV } from "@/lib/nav";
+import { NAV, type NavRole } from "@/lib/nav";
 import { useNavRole } from "./useNavRole";
 
 /** Header with role-specific navigation. Guests get Log in / Sign up. */
-export function Header() {
+export function Header({ initialRole = null }: { initialRole?: NavRole | null }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
-  const role = useNavRole();
+  const role = useNavRole(initialRole);
   const [menuOpen, setMenuOpen] = useState(false);
-  const items = NAV[role ?? "guest"].filter((i) => i.key !== "login");
+  const items = role ? NAV[role].filter((i) => i.key !== "login") : []; // nothing role-specific until the role is known
   const signedIn = role !== null && role !== "guest";
 
   return (
@@ -26,7 +26,7 @@ export function Header() {
               <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </button>
-          <Link href={signedIn ? items[0].href : "/"} aria-label="Alieni — home">
+          <Link href={signedIn ? items[0]?.href ?? "/" : "/"} aria-label="Alieni — home">
             <LogoLockup />
           </Link>
         </div>
@@ -41,22 +41,22 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           {role === null ? null : signedIn ? (
-            <ButtonLink href={items[items.length - 1].href} variant="dark" className="px-5 py-2">
+            <ButtonLink href={role === "admin" ? "/admin" : "/account"} variant="dark" className="whitespace-nowrap px-5 py-2">
               {t(role === "admin" ? "admin" : "account")}
             </ButtonLink>
           ) : (
             <>
-              <ButtonLink href="/login" variant="secondary" className="px-5 py-2">{t("login")}</ButtonLink>
-              <ButtonLink href="/signup" variant="dark" className="hidden px-5 py-2 sm:inline-flex">{t("signup")}</ButtonLink>
+              <ButtonLink href="/login" variant="secondary" className="whitespace-nowrap px-5 py-2">{t("login")}</ButtonLink>
+              <ButtonLink href="/signup" variant="dark" className="whitespace-nowrap px-5 py-2 max-sm:hidden">{t("signup")}</ButtonLink>
             </>
           )}
         </div>
       </div>
 
-      {menuOpen ? (
+      {menuOpen && items.length > 0 ? (
         <nav className="border-t border-line bg-white px-4 py-3 md:hidden">
           <ul className="flex flex-col gap-1 text-base font-semibold text-forest">
-            {[...items, ...(signedIn ? [] : [{ href: "/signup", key: "signup" }])].map(({ href, key }) => (
+            {[...items, ...(role === "guest" ? [{ href: "/signup", key: "signup" }] : [])].map(({ href, key }) => (
               <li key={href}>
                 <Link href={href} onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2.5 hover:bg-mint">
                   {t(key)}

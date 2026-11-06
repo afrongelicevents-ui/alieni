@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import type { BusinessBundle } from "@/lib/business-data";
 import { needsReminder } from "@/lib/ical";
 import { isSafeIcalUrl } from "@/lib/url-safety";
-import { addManualTurnovers, saveIcalUrl } from "@/app/[locale]/business/actions";
+import { addManualTurnovers, saveIcalUrl, setSlotStatus } from "@/app/[locale]/business/actions";
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
 
@@ -18,6 +18,13 @@ export function CalendarSync({ bundle }: { bundle: BusinessBundle }) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<Record<string, { date: string; count: string }>>({});
   const [notice, setNotice] = useState<Record<string, string>>({});
+  const [slotError, setSlotError] = useState<string | null>(null);
+  async function changeSlot(id: string, status: "cancelled" | "open") {
+    setSlotError(null);
+    const r = await setSlotStatus(id, status);
+    if (!r.ok) return setSlotError(t(`error_${r.error ?? "failed"}` as "error_failed"));
+    router.refresh();
+  }
   const [busy, setBusy] = useState(false);
 
   const isHotel = profile.business_type === "hotel";
@@ -54,6 +61,7 @@ export function CalendarSync({ bundle }: { bundle: BusinessBundle }) {
     <section className="rounded-card-lg border border-line bg-white p-5">
       <h3 className="headline text-xl text-ink">{t("title")}</h3>
       <p className="mt-1 text-sm text-ink/70">{isHotel ? t("introHotel") : t("introAirbnb")}</p>
+      {slotError ? <p role="alert" className="mt-2 text-sm font-semibold text-red-700">{slotError}</p> : null}
 
       <ul className="mt-4 space-y-5">
         {units.map((unit) => {
@@ -105,6 +113,12 @@ export function CalendarSync({ bundle }: { bundle: BusinessBundle }) {
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${s.status === "done" ? "bg-mint text-forest" : s.status === "reserved" ? "bg-forest text-white" : urgent ? "bg-red-100 text-red-800" : "bg-sun/30 text-ink"}`}>
                           {s.status === "open" && urgent ? t("statusUrgent") : t(`status_${s.status}` as "status_open")}
                         </span>
+                        {s.status === "open" || s.status === "reserved" ? (
+                          <span className="flex gap-2">
+                            {s.status === "reserved" ? <button type="button" onClick={() => changeSlot(s.id, "open")} className="inline-flex min-h-9 items-center rounded-full border border-forest px-3 text-xs font-bold text-forest">{t("reopenSlot")}</button> : null}
+                            <button type="button" onClick={() => changeSlot(s.id, "cancelled")} className="inline-flex min-h-9 items-center rounded-full border border-red-300 px-3 text-xs font-bold text-red-800">{t("cancelSlot")}</button>
+                          </span>
+                        ) : null}
                       </li>
                     );
                   })}

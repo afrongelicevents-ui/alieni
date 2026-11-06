@@ -2,11 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useFavourites } from "@/lib/favourites";
+import { useNavRole } from "@/components/layout/useNavRole";
 
 export function FavouriteButton({ cleanerId, className = "" }: { cleanerId: string; className?: string }) {
   const t = useTranslations("common");
   const { has, toggle, loaded } = useFavourites();
+  const role = useNavRole();
   const active = loaded && has(cleanerId);
+
+  // cleaners and admins have no favourites: guests, households and businesses keep the heart
+  if (role === "cleaner" || role === "admin") return null;
 
   return (
     <button

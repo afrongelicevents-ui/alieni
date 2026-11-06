@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import { FREQUENCY_LABELS, SPACE_TYPE_LABELS, type Frequency, type SpaceType } from "@/lib/jobs";
-import { formatHourlyRate } from "@/lib/money";
+import { FREQUENCY_LABELS, SPACE_TYPE_LABELS, quoteExpired, scheduleSummary, visitTotalCents, type Frequency, type JobSchedule, type QuoteStatus, type SpaceType } from "@/lib/jobs";
+import { formatEuro, formatHourlyRate } from "@/lib/money";
+import { QuoteList } from "./QuoteList";
+import { ReportButton } from "@/components/cleaners/ReportButton";
 import { DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
-import { removeJob, respondToJob, startConversation } from "@/app/[locale]/jobs/actions";
+import { removeJob, respondToJob } from "@/app/[locale]/jobs/actions";
 
 export type BoardJob = {
   id: string;
@@ -21,19 +23,25 @@ export type BoardJob = {
   budgetCents: number;
   mine: boolean;
   sample: boolean;
-  myResponse: { rateCents: number } | null;
-  responses: { id: string; cleanerProfileId: string; name: string; rateCents: number; message: string }[];
+  schedule: JobSchedule;
+  myResponse: { rateCents: number; status: QuoteStatus; validUntil: string | null } | null;
+  responses: { id: string; cleanerProfileId: string; name: string; rateCents: number; message: string; status: QuoteStatus; validUntil: string | null }[];
 };
 
 export type Viewer = { signedIn: boolean; isCleaner: boolean; isBusiness: boolean };
 
-function RespondForm({ jobId, onDone }: { jobId: string; onDone: () => void }) {
+function RespondForm({ jobId, visitHours, onDone }: { jobId: string; visitHours: number | null; onDone: () => void }) {
   const t = useTranslations("jobs");
   const router = useRouter();
   const [rate, setRate] = useState("17,50");
   const [message, setMessage] = useState("");
+  const [limits] = useState(() => ({ min: new Date().toISOString().slice(0, 10), def: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10), max: new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10) }));
+  const [validUntil, setValidUntil] = useState(limits.def);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
+  const rateCents = Math.round(Number(rate.replace(",", ".")) * 100);
+  const perVisit = Number.isFinite(rateCents) ? visitTotalCents(rateCents, visitHours) : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +49,7 @@ function RespondForm({ jobId, onDone }: { jobId: string; onDone: () => void }) {
     if (!Number.isFinite(cents) || cents < DEFAULT_RATE_FLOOR_CENTS) return setError(t("rateError"));
     if (!message.trim()) return setError(t("messageError"));
     setBusy(true);
-    const r = await respondToJob(jobId, cents, message.trim());
+    const r = await respondToJob(jobId, cents, message.trim(), validUntil || null);
     setBusy(false);
     if (!r.ok) return setError(t(`error_${r.error ?? "failed"}` as "error_failed"));
     onDone();
@@ -52,7 +60,7 @@ function RespondForm({ jobId, onDone }: { jobId: string; onDone: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-3 rounded-xl bg-section p-4">
-      <div className="grid gap-3 sm:grid-cols-[120px_1fr]">
+      <div className="grid gap-3 sm:grid-cols-[120px_1fr_150px]">
         <label className="text-xs font-semibold text-ink/80">
           {t("rateLabel")}
           <input type="text" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} className={`mt-1 ${inputCls}`} />
@@ -61,7 +69,12 @@ function RespondForm({ jobId, onDone }: { jobId: string; onDone: () => void }) {
           {t("messageLabel")}
           <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} maxLength={1000} className={`mt-1 ${inputCls}`} />
         </label>
+        <label className="text-xs font-semibold text-ink/80">
+          {t("validUntilLabel")}
+          <input type="date" value={validUntil} min={limits.min} max={limits.max} onChange={(e) => setValidUntil(e.target.value)} className={`mt-1 ${inputCls}`} />
+        </label>
       </div>
+      {perVisit !== null ? <p className="mt-2 text-xs font-semibold text-ink/80">{t("perVisit", { amount: formatEuro(perVisit, lang), hours: String(visitHours).replace(".", ",") })}</p> : null}
       {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
       <button type="submit" disabled={busy} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">
         {t("send")}
@@ -75,14 +88,6 @@ export function JobsBoard({ jobs, viewer }: { jobs: BoardJob[]; viewer: Viewer }
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const router = useRouter();
   const [openForm, setOpenForm] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-
-  async function message(cleanerProfileId: string) {
-    setBusy(cleanerProfileId);
-    const r = await startConversation(cleanerProfileId);
-    setBusy(null);
-    if (r.ok && r.conversationId) router.push(`/messages/${r.conversationId}`);
-  }
 
   if (jobs.length === 0) {
     return <p className="mt-6 rounded-card-lg border border-line bg-white p-6 text-center text-ink/70">{t("empty")}</p>;
@@ -91,7 +96,7 @@ export function JobsBoard({ jobs, viewer }: { jobs: BoardJob[]; viewer: Viewer }
   return (
     <ul className="mt-6 space-y-4">
       {jobs.map((job) => (
-        <li key={job.id} className="rounded-card-lg border border-line bg-white p-5">
+        <li key={job.id} data-board-job={job.id} className="rounded-card-lg border border-line bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <h2 className="text-lg font-extrabold text-ink">
@@ -113,40 +118,28 @@ export function JobsBoard({ jobs, viewer }: { jobs: BoardJob[]; viewer: Viewer }
           </div>
 
           <p className="mt-2 text-sm text-ink/80">{job.description}</p>
-          {job.scheduleNote ? <p className="mt-1 text-xs text-ink/70">🕐 {job.scheduleNote}</p> : null}
+          {scheduleSummary(job.frequency, job.schedule, lang) ? <p className="mt-1 text-xs font-semibold text-ink/80">🕐 {scheduleSummary(job.frequency, job.schedule, lang)}</p> : null}
+          {job.scheduleNote ? <p className="mt-1 text-xs text-ink/70">{job.scheduleNote}</p> : null}
           <p className="mt-2 text-xs text-ink/70">{t("areaNote")}</p>
 
           {job.mine ? (
             <div className="mt-3 rounded-xl bg-section p-3">
               <p className="text-sm font-bold text-ink">{t("responsesCount", { count: job.responses.length })}</p>
-              {job.responses.length ? (
-                <ul className="mt-2 divide-y divide-line">
-                  {job.responses.map((r) => (
-                    <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                      <span><strong className="text-ink">{r.name}</strong> · {formatHourlyRate(r.rateCents, lang)}{lang === "nl" ? "/uur" : "/hr"}<br /><span className="text-ink/70">{r.message}</span></span>
-                      <span className="flex gap-2">
-                        <Link href={`/cleaners/${r.cleanerProfileId}`} className="rounded-full border border-forest px-3 py-1 text-xs font-bold text-forest">{t("viewProfile")}</Link>
-                        <button type="button" disabled={busy === r.cleanerProfileId} onClick={() => message(r.cleanerProfileId)} className="rounded-full bg-forest px-3 py-1 text-xs font-bold text-white disabled:opacity-50">{t("message")}</button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <button type="button" onClick={async () => { await removeJob(job.id); router.refresh(); }} className="mt-2 text-xs font-bold text-ink/60 underline">{t("removeJob")}</button>
+              <div className="mt-2"><QuoteList quotes={job.responses} visitHours={job.schedule.visitHours} canDecide /></div>
+              <button type="button" onClick={async () => { const r = await removeJob(job.id); if (r.ok) router.refresh(); }} className="mt-2 text-xs font-bold text-ink/60 underline">{t("removeJob")}</button>
             </div>
           ) : job.sample ? null : job.myResponse ? (
-            <p className="mt-3 rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("sent", { rate: formatHourlyRate(job.myResponse.rateCents, lang) })}</p>
+            <p className="mt-3 rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("sent", { rate: formatHourlyRate(job.myResponse.rateCents, lang) })}{job.myResponse.validUntil ? ` ${t("validUntil", { date: new Date(`${job.myResponse.validUntil}T12:00:00Z`).toLocaleDateString(lang === "en" ? "en-GB" : "nl-NL", { day: "numeric", month: "short", timeZone: "UTC" }) })}` : ""}</p>
           ) : !viewer.signedIn ? (
             <Link href={`/login?next=/jobs`} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-5 text-sm font-bold text-forest hover:bg-mint">{t("loginToRespond")}</Link>
-          ) : !viewer.isCleaner ? (
-            <Link href="/cleaners/new" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-5 text-sm font-bold text-forest hover:bg-mint">{t("needAdToRespond")}</Link>
-          ) : openForm === job.id ? (
-            <RespondForm jobId={job.id} onDone={() => setOpenForm(null)} />
+          ) : !viewer.isCleaner ? null /* only cleaners respond; businesses and admins see no button */ : openForm === job.id ? (
+            <RespondForm jobId={job.id} visitHours={job.schedule.visitHours} onDone={() => setOpenForm(null)} />
           ) : (
             <button type="button" onClick={() => setOpenForm(job.id)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-5 text-sm font-bold text-forest hover:bg-mint">
               {t("respond")}
             </button>
           )}
+          {!job.mine && !job.sample && viewer.signedIn ? <div className="mt-3 border-t border-line pt-2"><ReportButton subjectId={job.id} subjectType="job" /></div> : null}
         </li>
       ))}
     </ul>

@@ -19,6 +19,7 @@ export function PricingRules({ rules, demo }: { rules: PricingRule[]; demo: bool
   const [draft, setDraft] = useState<PricingRuleInput>({ serviceKey: "connect", businessType: "", model: "none", amountEuro: "", percent: "", unit: "", validFrom: today(), validTo: "", notes: "" });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [toggleFailed, setToggleFailed] = useState(false);
   const set = (p: Partial<PricingRuleInput>) => setDraft((d) => ({ ...d, ...p }));
   const activeCount = rules.filter((r) => r.active && r.model !== "none").length;
 
@@ -33,9 +34,10 @@ export function PricingRules({ rules, demo }: { rules: PricingRule[]; demo: bool
   }
   async function toggle(rule: PricingRule) {
     if (demo) return;
-    setBusy(true);
-    await setPricingRuleActive(rule.id, !rule.active);
+    setBusy(true); setToggleFailed(false);
+    const r = await setPricingRuleActive(rule.id, !rule.active);
     setBusy(false);
+    if (!r.ok) { setToggleFailed(true); return; }
     router.refresh();
   }
 
@@ -47,6 +49,7 @@ export function PricingRules({ rules, demo }: { rules: PricingRule[]; demo: bool
         {t("pricingActiveCount", { count: activeCount })}{activeCount ? "" : ` — ${t("pricingNoneNote")}`}
       </p>
 
+      {toggleFailed ? <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t("actionFailed")}</p> : null}
       <div className="mt-4 overflow-x-auto rounded-card-lg border border-line bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="bg-section text-xs font-semibold uppercase text-ink/70">

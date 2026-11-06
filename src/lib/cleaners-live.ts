@@ -14,7 +14,8 @@ type Row = {
   min_hours: number;
   services: string[];
   languages: string[];
-  postcode: string;
+  user_id: string;
+  postcode_area: string;
   radius_km: number;
   about: string | null;
   verified_jobs_count: number;
@@ -35,9 +36,11 @@ export function profilePhotoUrl(path: string | null | undefined): string | null 
 }
 
 const SELECT =
-  "id, rate_cents, min_hours, services, languages, postcode, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
+  "id, user_id, rate_cents, min_hours, services, languages, postcode_area, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
 
-function toCleaner(row: Row): SampleCleaner {
+type ReviewAgg = { rating: number; count: number; items: SampleCleaner["reviews"] };
+
+function toCleaner(row: Row, vogValid = false, agg?: ReviewAgg): SampleCleaner {
   const availability: Partial<Record<Weekday, DayBlock[]>> = {};
   for (const slot of row.availability_slots ?? []) {
     const day = slot.weekday as Weekday;
@@ -48,63 +51,92 @@ function toCleaner(row: Row): SampleCleaner {
     id: row.id,
     name: row.profiles?.display_name ?? "—",
     city: row.profiles?.city ?? "",
-    postcode: row.postcode,
+    postcode: (row.postcode_area ?? (row as unknown as { postcode?: string }).postcode ?? "").slice(0, 4),
     rateCents: row.rate_cents,
     minHours: Number(row.min_hours),
     radiusKm: row.radius_km,
-    // Ratings aggregate from the reviews table once connections exist.
-    rating: 0,
-    reviewCount: 0,
+    rating: agg?.rating ?? 0,
+    reviewCount: agg?.count ?? 0,
     verifiedJobs: row.verified_jobs_count,
     services: row.services ?? [],
     languages: row.languages ?? [],
     jobTypes: (row.job_types ?? ["household"]) as SampleCleaner["jobTypes"],
     workScope: (row.work_scope ?? "household") as SampleCleaner["workScope"],
     emergencyRateCents: row.emergency_rate_cents ?? undefined,
-    vog: row.vog_documents?.[0]
-      ? { status: row.vog_documents[0].status as "approved" | "pending" | "rejected", issuedAt: row.vog_documents[0].issued_at }
-      : undefined,
+    // the public cannot read vog_documents; the database says (cleaner_vog_badges) whether an approved, recent VOG exists
+    vog: vogValid
+      ? { status: "approved" as const, issuedAt: new Date().toISOString().slice(0, 10) }
+      : row.vog_documents?.[0]
+        ? { status: row.vog_documents[0].status as "approved" | "pending" | "rejected", issuedAt: row.vog_documents[0].issued_at }
+        : undefined,
     about: { nl: about, en: about },
     availability,
-    reviews: [],
+    reviews: agg?.items ?? [],
     photo: profilePhotoUrl(row.photo_path),
   };
+}
+
+type SupabaseClient = NonNullable<Awaited<ReturnType<typeof createClient>>>;
+
+/** Part 16 adds postcode_area and hides the full postcode; until it has been run the older column is read instead. */
+const OLD_SELECT = SELECT.replace("postcode_area", "postcode");
+async function selectAds(supabase: SupabaseClient, build: (cols: string) => PromiseLike<{ data: unknown; error: unknown }>): Promise<{ data: unknown; error: unknown }> {
+  const first = await build(SELECT);
+  return first.error ? build(OLD_SELECT) : first;
+}
+
+/** Ids of ads with a valid VOG, from the public badge view (a boolean only, never the document). */
+async function validVogIds(supabase: SupabaseClient, ids: string[]): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const { data } = await supabase.from("cleaner_vog_badges").select("cleaner_profile_id, vog_valid").in("cleaner_profile_id", ids);
+  return new Set(((data ?? []) as { cleaner_profile_id: string; vog_valid: boolean }[]).filter((r) => r.vog_valid).map((r) => r.cleaner_profile_id));
+}
+
+/** Rating, count and latest reviews per cleaner (user id), from the public reviews table. */
+async function reviewAggregates(supabase: SupabaseClient, userIds: string[]): Promise<Map<string, ReviewAgg>> {
+  const out = new Map<string, ReviewAgg>();
+  if (!userIds.length) return out;
+  const { data } = await supabase.from("reviews").select("id, subject_id, rating, body, created_at").in("subject_id", userIds).order("created_at", { ascending: false }).limit(2000);
+  for (const r of (data ?? []) as { id: string; subject_id: string; rating: number; body: string | null; created_at: string }[]) {
+    const a = out.get(r.subject_id) ?? { rating: 0, count: 0, items: [] };
+    a.rating += r.rating; a.count += 1;
+    if (a.items.length < 5) a.items.push({ id: r.id, author: "", rating: r.rating, text: { nl: r.body ?? "", en: r.body ?? "" }, date: r.created_at.slice(0, 10) });
+    out.set(r.subject_id, a);
+  }
+  for (const a of out.values()) a.rating = Math.round((a.rating / a.count) * 10) / 10;
+  return out;
 }
 
 export async function fetchLiveCleaners(): Promise<SampleCleaner[] | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data, error } = await supabase
-    .from("cleaner_profiles")
-    .select(SELECT)
-    .eq("status", "published")
-    .limit(500);
+  const { data, error } = await selectAds(supabase, (cols) => supabase.from("cleaner_profiles").select(cols).eq("status", "published").limit(500));
   if (error || !data) return null;
-  return (data as unknown as Row[]).map(toCleaner);
+  const rows = data as unknown as Row[];
+  const [valid, aggs] = await Promise.all([validVogIds(supabase, rows.map((r) => r.id)), reviewAggregates(supabase, rows.map((r) => r.user_id))]);
+  return rows.map((r) => toCleaner(r, valid.has(r.id), aggs.get(r.user_id)));
 }
 
 export async function fetchLiveCleaner(id: string): Promise<SampleCleaner | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data, error } = await supabase
-    .from("cleaner_profiles")
-    .select(SELECT)
-    .eq("id", id)
-    .eq("status", "published")
-    .maybeSingle();
+  const { data, error } = await selectAds(supabase, (cols) => supabase.from("cleaner_profiles").select(cols).eq("id", id).eq("status", "published").maybeSingle());
   if (error || !data) return null;
-  return toCleaner(data as unknown as Row);
+  const row = data as unknown as Row;
+  const [valid, aggs] = await Promise.all([validVogIds(supabase, [row.id]), reviewAggregates(supabase, [row.user_id])]);
+  return toCleaner(row, valid.has(row.id), aggs.get(row.user_id));
 }
 
 /** The owner's (or an admin's) own ad in any status: for "view my ad" while it is a draft or hidden. */
 export async function fetchOwnCleaner(id: string, viewer: { id: string; role: string }): Promise<(SampleCleaner & { status: string }) | null> {
   const supabase = await createClient();
   if (!supabase) return null;
-  const { data, error } = await supabase.from("cleaner_profiles").select(`${SELECT}, status, user_id`).eq("id", id).maybeSingle();
+  const { data, error } = await selectAds(supabase, (cols) => supabase.from("cleaner_profiles").select(`${cols}, status`).eq("id", id).maybeSingle());
   if (error || !data) return null; // RLS: only the owner or an admin gets a non-published row
   const row = data as unknown as Row & { status: string; user_id: string };
   if (row.user_id !== viewer.id && viewer.role !== "admin") return null; // belt and braces on top of RLS
-  return { ...toCleaner(row), status: row.status };
+  const [valid, aggs] = await Promise.all([validVogIds(supabase, [row.id]), reviewAggregates(supabase, [row.user_id])]);
+  return { ...toCleaner(row, valid.has(row.id), aggs.get(row.user_id)), status: row.status };
 }
 
 /** Precise distance (km) from an origin to every published ad with a stored location (database function cleaner_distances). */

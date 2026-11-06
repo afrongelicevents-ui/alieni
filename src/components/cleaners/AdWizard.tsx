@@ -83,7 +83,7 @@ const chipCls = (on: boolean) =>
     on ? "border-forest bg-forest text-white" : "border-line bg-white text-ink/80 hover:bg-mint"
   }`;
 
-export function AdWizard({ signedIn, existing, initialStep, startEditing }: { signedIn: boolean; existing: ExistingAd | null; initialStep?: number; startEditing?: boolean }) {
+export function AdWizard({ existing, initialStep, startEditing }: { existing: ExistingAd | null; initialStep?: number; startEditing?: boolean }) {
   const t = useTranslations("wizard");
   const tCommon = useTranslations("common");
   const locale = useLocale() as "nl" | "en";
@@ -91,7 +91,9 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
   const [step, setStep] = useState(Math.min(2, Math.max(0, (initialStep ?? 1) - 1)));
   const [draft, setDraft] = useState<Draft>(existing ? { ...EMPTY, ...existing.draft } : EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [saved, setSaved] = useState<AdActionState | null>(existing && !startEditing && !initialStep ? { ok: true, adId: existing.adId, status: existing.status } : null);
+  const [moderatedNotice, setModeratedNotice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoState, photoAction, photoBusy] = useActionState(uploadProfilePhoto, { ok: false } as AdActionState);
   const [vogState, vogAction, vogBusy] = useActionState(uploadVogFile, { ok: false } as AdActionState);
@@ -164,6 +166,8 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
     }
     if (s === 2) {
       if (!dutchPostcodeSchema.safeParse(draft.postcode).success) e.postcode = t("postcodeError");
+      // without a slot nobody can request a meeting, so the ad cannot go online
+      if (!Object.values(draft.availability).some((blocks) => (blocks ?? []).length > 0)) e.availability = t("availabilityError");
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -202,16 +206,12 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
       setStep(step + 1);
       return;
     }
-    if (!signedIn) {
-      // Draft stays on the device; come back here after creating the account.
-      router.push("/signup?role=cleaner&next=/cleaners/new");
-      return;
-    }
     setBusy(true);
     const result = await saveCleanerAd(toInput(true));
     setBusy(false);
     if (result.ok) {
       setSaved(result);
+      setModeratedNotice(Boolean(result.moderated));
       try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       router.refresh();
     } else {
@@ -222,14 +222,22 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
   async function toggleOnline() {
     if (!saved) return;
     setBusy(true);
+    setToggleError(null);
     const result = await setAdStatus(saved.status === "published" ? "hidden" : "published");
     setBusy(false);
-    if (result.ok) setSaved({ ...saved, status: result.status });
+    if (!result.ok) {
+      setToggleError(t(`error_${result.error ?? "failed"}` as "error_failed"));
+      return;
+    }
+    setSaved({ ...saved, status: result.status });
+    // a moderator's hide/remove sticks: the database keeps it whatever was asked
+    setModeratedNotice(Boolean(result.moderated));
     router.refresh();
   }
 
   if (saved) {
     const online = saved.status === "published";
+    const moderated = Boolean(saved.moderated) || moderatedNotice;
     return (
       <div className="flex flex-col gap-4">
         <div className="rounded-card-lg bg-mint p-6">
@@ -245,6 +253,8 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
             <button type="button" onClick={() => setSaved(null)} className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-forest px-6 text-sm font-bold text-forest hover:bg-white">{t("editAgain")}</button>
             <button type="button" onClick={toggleOnline} disabled={busy} className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line bg-white px-6 text-sm font-bold text-ink/80 hover:bg-section disabled:opacity-50">{online ? t("takeOffline") : t("putOnline")}</button>
           </div>
+          {moderated && !online ? <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{t("moderatedNotice")}</p> : null}
+          {toggleError ? <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{toggleError}</p> : null}
         </div>
 
         <form action={photoAction} className="rounded-card-lg border border-line bg-white p-5">
@@ -574,6 +584,7 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
                   </tbody>
                 </table>
               </div>
+              {errors.availability ? <p className="mt-2 text-xs font-semibold text-red-700">{errors.availability}</p> : null}
             </fieldset>
           </div>
         ) : null}
@@ -594,11 +605,10 @@ export function AdWizard({ signedIn, existing, initialStep, startEditing }: { si
           disabled={busy}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50"
         >
-          {busy ? t("publishing") : step === 2 ? (signedIn ? t("publish") : t("publishSignup")) : t("next")}
+          {busy ? t("publishing") : step === 2 ? t("publish") : t("next")}
         </button>
       </div>
       {errors.submit ? <p className="mt-3 text-sm font-semibold text-red-700">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
-      {!signedIn && step === 2 ? <p className="mt-3 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("signupNote")}</p> : null}
     </div>
   );
 }

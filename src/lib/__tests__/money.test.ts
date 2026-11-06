@@ -4,16 +4,15 @@ import {
   BTW_RATE,
   formatEuro,
   formatHourlyRate,
-  HOUSEHOLD_FEE_CENTS,
   splitBtw,
 } from "../money";
 
 describe("btw (21% VAT) maths", () => {
-  it("splits the €14.95 household fee into €12.36 net + €2.59 btw (brief §6)", () => {
-    const { netCents, btwCents } = splitBtw(HOUSEHOLD_FEE_CENTS);
+  it("splits a €14.95 gross amount into €12.36 net + €2.59 btw (brief §6)", () => {
+    const { netCents, btwCents } = splitBtw(1495);
     expect(netCents).toBe(1236);
     expect(btwCents).toBe(259);
-    expect(netCents + btwCents).toBe(HOUSEHOLD_FEE_CENTS);
+    expect(netCents + btwCents).toBe(1495);
   });
 
   it("net + btw always equals gross for any amount", () => {

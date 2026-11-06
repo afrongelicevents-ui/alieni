@@ -34,7 +34,7 @@ const FK = {
   // Phase 1 (migration 0020)
   pricing_rules: { service_key: "service_catalog" },
   fee_events: { business_id: "business_profiles", rule_id: "pricing_rules" },
-  work_records: { business_id: "business_profiles", cleaner_profile_id: "cleaner_profiles", household_id: "profiles" },
+  work_records: { business_id: "business_profiles", cleaner_profile_id: "cleaner_profiles", household_id: "profiles", job_id: "jobs" },
   cleaner_strikes: { cleaner_profile_id: "cleaner_profiles" },
 };
 const UNIQUE = {
@@ -52,7 +52,7 @@ const UNIQUE = {
 function seedCatalog() {
   if (!table("settings").some((r) => r.key === "cover_rules")) table("settings").push({ key: "cover_rules", value: { cancel_window_hours: 4, strike_limit: 2, max_days_ahead: 14 }, updated_at: new Date().toISOString() });
   if (table("service_catalog").length) return;
-  [["connect", true, 0], ["cover", true, 1], ["turnover", true, 2], ["oneoff", false, 3], ["contract", false, 4]].forEach(([k, enabled, sort_order]) =>
+  [["connect", true, 0], ["cover", true, 1], ["turnover", true, 2], ["oneoff", true, 3], ["contract", true, 4]].forEach(([k, enabled, sort_order]) =>
     table("service_catalog").push({ service_key: k, enabled, business_types: [], sort_order, updated_at: new Date().toISOString() }));
 }
 seedCatalog();
@@ -76,6 +76,31 @@ function upsertWork(ref, row) {
   const rec = { id: crypto.randomUUID(), business_id: null, household_id: null, cleaner_profile_id: null, scheduled_start: null, scheduled_end: null, started_at: null, completed_at: null, photo_path: null, business_confirmed_at: null, outcome: "scheduled", notes: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), reference_table: ref.table, reference_id: ref.id, ...row };
   table("work_records").push(rec);
   return rec;
+}
+
+// ---- Part 15 helpers ----
+function jobService(freq) { return freq === "once" ? "oneoff" : freq === "per_checkout" ? "turnover" : "contract"; }
+function generateVisits(j) {
+  const r = table("job_responses").find((x) => x.id === j.awarded_response_id);
+  if (!r || !j.start_date || !["daily", "weekly", "biweekly", "monthly"].includes(j.frequency)) return;
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const startD = new Date(`${j.start_date}T00:00:00Z`);
+  const wd = (j.weekdays && j.weekdays.length) ? j.weekdays : [((startD.getUTCDay() + 6) % 7) + 1];
+  const monday = (d) => { const x = new Date(d); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7)); return x.getTime(); };
+  for (let i = 0; i <= 28; i++) {
+    const d = new Date(today.getTime() + i * 864e5);
+    if (d < startD || (j.end_date && d > new Date(`${j.end_date}T00:00:00Z`))) continue;
+    const iso = ((d.getUTCDay() + 6) % 7) + 1;
+    const ok = j.frequency === "daily" ? (!j.weekdays?.length || j.weekdays.includes(iso))
+      : j.frequency === "weekly" ? wd.includes(iso)
+      : j.frequency === "biweekly" ? wd.includes(iso) && Math.round((monday(d) - monday(startD)) / (7 * 864e5)) % 2 === 0
+      : d.getUTCDate() === startD.getUTCDate();
+    if (!ok) continue;
+    const day = d.toISOString().slice(0, 10);
+    const s = new Date(`${day}T${(j.visit_start || "09:00").slice(0, 5)}:00Z`);
+    upsertWork({ table: "job_visits", id: `${j.id}:${day}` }, { business_id: j.business_id, cleaner_profile_id: r.cleaner_profile_id, service_key: "contract", job_id: j.id, scheduled_start: s.toISOString(), scheduled_end: new Date(s.getTime() + Number(j.visit_hours || 2) * 3600e3).toISOString(), outcome: "scheduled" });
+  }
+  recordFeeEvent(j.business_id, "contract", "contract_month", "jobs", `${j.id}:${new Date().toISOString().slice(0, 7)}`);
 }
 function pointOf(v) { const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(String(v || "")); return m ? { lng: Number(m[1]), lat: Number(m[2]) } : null; }
 function kmBetween(a, b) { const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
@@ -285,6 +310,11 @@ function beforeUpdate(tname, row, patch, user) {
       connectionFeeTrigger(row, { ...next, status: "active" });
     }
   }
+  if (tname === "cleaner_profiles" && patch.status !== undefined) {
+    // Part 16: an admin hiding/removing marks the ad as moderated; the owner can then no longer change its status
+    if (role === "admin") { if (patch.status !== row.status) patch.moderated = ["hidden", "removed"].includes(patch.status); }
+    else if (row.moderated) patch.status = row.status;
+  }
   if (tname === "profiles" && patch.role !== undefined && patch.role !== row.role) throw new Error("role cannot be changed after sign-up");
 }
 const DEFAULTS = {
@@ -295,7 +325,8 @@ const DEFAULTS = {
   reports: () => ({ status: "open" }),
   conversations: () => ({ last_message_at: new Date().toISOString() }),
   vog_documents: () => ({ status: "pending" }),
-  jobs: () => ({ status: "draft" }),
+  jobs: () => ({ status: "draft", weekdays: [], visit_start: null, visit_hours: null, start_date: null, end_date: null, awarded_response_id: null, awarded_at: null, ended_at: null, ended_by: null }),
+  job_responses: () => ({ status: "sent", valid_until: null, decided_at: null }),
   business_profiles: () => ({ unit_count: 1 }),
   emergency_requests: () => ({ status: "searching", attendance: "unknown", unit_id: null, report_to: null, cancelled_at: null, cancel_reason: null, accepted_by: null, fee_cents: null }),
   pricing_rules: () => ({ model: "none", amount_cents: 0, percent: null, unit: null, business_type: null, valid_from: new Date().toISOString().slice(0, 10), valid_to: null, active: false, notes: null }),
@@ -381,6 +412,97 @@ function rest(req, res, url, raw) {
     rec.updated_at = new Date().toISOString();
     return send(res, 200, true);
   }
+
+  // ---- Part 15: quotations, awards, schedules (mirrors migration 0025) ----
+  if (tname === "rpc/submit_job_quote") {
+    const user = userFromAuth(req);
+    const { p_job_id, p_rate_cents, p_message, p_valid_until } = JSON.parse(raw.toString() || "{}");
+    const cp = user && table("cleaner_profiles").find((c) => c.user_id === user.id);
+    if (!cp) return send(res, 200, { result: "no_ad" });
+    const j = table("jobs").find((x) => x.id === p_job_id);
+    if (!j || j.status !== "published" || (j.expires_at && new Date(j.expires_at) < new Date())) return send(res, 200, { result: "not_available" });
+    if (!Number.isInteger(p_rate_cents) || p_rate_cents < 1500) return send(res, 200, { result: "rate" });
+    if (!String(p_message || "").trim()) return send(res, 200, { result: "message" });
+    const today = new Date().toISOString().slice(0, 10);
+    const vu = p_valid_until || new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+    if (vu < today || vu > new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10)) return send(res, 200, { result: "valid_until" });
+    if (table("job_responses").some((r) => r.job_id === j.id && r.cleaner_profile_id === cp.id)) return send(res, 200, { result: "already" });
+    table("job_responses").push({ id: crypto.randomUUID(), job_id: j.id, cleaner_profile_id: cp.id, rate_cents: p_rate_cents, message: String(p_message).trim().slice(0, 1000), valid_until: vu, status: "sent", decided_at: null, created_at: new Date().toISOString() });
+    return send(res, 200, { result: "sent", business_user_id: table("business_profiles").find((b) => b.id === j.business_id)?.user_id ?? null });
+  }
+  if (tname === "rpc/accept_job_response" || tname === "rpc/decline_job_response") {
+    const user = userFromAuth(req);
+    const { p_response_id } = JSON.parse(raw.toString() || "{}");
+    const r = table("job_responses").find((x) => x.id === p_response_id);
+    const j = r && table("jobs").find((x) => x.id === r.job_id);
+    if (!r || !j) return send(res, 200, { result: "not_available" });
+    if (!user || !table("business_profiles").some((b) => b.id === j.business_id && b.user_id === user.id)) return send(res, 200, { result: "not_allowed" });
+    const userOf = (cpId) => table("cleaner_profiles").find((c) => c.id === cpId)?.user_id ?? null;
+    const now = new Date().toISOString();
+    if (tname === "rpc/decline_job_response") {
+      if (r.status !== "sent") return send(res, 200, { result: "not_available" });
+      r.status = "declined"; r.decided_at = now;
+      return send(res, 200, { result: "declined", cleaner_user_id: userOf(r.cleaner_profile_id) });
+    }
+    if (j.status !== "published" || r.status !== "sent") return send(res, 200, { result: "not_available" });
+    if (r.valid_until && r.valid_until < now.slice(0, 10)) return send(res, 200, { result: "expired" });
+    const others = table("job_responses").filter((o) => o.job_id === j.id && o.id !== r.id && o.status === "sent");
+    r.status = "accepted"; r.decided_at = now;
+    others.forEach((o) => { o.status = "declined"; o.decided_at = now; });
+    j.status = "filled"; j.awarded_response_id = r.id; j.awarded_at = now;
+    const at = (d, hhmm, hours) => { const s = new Date(`${d}T${hhmm}:00Z`); return [s.toISOString(), new Date(s.getTime() + hours * 3600e3).toISOString()]; };
+    if (j.frequency === "once") {
+      const [s, e] = j.start_date ? at(j.start_date, (j.visit_start || "09:00").slice(0, 5), Number(j.visit_hours || 2)) : [null, null];
+      upsertWork({ table: "jobs", id: j.id }, { business_id: j.business_id, cleaner_profile_id: r.cleaner_profile_id, service_key: "oneoff", job_id: j.id, scheduled_start: s, scheduled_end: e, outcome: "scheduled" });
+      recordFeeEvent(j.business_id, "oneoff", "quote_accepted", "job_responses", r.id);
+    } else {
+      recordFeeEvent(j.business_id, jobService(j.frequency), "quote_accepted", "job_responses", r.id);
+      generateVisits(j);
+    }
+    return send(res, 200, { result: "accepted", cleaner_user_id: userOf(r.cleaner_profile_id), declined_user_ids: others.map((o) => userOf(o.cleaner_profile_id)).filter(Boolean) });
+  }
+  if (tname === "rpc/cancel_awarded_job") {
+    const user = userFromAuth(req);
+    const { p_job_id } = JSON.parse(raw.toString() || "{}");
+    const j = table("jobs").find((x) => x.id === p_job_id);
+    if (!j || j.status !== "filled" || j.ended_at) return send(res, 200, { result: "not_available" });
+    const r = table("job_responses").find((x) => x.id === j.awarded_response_id);
+    const bizUser = table("business_profiles").find((b) => b.id === j.business_id)?.user_id;
+    const cleanerUser = table("cleaner_profiles").find((c) => c.id === r?.cleaner_profile_id)?.user_id;
+    const by = user && user.id === bizUser ? "business" : user && user.id === cleanerUser ? "cleaner" : null;
+    if (!by) return send(res, 200, { result: "not_allowed" });
+    j.ended_at = new Date().toISOString(); j.ended_by = by;
+    table("work_records").filter((w) => w.job_id === j.id && w.outcome === "scheduled" && (!w.scheduled_start || new Date(w.scheduled_start) > new Date())).forEach((w) => { w.outcome = "cancelled"; });
+    return send(res, 200, { result: "cancelled", by, other_user_id: by === "business" ? cleanerUser : bizUser });
+  }
+  if (tname === "rpc/my_cleaner_postcode") {
+    const user = userFromAuth(req);
+    return send(res, 200, user ? table("cleaner_profiles").find((c) => c.user_id === user.id)?.postcode ?? null : null);
+  }
+  if (tname === "rpc/erase_user_data") {
+    const { p_user } = JSON.parse(raw.toString() || "{}");
+    for (const [name, col] of [["favourites", "user_id"], ["meeting_requests", "household_id"], ["conversations", "household_id"], ["conversations", "cleaner_id"], ["connections", "household_id"], ["connections", "cleaner_id"], ["emergency_requests", "requester_id"], ["household_profiles", "user_id"], ["cleaner_profiles", "user_id"]]) {
+      tables[name] = table(name).filter((r) => r[col] !== p_user);
+    }
+    const bp = table("business_profiles").find((b) => b.user_id === p_user);
+    if (bp) tables.business_profiles = table("business_profiles").filter((b) => b.id !== bp.id);
+    const pr = table("profiles").find((x) => x.id === p_user); if (pr) { pr.display_name = "Verwijderde gebruiker"; pr.city = null; }
+    return send(res, 200, { keep_account: ["invoices", "payments"].some((n) => table(n).some((r) => r.household_id === p_user)) });
+  }
+  if (tname === "rpc/answer_meeting_proposal" || tname === "rpc/withdraw_meeting_request") {
+    const user = userFromAuth(req);
+    const { p_request_id, p_accept } = JSON.parse(raw.toString() || "{}");
+    const r = table("meeting_requests").find((x) => x.id === p_request_id && user && x.household_id === user.id);
+    const cleanerUser = r && table("cleaner_profiles").find((c) => c.id === r.cleaner_profile_id)?.user_id;
+    if (tname === "rpc/answer_meeting_proposal") {
+      if (!r || r.status !== "rescheduled") return send(res, 200, { result: "not_allowed" });
+      r.status = p_accept ? "accepted" : "declined"; r.responded_at = new Date().toISOString();
+      return send(res, 200, { result: r.status, cleaner_user_id: cleanerUser });
+    }
+    if (!r || !["requested", "accepted", "rescheduled"].includes(r.status)) return send(res, 200, { result: "not_allowed" });
+    r.status = "declined"; r.responded_at = new Date().toISOString();
+    return send(res, 200, { result: "withdrawn", cleaner_user_id: cleanerUser });
+  }
   if (tname.startsWith("rpc/")) return send(res, 404, { message: `unknown rpc ${tname}` });
   // view: open emergency requests without the street address
   ctxUser = userFromAuth(req);
@@ -388,6 +510,14 @@ function rest(req, res, url, raw) {
   if (tname === "business_public") {
     tname = "business_profiles";
     viewRows = businessPublic(ctxUser);
+  }
+  if (tname === "cleaner_vog_badges") {
+    const cutoff = new Date(); cutoff.setUTCMonth(cutoff.getUTCMonth() - 12);
+    viewRows = table("cleaner_profiles").filter((c) => c.status === "published").map((c) => ({ cleaner_profile_id: c.id, vog_valid: table("vog_documents").some((v) => v.cleaner_profile_id === c.id && v.status === "approved" && new Date(v.issued_at) >= cutoff) }));
+  }
+  if (tname === "cleaner_slot_units") {
+    const me = userFromAuth(req);
+    viewRows = !me ? [] : table("business_units").filter((u) => { const bp = table("business_profiles").find((b) => b.id === u.business_id); return bp && table("connections").some((c) => c.household_id === bp.user_id && c.cleaner_id === me.id && c.status === "active"); }).map((u) => ({ id: u.id, business_id: u.business_id, name: u.name, address_line: u.address_line, postcode: u.postcode, city: u.city }));
   }
   if (tname === "emergency_requests_open") {
     tname = "emergency_requests";
@@ -411,6 +541,7 @@ function rest(req, res, url, raw) {
       let rows = applyFilters(viewRows ?? table(tname), params);
       if (tname === "business_profiles" && !viewRows) rows = rows.filter(canSeeBusiness); // RLS: owner and admin only
       if (tname === "cleaner_profiles") { const me = user?.id; const admin = me && roleOf(me) === "admin"; rows = rows.filter((r) => r.status === "published" || r.user_id === me || admin); } // RLS "published ads are public"
+      if (tname === "cleaner_profiles") rows = rows.map((r) => ({ ...r, postcode_area: String(r.postcode || "").slice(0, 4) })); // generated column (Part 16)
       rows = applyOrder(rows, params.get("order"));
       const total = rows.length;
       const limit = Number(params.get("limit") || 0);
@@ -499,6 +630,20 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, userJson(u));
   }
   if (p === "/auth/v1/logout") return send(res, 204, "");
+
+  // ---- Auth admin (service key): delete or disable a user ----
+  const adminUser = /^\/auth\/v1\/admin\/users\/([0-9a-f-]{36})$/.exec(p);
+  if (adminUser) {
+    const entry = [...users.entries()].find(([, u]) => u.id === adminUser[1]);
+    if (!entry) return send(res, 404, { msg: "User not found" });
+    if (req.method === "DELETE") {
+      if (table("profiles").length && ["invoices", "payments"].some((n) => table(n).some((r) => r.household_id === adminUser[1]))) return send(res, 500, { msg: "Database error deleting user" });
+      users.delete(entry[0]); const i = table("profiles").findIndex((x) => x.id === adminUser[1]); if (i >= 0) table("profiles").splice(i, 1);
+      return send(res, 200, {});
+    }
+    if (req.method === "PUT") { const b = json(); users.delete(entry[0]); entry[1].email = String(b.email || entry[1].email).toLowerCase(); entry[1].banned = true; users.set(entry[1].email, entry[1]); return send(res, 200, userJson(entry[1])); }
+  }
+  if (p.startsWith("/storage/v1/object/list/") && req.method === "POST") return send(res, 200, []);
 
   // ---- PostgREST ----
   if (p.startsWith("/rest/v1/")) return rest(req, res, url, raw);

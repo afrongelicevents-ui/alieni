@@ -1,14 +1,16 @@
+import { amsterdamInstantFromLocal } from "@/lib/tz";
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { computeCleaningSlots, needsReminder, parseIcal } from "@/lib/ical";
-import { sendEmail } from "@/lib/email";
+import { appBaseUrl, notifyUser, slotCancelledNotice, slotReminderNotice } from "@/lib/notify";
 import { isSafeIcalUrl } from "@/lib/url-safety";
 
 /**
- * Calendar sync (brief v2 §6), every 30 minutes (Vercel Pro cron):
+ * Calendar sync (brief v2 §6), run daily by the daily bundle (every 30 minutes is possible on Vercel Pro):
  *  1. fetch each unit's iCal feed, create/refresh a cleaning slot per
- *     checkout (idempotent on unit + external UID)
+ *     checkout (idempotent on unit + external UID); a future iCal slot whose
+ *     booking is gone from the feed is cancelled and its cleaner told
  *  2. unreserved slots within 48h of checkout: remind host + connected
  *     cleaner(s) once and open the slot to other connected cleaners
  */
@@ -50,11 +52,26 @@ export async function GET(request: Request) {
             source: "ical",
             external_uid: slot.externalUid,
             slot_date: slot.date,
-            starts_at: `${slot.startsAt}+01:00`,
-            ends_at: `${slot.endsAt}+01:00`,
+            starts_at: amsterdamInstantFromLocal(slot.startsAt),
+            ends_at: amsterdamInstantFromLocal(slot.endsAt),
           },
           { onConflict: "unit_id,external_uid", ignoreDuplicates: false },
         );
+      }
+      // bookings that vanished from the feed: cancel their future, not yet done iCal slots (and tell a reserving cleaner)
+      const seen = new Set(slots.map((s) => s.externalUid));
+      const { data: existing } = await admin.from("cleaning_slots").select("id, external_uid, status, reserved_by, starts_at").eq("unit_id", unit.id).eq("source", "ical").in("status", ["open", "reserved"]).gte("starts_at", new Date().toISOString());
+      for (const old of existing ?? []) {
+        if (old.external_uid && seen.has(old.external_uid)) continue;
+        const { data: cancelled } = await admin.from("cleaning_slots").update({ status: "cancelled" }).eq("id", old.id).in("status", ["open", "reserved"]).select("id").maybeSingle();
+        if (cancelled && old.reserved_by) {
+          const { data: cp } = await admin.from("cleaner_profiles").select("user_id").eq("id", old.reserved_by).maybeSingle();
+          if (cp?.user_id) {
+            const when = new Date(old.starts_at).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", dateStyle: "full", timeStyle: "short" });
+            const base = await appBaseUrl();
+            await notifyUser(cp.user_id, (lang) => slotCancelledNotice(base, when, lang));
+          }
+        }
       }
       await admin.from("business_units").update({ ical_last_synced_at: new Date().toISOString(), ical_last_error: null }).eq("id", unit.id);
       synced++;
@@ -91,22 +108,9 @@ export async function GET(request: Request) {
     const { data: conns } = await admin.from("connections").select("cleaner_id").eq("household_id", business?.user_id ?? "").eq("status", "active");
     const userIds = [business?.user_id, ...(conns ?? []).map((c) => c.cleaner_id)].filter((x): x is string => Boolean(x));
     const when = new Date(slot.starts_at).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", dateStyle: "full", timeStyle: "short" });
+    const base = await appBaseUrl();
     for (const userId of userIds) {
-      const { data: u } = await admin.auth.admin.getUserById(userId);
-      if (u?.user?.email) {
-        await sendEmail(
-          u.user.email,
-          `Schoonmaak nog niet gereserveerd — ${when}`,
-          [
-            "Hoi,",
-            "",
-            `Er staat binnen 48 uur een checkout-schoonmaak gepland (${when}) bij ${business?.company_name ?? "jouw locatie"} die nog niet is gereserveerd.`,
-            "Reserveer hem in de app, of de klus wordt aangeboden aan andere gekoppelde schoonmakers.",
-            "",
-            "Groetjes, Alieni · Connect · Clean · Thrive",
-          ].join("\n"),
-        );
-      }
+      await notifyUser(userId, (lang) => slotReminderNotice(base, when, business?.company_name ?? "—", lang));
     }
     reminded++;
   }

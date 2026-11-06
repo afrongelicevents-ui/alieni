@@ -13,7 +13,7 @@ export default async function BusinessDashboardPage({ params }: { params: Promis
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("business");
-  const user = await requireRole(locale, ["business"], "/business/dashboard");
+  const user = await requireRole(locale, ["business"], "/business/dashboard", { adminAllowed: false });
   const [bundle, pricing] = await Promise.all([getBusinessForUser(user.id), getPricingContext()]);
 
   return (

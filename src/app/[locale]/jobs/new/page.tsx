@@ -8,13 +8,16 @@ export const dynamic = "force-dynamic";
 
 export default async function NewJobPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ kind?: string }>;
 }) {
   const { locale } = await params;
+  const { kind } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("jobs");
-  const user = await requireRole(locale, ["business"], "/jobs/new");
+  const user = await requireRole(locale, ["business"], `/jobs/new${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`, { adminAllowed: false });
   const bundle = await getBusinessForUser(user.id);
 
   return (
@@ -28,7 +31,7 @@ export default async function NewJobPage({
             <ButtonLink href="/business/signup" withArrow>{t("createBusiness")}</ButtonLink>
           </div>
         ) : (
-          <JobPostForm units={bundle.units.map((u) => ({ id: u.id, name: u.name || u.address_line, postcode: u.postcode, city: u.city }))} />
+          <JobPostForm initialFrequency={kind === "oneoff" ? "once" : "weekly"} units={bundle.units.map((u) => ({ id: u.id, name: u.name || u.address_line, postcode: u.postcode, city: u.city }))} />
         )}
       </div>
     </section>

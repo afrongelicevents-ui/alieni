@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
-import { createMollieClient } from "@/lib/mollie";
+import { centsToMollieValue, createMollieClient, getHouseholdFeeCents, HOUSEHOLD_SUBSCRIPTION } from "@/lib/mollie";
 import { invoiceEmail, paymentFailedEmail, sendEmail } from "@/lib/email";
 import { connectionStatusFor, paymentTransition } from "@/lib/billing";
 import { rateLimit } from "@/lib/rate-limit";
+import { userLocale } from "@/lib/notify";
 
 /**
  * Mollie webhook (brief §7: verify authenticity, handle idempotently,
@@ -79,25 +80,32 @@ export async function POST(request: Request) {
     const transition = paymentTransition(payment);
     const periodStatus =
       transition === "paid" ? "paid" : transition === "reversed" ? "reversed" : transition === "failed" ? "failed" : null;
+    // Every write is checked: a failure answers 500 so Mollie retries the webhook (all writes are idempotent).
+    const failed = () => NextResponse.json({ ok: false }, { status: 500 });
     if (periodStatus) {
-      await admin
+      const { error: periodErr } = await admin
         .from("business_billing_periods")
         .update({ status: periodStatus })
         .eq("mollie_payment_id", payment.id);
+      if (periodErr) return failed();
     }
     const connStatus = connectionStatusFor(transition);
     if (connStatus === "paused") {
       // Pause billing + every connection of this business → contacts re-masked
-      await admin.from("business_profiles").update({ billing_paused_at: new Date().toISOString(), payment_failed_at: new Date().toISOString() }).eq("id", business.id);
-      await admin.from("connections").update({ status: "paused" }).eq("household_id", business.user_id).eq("status", "active");
+      const { error: bpErr } = await admin.from("business_profiles").update({ billing_paused_at: new Date().toISOString(), payment_failed_at: new Date().toISOString() }).eq("id", business.id);
+      if (bpErr) return failed();
+      const { error: connErr } = await admin.from("connections").update({ status: "paused" }).eq("household_id", business.user_id).eq("status", "active");
+      if (connErr) return failed();
       const { data: user } = await admin.auth.admin.getUserById(business.user_id);
       if (user?.user?.email) {
-        const mail = paymentFailedEmail();
+        const mail = paymentFailedEmail(await userLocale(business.user_id));
         await sendEmail(user.user.email, mail.subject, mail.text);
       }
     } else if (connStatus === "active") {
-      await admin.from("business_profiles").update({ billing_paused_at: null, payment_failed_at: null }).eq("id", business.id);
-      await admin.from("connections").update({ status: "active" }).eq("household_id", business.user_id).eq("status", "paused");
+      const { error: bpErr } = await admin.from("business_profiles").update({ billing_paused_at: null, payment_failed_at: null }).eq("id", business.id);
+      if (bpErr) return failed();
+      const { error: connErr } = await admin.from("connections").update({ status: "active" }).eq("household_id", business.user_id).eq("status", "paused");
+      if (connErr) return failed();
     }
     return NextResponse.json({ ok: true, business: true, transition });
   }
@@ -143,9 +151,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Mandate in place → charge €14.95 now for each active connection that
-    // has no subscription yet, and start the monthly subscription (brief §3.7).
+    // Mandate in place → charge the configured household amount now for each
+    // active connection that has no subscription yet, and start the monthly
+    // subscription (brief §3.7). Amount 0 (not activated) creates no charge.
     if (valid) {
+      let feeCents: number;
+      try {
+        feeCents = await getHouseholdFeeCents(admin);
+      } catch {
+        return NextResponse.json({ ok: false }, { status: 500 }); // Mollie retries; never charge a guessed amount
+      }
       const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : new URL(request.url).origin);
       const webhookUrl = `${base}/api/mollie/webhook`;
       const { data: conns } = await admin
@@ -154,7 +169,7 @@ export async function POST(request: Request) {
         .eq("household_id", household.id)
         .eq("status", "active")
         .is("mollie_subscription_id", null);
-      for (const conn of conns ?? []) {
+      for (const conn of feeCents > 0 ? (conns ?? []) : []) {
         // Claim the connection first so a webhook replay cannot double-charge.
         const { data: claimed } = await admin
           .from("connections")
@@ -168,7 +183,7 @@ export async function POST(request: Request) {
         const { data: already } = await admin.from("payments").select("id").eq("connection_id", conn.id).eq("type", "subscription").limit(1);
         if (!already?.length) {
           try {
-            const charge = await mollie.createFirstCharge(payment.customerId, webhookUrl, undefined, { profile_id: household.id, connection_id: conn.id });
+            const charge = await mollie.createFirstCharge(payment.customerId, webhookUrl, { value: centsToMollieValue(feeCents), description: HOUSEHOLD_SUBSCRIPTION.description }, { profile_id: household.id, connection_id: conn.id });
             await admin.from("payments").upsert(
               { mollie_payment_id: charge.id, type: "subscription", status: charge.status, amount_cents: Math.round(Number(charge.amount.value) * 100), household_id: household.id, connection_id: conn.id },
               { onConflict: "mollie_payment_id" },
@@ -182,7 +197,7 @@ export async function POST(request: Request) {
         try {
           const start = new Date();
           start.setUTCMonth(start.getUTCMonth() + 1);
-          const sub = await mollie.createSubscription(payment.customerId, start.toISOString().slice(0, 10), webhookUrl);
+          const sub = await mollie.createSubscription(payment.customerId, start.toISOString().slice(0, 10), webhookUrl, feeCents);
           await admin.from("connections").update({ mollie_subscription_id: sub.id }).eq("id", conn.id);
         } catch {
           // Charged but no subscription yet: keep the claim (prevents a second charge); flagged for ops.
@@ -222,14 +237,15 @@ export async function POST(request: Request) {
       if (invoice) {
         const { data: user } = await admin.auth.admin.getUserById(paymentRow.household_id);
         if (user?.user?.email) {
+          const lang = await userLocale(paymentRow.household_id);
           const mail = invoiceEmail({
             number: invoice.number,
             netCents: invoice.net_cents,
             btwCents: invoice.btw_cents,
             grossCents: invoice.gross_cents,
             issuedAt: invoice.issued_at,
-            description: "Alieni verbinding — maandbedrag",
-          });
+            description: lang === "en" ? "Alieni connection — monthly fee" : "Alieni verbinding — maandbedrag",
+          }, lang);
           await sendEmail(user.user.email, mail.subject, mail.text);
         }
       }
@@ -244,7 +260,7 @@ export async function POST(request: Request) {
       await admin.from("connections").update({ status: "paused" }).eq("household_id", household.id).eq("status", "active");
       const { data: user } = await admin.auth.admin.getUserById(household.id);
       if (user?.user?.email) {
-        const mail = paymentFailedEmail();
+        const mail = paymentFailedEmail(await userLocale(household.id));
         await sendEmail(user.user.email, mail.subject, mail.text);
       }
     } else if (connStatus === "active") {

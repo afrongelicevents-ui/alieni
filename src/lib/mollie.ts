@@ -1,18 +1,41 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Minimal server-side Mollie API client (brief §6): iDEAL/SEPA mandates and
  * €14.95/month subscriptions. The API key never reaches the client.
- * Returns null while MOLLIE_API_KEY is not configured (demo mode).
+ * Returns null while payments are not active (no key, or PAYMENTS_ACTIVE is not 'true').
  */
 
 const BASE = "https://api.mollie.com/v2";
 
+/** Fallback when the `household_fee_cents` setting row is missing: 0 = nothing is charged until an admin sets a price. */
+export const DEFAULT_HOUSEHOLD_FEE_CENTS = 0;
+
 export const HOUSEHOLD_SUBSCRIPTION = {
-  amount: { currency: "EUR", value: "14.95" }, // incl. 21% btw (brief §6)
   interval: "1 month",
   description: "Alieni verbinding — maandbedrag",
 } as const;
+
+/** Integer cents → Mollie amount string ("14.95"). */
+export function centsToMollieValue(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+/**
+ * Household monthly amount in cents (incl. btw) from the admin-editable
+ * `settings` row `household_fee_cents`. Missing row → 0 (no charge).
+ * Throws when the lookup fails or the stored value is not a non-negative
+ * integer, so callers never charge a guessed amount. 0 means "do not charge".
+ */
+export async function getHouseholdFeeCents(admin: SupabaseClient): Promise<number> {
+  const { data, error } = await admin.from("settings").select("value").eq("key", "household_fee_cents").maybeSingle<{ value: unknown }>();
+  if (error) throw new Error("household_fee_cents lookup failed");
+  if (!data) return DEFAULT_HOUSEHOLD_FEE_CENTS;
+  const n = typeof data.value === "string" ? Number(data.value) : data.value;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 0) throw new Error("household_fee_cents is invalid");
+  return n;
+}
 
 type MolliePayment = {
   id: string;
@@ -47,9 +70,17 @@ async function mollieFetch<T>(key: string, path: string, init?: RequestInit): Pr
   return (await res.json()) as T;
 }
 
+/**
+ * Charging is armed only when BOTH the payment provider key is present AND the explicit switch PAYMENTS_ACTIVE=true is set.
+ * Having a key alone (for example to test in the provider's dashboard) never starts a charge.
+ */
+export function paymentsActive(): boolean {
+  return Boolean(process.env.MOLLIE_API_KEY) && process.env.PAYMENTS_ACTIVE === "true";
+}
+
 export function createMollieClient() {
   const key = process.env.MOLLIE_API_KEY;
-  if (!key) return null;
+  if (!key || !paymentsActive()) return null;
 
   return {
     createCustomer(name: string, email: string) {
@@ -98,22 +129,22 @@ export function createMollieClient() {
     },
 
     /**
-     * Charge on the customer's mandate: €14.95 immediately when both sides
-     * confirm a household deal, or a business's month-end amount.
+     * Charge on the customer's mandate: the configured household amount
+     * immediately when both sides confirm a deal, or a business's month-end amount.
      */
     createFirstCharge(
       customerId: string,
       webhookUrl: string,
-      override?: { value: string; description: string },
+      override: { value: string; description: string },
       metadata?: Record<string, string>,
     ) {
       return mollieFetch<MolliePayment>(key, "/payments", {
         method: "POST",
         body: JSON.stringify({
-          amount: override ? { currency: "EUR", value: override.value } : HOUSEHOLD_SUBSCRIPTION.amount,
+          amount: { currency: "EUR", value: override.value },
           customerId,
           sequenceType: "recurring",
-          description: override?.description ?? HOUSEHOLD_SUBSCRIPTION.description,
+          description: override.description,
           webhookUrl,
           metadata,
         }),
@@ -121,10 +152,11 @@ export function createMollieClient() {
     },
 
     /** Then the monthly subscription, starting one month later. */
-    createSubscription(customerId: string, startDate: string, webhookUrl: string) {
+    createSubscription(customerId: string, startDate: string, webhookUrl: string, amountCents: number) {
       return mollieFetch<{ id: string }>(key, `/customers/${customerId}/subscriptions`, {
         method: "POST",
         body: JSON.stringify({
+          amount: { currency: "EUR", value: centsToMollieValue(amountCents) }, // incl. 21% btw (brief §6)
           ...HOUSEHOLD_SUBSCRIPTION,
           startDate,
           webhookUrl,

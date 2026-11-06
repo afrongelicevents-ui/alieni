@@ -23,13 +23,14 @@ export function WorkRecords({ records, compact = false }: { records: WorkRecordR
   const [disputing, setDisputing] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errorFor, setErrorFor] = useState<string | null>(null);
   const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
   async function send(id: string, ok: boolean) {
-    setBusy(id); setError(null);
+    setBusy(id); setError(null); setErrorFor(null);
     const r = await reviewWork(id, ok, ok ? "" : note);
     setBusy(null);
-    if (!r.ok) setError(t(`error_${r.error ?? "failed"}` as "error_failed"));
+    if (!r.ok) { setError(t(`error_${r.error ?? "failed"}` as "error_failed")); setErrorFor(id); }
     else { setDisputing(null); setNote(""); router.refresh(); }
   }
 
@@ -66,7 +67,7 @@ export function WorkRecords({ records, compact = false }: { records: WorkRecordR
                 <button type="submit" disabled={busy === w.id} className="inline-flex min-h-9 items-center self-start rounded-full bg-red-700 px-4 text-xs font-bold text-white disabled:opacity-50">{t("disputeWork")}</button>
               </form>
             ) : null}
-            {error && (busy === w.id || disputing === w.id) ? <p className="text-xs font-semibold text-red-700">{error}</p> : null}
+            {error && errorFor === w.id ? <p role="alert" className="text-xs font-semibold text-red-700 sm:basis-full">{error}</p> : null}
           </li>
         );
       })}

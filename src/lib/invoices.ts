@@ -1,4 +1,5 @@
-import { HOUSEHOLD_FEE_CENTS, splitBtw } from "./money";
+import { COMPANY } from "./company";
+import { splitBtw } from "./money";
 
 /**
  * Invoice construction (brief §6): sequential numbers, 21% btw breakdown,
@@ -6,11 +7,11 @@ import { HOUSEHOLD_FEE_CENTS, splitBtw } from "./money";
  * sequence (next_invoice_number()); the demo uses the same format.
  */
 
-// [TO FILL] Agatha's registration details before launch (open decision §13).
+// Company details come from the environment (see ./company.ts); nothing is shown as a placeholder.
 export const COMPANY_DETAILS = {
-  name: "Alieni",
-  kvk: "KvK [NUMMER]",
-  btw: "BTW [NUMMER]",
+  name: COMPANY.name,
+  kvk: COMPANY.kvk ? `KvK ${COMPANY.kvk}` : "",
+  btw: COMPANY.btw ? `BTW ${COMPANY.btw}` : "",
 };
 
 export type Invoice = {
@@ -28,11 +29,12 @@ export function formatInvoiceNumber(year: number, seq: number): string {
 
 export function buildInvoice(params: {
   seq: number;
-  grossCents?: number;
+  /** The amount actually charged (from the payment); nothing is assumed. */
+  grossCents: number;
   issuedAt?: Date;
   description: string;
 }): Invoice {
-  const grossCents = params.grossCents ?? HOUSEHOLD_FEE_CENTS;
+  const grossCents = params.grossCents;
   const issuedAt = params.issuedAt ?? new Date();
   const { netCents, btwCents } = splitBtw(grossCents);
   return {

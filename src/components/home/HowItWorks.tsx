@@ -1,12 +1,15 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatEuro } from "@/lib/money";
 
-export function HowItWorks() {
+/** `feeCents` is the household monthly price while one is active; null keeps the copy price-neutral. */
+export function HowItWorks({ feeCents = null }: { feeCents?: number | null }) {
   const t = useTranslations("home");
+  const lang = useLocale();
 
   const steps = [
     { title: t("howStep1Title"), text: t("howStep1Text") },
     { title: t("howStep2Title"), text: t("howStep2Text") },
-    { title: t("howStep3Title"), text: t("howStep3Text") },
+    { title: t("howStep3Title"), text: feeCents ? t("howStep3TextPriced", { fee: formatEuro(feeCents, lang) }) : t("howStep3Text") },
   ];
 
   return (

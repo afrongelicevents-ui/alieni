@@ -14,6 +14,7 @@ export function FeeEventsTable({ events, demo }: { events: AdminFeeEvent[]; demo
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const pending = events.filter((e) => e.status === "pending").reduce((a, e) => a + e.amountCents, 0);
   const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -21,8 +22,10 @@ export function FeeEventsTable({ events, demo }: { events: AdminFeeEvent[]; demo
     if (demo) return;
     const reason = window.prompt(t("waiveReason")) ?? "";
     setBusy(id);
-    await waiveFeeEvent(id, reason);
+    setFailed(false);
+    const r = await waiveFeeEvent(id, reason);
     setBusy(null);
+    if (!r.ok) { setFailed(true); return; }
     router.refresh();
   }
 
@@ -30,6 +33,7 @@ export function FeeEventsTable({ events, demo }: { events: AdminFeeEvent[]; demo
     <div>
       <h2 className="headline text-xl text-ink">{t("feesTitle")}</h2>
       <p className="mt-1 text-sm text-ink/70">{t("feesIntro")}</p>
+      {failed ? <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{t("actionFailed")}</p> : null}
       <div className="mt-3 rounded-card-lg bg-forest p-4 text-white"><p className="text-xs font-semibold text-white/80">{t("feesTotalPending")}</p><p className="text-2xl font-extrabold" data-fees-pending={pending}>{formatEuro(pending, lang)}</p></div>
       <div className="mt-4 overflow-x-auto rounded-card-lg border border-line bg-white">
         <table className="w-full min-w-[720px] text-left text-sm">

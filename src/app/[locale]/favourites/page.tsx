@@ -15,7 +15,7 @@ export default async function FavouritesPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("favourites");
-  const user = await requireRole(locale, ["household", "business"], "/favourites");
+  const user = await requireRole(locale, ["household", "business"], "/favourites", { adminAllowed: false });
 
   // Signed in: favourites table joined with the published ads.
   const supabase = await createClient();

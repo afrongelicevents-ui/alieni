@@ -1,3 +1,6 @@
+import { getPublicHouseholdFeeCents } from "@/lib/site-settings";
+import { ReviewForm } from "@/components/cleaners/ReviewForm";
+import { canReview } from "@/lib/reviews-data";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { getCleaner, isVogValid } from "@/lib/cleaners";
@@ -30,6 +33,9 @@ export default async function CleanerProfilePage({
   const cleaner = live ?? own ?? getCleaner(id);
   if (!cleaner) notFound();
   const notPublic = own ? own.status : null;
+  // cleaners and admins cannot request a meeting or keep favourites: guests, households and businesses can
+  const canContact = !user || user.role === "household" || user.role === "business";
+  const canReviewCleaner = live && user ? await canReview(user.id, cleaner.id) : false;
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
@@ -38,7 +44,7 @@ export default async function CleanerProfilePage({
       ) : null}
       {/* header card */}
       <header className="relative rounded-card-lg border border-line bg-white p-6 shadow-sm">
-        <FavouriteButton cleanerId={cleaner.id} className="absolute right-5 top-5" />
+        {canContact ? <FavouriteButton cleanerId={cleaner.id} className="absolute right-5 top-5" /> : null}
         <div className="flex items-center gap-5">
           <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
             {cleaner.photo ? (
@@ -51,20 +57,25 @@ export default async function CleanerProfilePage({
               </svg>
             )}
           </span>
-          <div>
-            <h1 className="headline flex flex-wrap items-center gap-2 text-3xl text-ink">
+          <div className="min-w-0 pr-10">
+            <h1 className="headline flex flex-wrap items-center gap-2 break-words text-3xl text-ink">
               {cleaner.name}
               {isVogValid(cleaner.vog, new Date()) ? (
                 <span className="rounded-full bg-forest px-2.5 py-1 text-xs font-bold text-white">VOG ✓</span>
               ) : null}
             </h1>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-ink/70">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
-                <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
-              </svg>
-              <strong className="text-ink">{cleaner.rating.toFixed(1)}</strong>
-              <span>({tHome("reviewsCount", { count: cleaner.reviewCount })})</span>
-              <span>· {t("verifiedJobs", { count: cleaner.verifiedJobs })}</span>
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink/70">
+              {cleaner.reviewCount > 0 ? (
+                <>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
+                    <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
+                  </svg>
+                  <strong className="text-ink">{cleaner.rating.toFixed(1)}</strong>
+                  <span>({tHome("reviewsCount", { count: cleaner.reviewCount })})</span>
+                  <span>·</span>
+                </>
+              ) : null}
+              <span>{t("verifiedJobs", { count: cleaner.verifiedJobs })}</span>
             </p>
             <p className="mt-1 text-xl font-extrabold text-forest">
               {formatHourlyRate(cleaner.rateCents, lang)}
@@ -76,9 +87,11 @@ export default async function CleanerProfilePage({
           </div>
         </div>
 
-        <div className="mt-5">
-          <MeetingRequestButton cleaner={cleaner} signedIn={Boolean(user)} />
-        </div>
+        {canContact ? (
+          <div className="mt-5">
+            <MeetingRequestButton cleaner={cleaner} signedIn={Boolean(user)} feeCents={await getPublicHouseholdFeeCents()} />
+          </div>
+        ) : null}
       </header>
 
       {/* about */}
@@ -130,7 +143,7 @@ export default async function CleanerProfilePage({
             {cleaner.reviews.map((review) => (
               <li key={review.id} className="rounded-card-lg border border-line bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <strong className="text-sm text-ink">{review.author}</strong>
+                  <strong className="text-sm text-ink">{review.author || t("confirmedClient")}</strong>
                   <span className="flex items-center gap-1 text-sm font-bold text-ink">
                     <svg viewBox="0 0 24 24" className="h-4 w-4 text-sun-dark" fill="currentColor" aria-hidden="true">
                       <path d="M12 3.5l2.4 5 5.6.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.6-.8 2.4-5Z" />
@@ -138,13 +151,16 @@ export default async function CleanerProfilePage({
                     {review.rating.toFixed(1)}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-ink/80">{review.text[lang]}</p>
+                {review.text[lang] ? <p className="mt-1 text-sm text-ink/80">{review.text[lang]}</p> : null}
                 <p className="mt-1 text-xs text-ink/70">{review.date}</p>
+                {user && /^[0-9a-f-]{36}$/i.test(review.id) ? <div className="mt-1"><ReportButton subjectId={review.id} subjectType="review" /></div> : null}
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {canReviewCleaner ? <ReviewForm cleanerProfileId={cleaner.id} /> : null}
 
       {/* report */}
       <footer className="mt-8 border-t border-line pt-6">

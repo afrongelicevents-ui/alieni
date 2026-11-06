@@ -1,40 +1,60 @@
--- Part 14: protect private company information.
+-- Part 14 (variant B): protect private company information, with NO new callable function.
 -- Until now every signed-in user (and anyone holding the public key) could read these columns of a company
 -- that has a published job: contact first/last name, VAT number, unit count, price, billing dates and the
 -- payment-failed flag. The public jobs board only needs the company NAME and TYPE.
---   1. business_public: a restricted view with id, company_name, business_type only, for companies that
---      have a published job, plus companies the viewer works with (a cleaner's own work records or an
---      active connection) and the viewer's own company.
+--   1. business_public: a restricted, read-only view with id, company_name, business_type only. The visibility
+--      logic is written directly inside the view, so there is no helper function and no extra schema that any API
+--      (REST, GraphQL or other) could expose: companies with a published job, the viewer's own company, companies
+--      a cleaner has worked for or is connected to, and everything for admins.
 --   2. business_profiles is no longer readable by anyone except its owner and admins.
--- Additive: one function, one view, one rule replaced by two narrower ones. No data is touched.
+--   3. the two existing helpers the rules use get a hardened (empty) search_path and fully qualified names.
+-- Additive apart from replacing one rule by two narrower ones and removing the helper added in Part 13. No data is touched.
 
--- who may see a company's public card
-create or replace function business_public_visible(p_business_id uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select business_has_published_job(p_business_id)
-    or exists (select 1 from business_profiles bp where bp.id = p_business_id and bp.user_id = auth.uid())
-    or exists (select 1 from work_records w join cleaner_profiles cp on cp.id = w.cleaner_profile_id
-               where w.business_id = p_business_id and cp.user_id = auth.uid())
-    or cleaner_connected_to_business(p_business_id)
-    or is_admin();
+-- 1. the two existing helpers: same logic, hardened search_path, qualified names
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
 $$;
--- a view's functions are executed with the caller's rights, so the caller needs execute (it only answers yes/no for one id)
-grant execute on function business_public_visible(uuid) to anon, authenticated;
 
--- the view runs with its owner's rights (it must read business_profiles), and exposes three columns only
-drop view if exists business_public;
-create view business_public with (security_invoker = false, security_barrier = true) as
-  select id, company_name, business_type
-  from business_profiles
-  where business_public_visible(id);
-revoke all on business_public from public, anon, authenticated;
-grant select on business_public to anon, authenticated;
+create or replace function public.cleaner_connected_to_business(p_business_id uuid) returns boolean
+language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from public.connections c
+    join public.business_profiles bp on bp.user_id = c.household_id
+    join public.cleaner_profiles cp on cp.user_id = c.cleaner_id
+    where bp.id = p_business_id and cp.user_id = auth.uid() and c.status = 'active'
+  );
+$$;
 
--- business_profiles: owner (existing rule "own business profile") and admin only
-drop policy if exists "public business display" on business_profiles;
-drop policy if exists "admin reads business profiles" on business_profiles;
-create policy "admin reads business profiles" on business_profiles for select using (is_admin());
--- anonymous visitors: no access to private columns. They keep select on id and user_id only, because the rules of
--- other tables (jobs, units, ...) look those two columns up as the visitor; row security still returns them no rows.
-revoke all on business_profiles from anon;
-grant select (id, user_id) on business_profiles to anon;
+-- 2. the view: three columns, read-only (DISTINCT makes it non-updatable, so it stays read-only even if a later
+--    migration ever grants write rights by mistake), runs with its owner's rights, security barrier.
+--    All logic is inline and fully qualified; the only function it calls is auth.uid().
+drop view if exists public.business_public;
+create view public.business_public with (security_invoker = false, security_barrier = true) as
+  select distinct bp.id, bp.company_name, bp.business_type
+  from public.business_profiles bp
+  where exists (select 1 from public.jobs j where j.business_id = bp.id and j.status = 'published')
+     or bp.user_id = auth.uid()
+     or exists (select 1 from public.work_records w join public.cleaner_profiles cp on cp.id = w.cleaner_profile_id
+                where w.business_id = bp.id and cp.user_id = auth.uid())
+     or exists (select 1 from public.connections c join public.cleaner_profiles cp on cp.user_id = c.cleaner_id
+                where c.household_id = bp.user_id and cp.user_id = auth.uid() and c.status = 'active')
+     or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin');
+revoke all on public.business_public from public, anon, authenticated;
+grant select on public.business_public to anon, authenticated;
+
+-- 3. business_profiles: owner (existing rule "own business profile") and admin only
+drop policy if exists "public business display" on public.business_profiles;
+drop policy if exists "admin reads business profiles" on public.business_profiles;
+create policy "admin reads business profiles" on public.business_profiles for select using (public.is_admin());
+-- anonymous visitors: no private columns. They keep select on id and user_id only, because the rules of other
+-- tables (jobs, units, ...) look those two columns up as the visitor; row security still returns them no rows.
+revoke all on public.business_profiles from anon;
+grant select (id, user_id) on public.business_profiles to anon;
+-- defence in depth: API roles never need these table-level rights (row security cannot guard TRUNCATE)
+revoke truncate, references, trigger on public.business_profiles from authenticated;
+
+-- 4. the Part 13 helper is no longer used by any rule
+drop function if exists public.business_has_published_job(uuid);

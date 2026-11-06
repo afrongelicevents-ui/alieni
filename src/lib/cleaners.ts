@@ -15,7 +15,7 @@ export type CleanerFilters = {
   language?: string;
   /** Business job type; "school" additionally requires a valid VOG. */
   jobType?: JobType;
-  sort?: "distance" | "price" | "rating";
+  sort?: "distance" | "price" | "rating" | "jobs";
 };
 
 export const DEFAULT_VOG_MAX_AGE_MONTHS = 12;
@@ -96,9 +96,11 @@ export function searchCleaners(
     }
   }
 
-  const sort = filters.sort ?? (origin ? "distance" : "rating");
+  // Default: nearest first when we know where the customer is, otherwise most verified jobs (reviews are not live yet).
+  const sort = filters.sort ?? (origin ? "distance" : "jobs");
   results.sort((a, b) => {
     if (sort === "price") return a.rateCents - b.rateCents;
+    if (sort === "jobs") return b.verifiedJobs - a.verifiedJobs || a.name.localeCompare(b.name);
     if (sort === "rating") return b.rating - a.rating || b.reviewCount - a.reviewCount;
     // distance
     if (a.distanceKm === null) return 1;
@@ -128,7 +130,7 @@ export function parseFilters(params: Record<string, string | string[] | undefine
   const language = one(params.language);
   if (language) f.language = language;
   const sort = one(params.sort);
-  if (sort === "distance" || sort === "price" || sort === "rating") f.sort = sort;
+  if (sort === "distance" || sort === "price" || sort === "rating" || sort === "jobs") f.sort = sort;
   const jobType = one(params.jobType);
   if (jobType && ["household", "airbnb", "hotel", "restaurant", "office", "school", "emergency"].includes(jobType)) {
     f.jobType = jobType as JobType;

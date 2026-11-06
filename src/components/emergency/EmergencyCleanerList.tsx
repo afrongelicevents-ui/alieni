@@ -38,7 +38,7 @@ export function EmergencyCleanerList({ open, mine, optedIn, myRateCents, strikes
     return (
       <div className="rounded-card-lg border border-line bg-white p-6 text-center" data-opt-in-removed={strikes >= strikeLimit ? "1" : undefined}>
         <p className="text-ink/70">{strikes >= strikeLimit ? t("optInRemoved", { count: strikes }) : t("notOptedIn")}</p>
-        <Link href="/cleaners/new" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white">{t("optInCta")}</Link>
+        <Link href="/profile" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-6 text-sm font-bold text-white">{t("optInCta")}</Link>
       </div>
     );
   }

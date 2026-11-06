@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { RoleChooser } from "@/components/auth/RoleChooser";
+import { redirectIfSignedIn } from "@/lib/guard";
 
 export default async function SignupPage({
   params,
@@ -13,6 +14,7 @@ export default async function SignupPage({
   const { locale } = await params;
   const { role, next } = await searchParams;
   setRequestLocale(locale);
+  await redirectIfSignedIn(locale, next);
   const t = await getTranslations("auth");
   const chosen = role === "cleaner" || role === "household" ? role : null;
 

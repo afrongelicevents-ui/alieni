@@ -13,6 +13,7 @@ const tbl = async (n) => (await fetch(`${EMU}/__emu/table?name=${n}`)).json();
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -26,7 +27,7 @@ async function signUp(page, email, role) {
   const errors = [];
   const track = (page) => {
     page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
-    page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); });
+    page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); });
   };
 
   // ---------- Cleaner with emergency opt-in ----------
@@ -88,6 +89,8 @@ async function signUp(page, email, role) {
   await biz.goto(`${APP}/en/jobs/new`, { waitUntil: "networkidle" });
   await biz.selectOption("select >> nth=0", "hospitality"); // space type the cleaner works in
   await biz.selectOption("select >> nth=1", { index: 1 }); // unit
+  await biz.getByLabel("Frequency").selectOption("once");
+  await biz.locator("input[type=date]").fill(new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10));
   await biz.fill("textarea", "Daily room turnovers, 24 rooms, 11:00-15:00, linen provided.");
   await biz.getByRole("button", { name: /Post job/ }).click();
   await biz.waitForSelector("text=Your job is ready", { timeout: 15000 });

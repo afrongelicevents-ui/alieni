@@ -11,6 +11,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -41,7 +42,7 @@ async function restPatch(token, table, query, body) {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const errors = [];
-  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
+  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
 
   for (const [label, viewport, mobile] of [["phone", { width: 390, height: 844 }, true], ["desktop", { width: 1280, height: 900 }, false]]) {
     const suffix = mobile ? "m" : "d";

@@ -1,4 +1,4 @@
-import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/guard";
 import { createClient } from "@/lib/supabase/server";
@@ -6,6 +6,8 @@ import { getSlotsForCleaner, getWorkForCleaner } from "@/lib/business-data";
 import { MyWorkList } from "@/components/cleaners/MyWorkList";
 import { getCoverRules } from "@/lib/cover-data";
 import { businessNames } from "@/lib/business-public";
+import { fetchPublishedJobs, getQuotesForCleaner, toBoardJobs, type MyQuote } from "@/lib/jobs-data";
+import { MyQuotes } from "@/components/cleaners/MyQuotes";
 import { JobsBoard, type BoardJob } from "@/components/jobs/JobsBoard";
 import { SlotsList } from "@/components/cleaners/SlotsList";
 import { EmergencyCleanerList, type MineRequest, type OpenRequest } from "@/components/emergency/EmergencyCleanerList";
@@ -28,9 +30,8 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   const { locale } = await params;
   const { tab = "jobs" } = await searchParams;
   setRequestLocale(locale);
-  const user = await requireRole(locale, ["cleaner"], "/work");
+  const user = await requireRole(locale, ["cleaner"], `/work${tab !== "jobs" ? `?tab=${encodeURIComponent(tab)}` : ""}`, { adminAllowed: false });
   const t = await getTranslations("work");
-  const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
   const supabase = (await createClient())!;
 
   const { data: cp } = await supabase.from("cleaner_profiles").select("id, status, job_types, work_scope, work_types, emergency_opt_in, emergency_rate_cents, rate_cents").eq("user_id", user.id).maybeSingle();
@@ -65,24 +66,21 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   let open: OpenRequest[] = [];
   let mine: MineRequest[] = [];
   let work: Awaited<ReturnType<typeof getWorkForCleaner>> = [];
+  let quotes: MyQuote[] = [];
   let strikes = 0;
   let strikeLimit = 2;
 
   if (current === "jobs") {
     const spaceTypes = spaceTypesFor(profile.job_types);
-    const { data } = spaceTypes.length
-      ? await supabase.from("jobs").select("id, business_id, space_type, size_m2, postcode, city, frequency, schedule_note, description, budget_cents, job_responses ( id, cleaner_profile_id, rate_cents, message )").eq("status", "published").in("space_type", spaceTypes).order("published_at", { ascending: false }).limit(100)
-      : { data: [] };
-    type Row = { id: string; business_id: string; space_type: BoardJob["spaceType"]; size_m2: number | null; postcode: string; city: string | null; frequency: BoardJob["frequency"]; schedule_note: string | null; description: string; budget_cents: number; job_responses: { id: string; cleaner_profile_id: string; rate_cents: number; message: string }[] | null };
-    const jobRows = (data ?? []) as unknown as Row[];
+    const jobRows = spaceTypes.length ? await fetchPublishedJobs(supabase, { spaceTypes }) : [];
     const companyOf = await businessNames(supabase, jobRows.map((r) => r.business_id));
-    jobs = jobRows.map((r) => {
-      const my = (r.job_responses ?? []).find((x) => x.cleaner_profile_id === profile.id);
-      return { id: r.id, companyName: companyOf.get(r.business_id) ?? "—", spaceType: r.space_type, sizeM2: r.size_m2, postcode: r.postcode, city: r.city ?? "", frequency: r.frequency, scheduleNote: r.schedule_note, description: r.description, budgetCents: r.budget_cents, mine: false, sample: false, myResponse: my ? { rateCents: my.rate_cents } : null, responses: [] };
-    });
+    jobs = toBoardJobs(jobRows, { companyOf, myCleanerProfileId: profile.id, myBusinessId: null });
   }
   if (current === "turnovers") slots = await getSlotsForCleaner();
-  if (current === "mine") work = await getWorkForCleaner(profile.id);
+  if (current === "mine") {
+    work = await getWorkForCleaner(profile.id);
+    quotes = await getQuotesForCleaner(supabase, profile.id, (ids) => businessNames(supabase, ids));
+  }
   if (current === "emergency") {
     const [{ data: openRows }, { data: mineRows }] = await Promise.all([
       profile.emergency_opt_in ? supabase.from("emergency_requests_open").select("id, postcode, city, window_start, window_end, hours, tasks").order("window_start").limit(50) : Promise.resolve({ data: [] }),
@@ -119,10 +117,9 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
         {current === "jobs" ? <JobsBoard jobs={jobs} viewer={{ signedIn: true, isCleaner: true, isBusiness: false }} /> : null}
         {current === "turnovers" ? <SlotsList slots={slots} myCleanerId={profile.id} /> : null}
         {current === "emergency" ? <EmergencyCleanerList open={open} mine={mine} optedIn={profile.emergency_opt_in} myRateCents={profile.emergency_rate_cents ?? profile.rate_cents} strikes={strikes} strikeLimit={strikeLimit} /> : null}
-        {current === "mine" ? (<><p className="mb-3 text-sm text-ink/70">{t("mineIntro")}</p><MyWorkList records={work} /></>) : null}
+        {current === "mine" ? (<><p className="mb-3 text-sm text-ink/70">{t("mineIntro")}</p><MyWorkList records={work} /><h2 className="mb-2 mt-6 text-lg font-extrabold text-ink">{t("myQuotesTitle")}</h2><MyQuotes quotes={quotes} /></>) : null}
       </div>
       {profile.status !== "published" ? <p className="mt-6 rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("offlineNote")} <Link href="/profile" className="font-bold underline">{t("goProfile")}</Link></p> : null}
-      <p className="mt-6 text-xs text-ink/60">{t("lang", { lang })}</p>
     </section>
   );
 }

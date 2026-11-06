@@ -1,5 +1,6 @@
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/Button";
+import { getSessionUser } from "@/lib/auth";
 
 function HouseIcon() {
   return (
@@ -34,8 +35,11 @@ function BuildingIcon() {
   );
 }
 
-export function AudienceCards() {
-  const t = useTranslations("home");
+export async function AudienceCards() {
+  const t = await getTranslations("home");
+  // guests (and other roles) start a cleaner account; a signed-in cleaner goes straight to their profile
+  const user = await getSessionUser();
+  const cleanerHref = user?.role === "cleaner" ? "/profile" : "/signup?role=cleaner";
 
   const cards = [
     {
@@ -50,7 +54,7 @@ export function AudienceCards() {
       title: t("cleanersTitle"),
       text: t("cleanersText"),
       cta: t("cleanersCta"),
-      href: "/cleaners/new",
+      href: cleanerHref,
     },
     {
       icon: <BuildingIcon />,

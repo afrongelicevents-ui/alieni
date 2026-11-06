@@ -7,6 +7,9 @@ export async function GET() {
   const supabase = await createClient();
   if (!supabase) return NextResponse.json({ ok: false, reason: "not_configured" }, { status: 503 });
 
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
+
   const { data: invoices } = await supabase
     .from("invoices")
     .select("number, issued_at, net_cents, btw_cents, gross_cents")

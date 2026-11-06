@@ -22,6 +22,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
   const locale = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [role] = useState(defaultRole);
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
@@ -60,7 +61,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
           : supabase.auth.signUp({
               email,
               password,
-              options: { data: { role }, captchaToken, emailRedirectTo: `${window.location.origin}/${locale}/login?confirmed=1` },
+              options: { data: { role, display_name: name.trim().slice(0, 80) || t(`defaultName_${role}` as "defaultName_household") }, captchaToken, emailRedirectTo: `${window.location.origin}/${locale}/login?confirmed=1${safeNext(next) ? `&next=${encodeURIComponent(safeNext(next) as string)}` : ""}` },
             });
       // Never hang: if Supabase does not answer within 20s, say so.
       const timeout = new Promise<never>((_, reject) =>
@@ -103,7 +104,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
       {!active ? (
         <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80">
           {t("notActive")}{" "}
-          <Link href="/cleaners/new" className="font-bold text-forest underline">
+          <Link href="/signup?role=cleaner" className="font-bold text-forest underline">
             {t("cleanerCta")}
           </Link>
         </p>
@@ -111,6 +112,14 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
 
       <div className="flex flex-col gap-4">
         {mode === "signup" ? <input type="hidden" name="role" value={role} /> : null}
+
+        {mode === "signup" ? (
+          <label className="text-sm font-semibold text-ink/80">
+            {t("nameLabel")}
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="given-name" className={`mt-1 ${inputCls}`} />
+            <span className="mt-1 block text-xs font-normal text-ink/70">{t("nameHint")}</span>
+          </label>
+        ) : null}
 
         <label className="text-sm font-semibold text-ink/80">
           {t("email")}

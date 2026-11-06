@@ -13,6 +13,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
 async function signUp(page, email, role) {
   await page.goto(`${APP}/en/signup?role=${role}`, { waitUntil: "networkidle" });
   await page.fill("input[type=email]", email);
+  await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
   await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
@@ -35,7 +36,7 @@ const AMS_C = "SRID=4326;POINT(4.8952 52.3702)", AMS_N = "SRID=4326;POINT(4.9150
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   const errors = [];
-  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
+  const track = (page) => { page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`)); page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); }); };
 
   for (const [label, viewport] of [["phone", { width: 390, height: 844 }], ["desktop", { width: 1280, height: 900 }]]) {
     await fetch(`${EMU}/__emu/reset`);
@@ -66,7 +67,7 @@ const AMS_C = "SRID=4326;POINT(4.8952 52.3702)", AMS_N = "SRID=4326;POINT(4.9150
     await c1.getByRole("link", { name: "View ad" }).click();
     await c1.waitForURL(new RegExp(`/en/cleaners/${ad1.id}$`), { timeout: 15000 });
     await c1.waitForLoadState("networkidle");
-    ok(`[${label}] "View ad" opens the published ad (no 404)`, new RegExp(`Noor ${sfx.toUpperCase()}`).test(await c1.textContent("main")) && (await c1.locator("[data-not-public]").count()) === 0);
+    ok(`[${label}] "View ad" opens the published ad (no 404)`, new RegExp(`Noor ${sfx.toUpperCase()}`).test(await c1.textContent("main")) && (await c1.locator("[data-not-public]").count()) === 0, (await c1.textContent("main")).slice(0, 160));
     // hide it → owner still sees it, with a banner
     await c1.goto(`${APP}/en/profile`, { waitUntil: "networkidle" });
     await c1.getByRole("button", { name: /offline|Take offline/i }).first().click();

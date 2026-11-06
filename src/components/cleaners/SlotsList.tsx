@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import type { SlotRow } from "@/lib/business-data";
 import { needsReminder } from "@/lib/ical";
 import { ButtonLink } from "@/components/ui/Button";
-import { completeSlot, reserveSlot, type SlotActionState } from "@/app/[locale]/cleaners/slots/actions";
+import { completeSlot, releaseSlot, reserveSlot, type SlotActionState } from "@/app/[locale]/cleaners/slots/actions";
 
 type Slot = SlotRow & { unitName: string; company: string };
 
@@ -29,6 +29,15 @@ export function SlotsList({ slots, myCleanerId }: { slots: Slot[]; myCleanerId: 
         <ButtonLink href="/jobs" variant="secondary">{t("cleanerBrowse")}</ButtonLink>
       </div>
     );
+  }
+
+  async function release(id: string) {
+    setBusy(id);
+    setError(null);
+    const r = await releaseSlot(id);
+    setBusy(null);
+    if (!r.ok) { setError(t(`error_${r.error ?? "failed"}` as "error_failed")); return; }
+    router.refresh();
   }
 
   async function reserve(id: string) {
@@ -70,6 +79,9 @@ export function SlotsList({ slots, myCleanerId }: { slots: Slot[]; myCleanerId: 
                   </label>
                   <button type="submit" disabled={donePending} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-bold text-white hover:bg-forest-dark disabled:opacity-50">{t("markDone")}</button>
                 </form>
+              ) : null}
+              {s.status === "reserved" && mine && new Date(s.starts_at) > now ? (
+                <button type="button" disabled={busy === s.id} onClick={() => release(s.id)} className="inline-flex min-h-11 items-center justify-center rounded-full border border-red-300 px-4 text-xs font-bold text-red-800 disabled:opacity-50" data-release-slot>{t("release")}</button>
               ) : null}
               {s.status === "done" ? <p className="text-xs text-ink/70">✓ {t("doneAt")} {s.done_at ? fmt(s.done_at) : ""}{s.done_photo_path ? " · 📷" : ""}</p> : null}
             </div>

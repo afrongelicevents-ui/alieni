@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:rls": "bash e2e/pg/rls-check.sh"
+    "test:rls": "bash e2e/pg/rls-check.sh",
+    "check:i18n": "node scripts/check-i18n.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

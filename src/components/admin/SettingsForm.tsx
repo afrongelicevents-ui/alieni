@@ -26,14 +26,14 @@ export type Settings = {
 
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const DEFAULTS: Settings = {
-  householdPriceEuro: "14,95",
+  householdPriceEuro: "0,00",
   coverCancelHours: "4",
   coverStrikeLimit: "2",
   coverMaxDays: "14",
-  emergencyHouseholdEuro: "9,95",
-  emergencyBusinessEuro: "14,95",
+  emergencyHouseholdEuro: "0,00",
+  emergencyBusinessEuro: "0,00",
   linenEnabled: false,
-  linenPriceEuro: "4,00",
+  linenPriceEuro: "0,00",
   rateFloorEuro: "15,00",
   vogMaxAgeMonths: "12",
   bannedWords: "",

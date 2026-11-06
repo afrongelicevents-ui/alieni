@@ -8,9 +8,6 @@
 
 export const BTW_RATE = 0.21;
 
-/** Household connection fee: €14.95/month including 21% btw. */
-export const HOUSEHOLD_FEE_CENTS = 1495;
-
 /** Split a gross (incl. btw) amount in cents into net and btw parts. */
 export function splitBtw(grossCents: number): { netCents: number; btwCents: number } {
   const netCents = Math.round(grossCents / (1 + BTW_RATE));

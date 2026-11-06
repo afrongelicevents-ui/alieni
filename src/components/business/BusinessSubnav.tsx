@@ -1,32 +1,17 @@
-"use client";
+import { getSessionUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { enabledFor, getCatalog } from "@/lib/services";
+import type { BusinessType } from "@/lib/business";
+import { BusinessSubnavLinks } from "./BusinessSubnavLinks";
 
-import { useTranslations } from "next-intl";
-import { Link, usePathname } from "@/i18n/navigation";
-
-const ITEMS = [
-  { href: "/business/dashboard", key: "dashboardTitle" },
-  { href: "/business/requests", key: "navRequests" },
-  { href: "/business/work", key: "navWork" },
-  { href: "/business/billing", key: "navBilling" },
-  { href: "/business/calendar", key: "navCalendar" },
-  { href: "/business/profile", key: "navProfile" },
-] as const;
-
-/** Second-level navigation inside the business area (same on phone and desktop). */
-export function BusinessSubnav() {
-  const t = useTranslations("business");
-  const pathname = usePathname();
-  return (
-    <nav aria-label={t("dashboardTitle")} className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {ITEMS.map((i) => {
-        const active = pathname === i.href;
-        return (
-          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${active ? "bg-forest text-white" : "border border-line bg-white text-forest hover:bg-mint"}`}>
-            {t(i.key)}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+/** Second-level navigation inside the business area (same on phone and desktop). Calendar only where turnovers are enabled for the business type. */
+export async function BusinessSubnav() {
+  let showCalendar = false;
+  const [user, supabase] = await Promise.all([getSessionUser(), createClient()]);
+  if (user && supabase) {
+    const { data } = await supabase.from("business_profiles").select("business_type").eq("user_id", user.id).maybeSingle();
+    const type = (data?.business_type as BusinessType | undefined) ?? null;
+    if (type) showCalendar = enabledFor(await getCatalog(), "turnover", type);
+  }
+  return <BusinessSubnavLinks showCalendar={showCalendar} />;
 }

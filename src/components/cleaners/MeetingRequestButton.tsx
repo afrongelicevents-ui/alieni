@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { formatEuro } from "@/lib/money";
 import { useRouter } from "@/i18n/navigation";
 import { requestMeeting } from "@/app/[locale]/messages/actions";
 import type { SampleCleaner, Weekday } from "@/lib/sample-data";
@@ -14,8 +15,9 @@ type DayBlockKey = "morning" | "afternoon" | "evening";
  * from the cleaner's availability. The Mollie €0 mandate step plugs in here
  * in the payments phase.
  */
-export function MeetingRequestButton({ cleaner, signedIn }: { cleaner: SampleCleaner; signedIn: boolean }) {
+export function MeetingRequestButton({ cleaner, signedIn, feeCents = null }: { cleaner: SampleCleaner; signedIn: boolean; feeCents?: number | null }) {
   const t = useTranslations("meeting");
+  const lang = useLocale();
   const tCommon = useTranslations("common");
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -144,7 +146,7 @@ export function MeetingRequestButton({ cleaner, signedIn }: { cleaner: SampleCle
         />
       </label>
 
-      <p className="mt-3 rounded-xl bg-sun/25 p-3 text-xs text-ink/70">{t("mandateNote")}</p>
+      <p className="mt-3 rounded-xl bg-sun/25 p-3 text-xs text-ink/70">{feeCents ? t("mandateNotePriced", { fee: formatEuro(feeCents, lang) }) : t("mandateNote")}</p>
       {serverError ? <p className="mt-2 text-xs font-semibold text-red-700">{t(`error_${serverError}` as "error_failed")}</p> : null}
 
       <div className="mt-4 flex gap-3">

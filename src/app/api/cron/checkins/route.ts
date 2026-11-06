@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+import { checkinEmail, sendEmail, type Lang } from "@/lib/email";
 
 /**
  * Daily check-in automation (brief §3.10): conversations with 6+ messages
@@ -30,47 +31,42 @@ export async function GET(request: Request) {
 
   let sent = 0;
   for (const row of candidates ?? []) {
-    // Mark first (idempotency): if the email fails, the next run may retry
-    // only rows that are still unmarked — never double-send.
-    const { data: marked } = await admin
-      .from("conversations")
-      .update({ checkin_sent_at: new Date().toISOString() })
-      .eq("id", row.conversation_id)
-      .is("checkin_sent_at", null)
-      .select()
-      .maybeSingle();
-    if (!marked) continue;
+    // Look up exactly the two parties (listUsers only returns the first page).
+    const recipients: { to: string; lang: Lang }[] = [];
+    for (const id of [row.household_id, row.cleaner_id] as string[]) {
+      try {
+        const { data } = await admin.auth.admin.getUserById(id);
+        if (data?.user?.email) {
+          // Each recipient gets the mail in their own language (profiles.locale, default nl).
+          let lang: Lang = "nl";
+          try {
+            const { data: prof } = await admin.from("profiles").select("locale").eq("id", id).maybeSingle();
+            if (prof?.locale === "en") lang = "en";
+          } catch {
+            // keep nl
+          }
+          recipients.push({ to: data.user.email, lang });
+        }
+      } catch {
+        console.warn("checkins: e-mail address lookup failed");
+      }
+    }
 
-    const { data: users } = await admin.auth.admin.listUsers();
-    const recipients = (users?.users ?? [])
-      .filter((u) => u.id === row.household_id || u.id === row.cleaner_id)
-      .map((u) => u.email)
-      .filter((e): e is string => Boolean(e));
+    let delivered = 0;
+    for (const { to, lang } of recipients) {
+      const mail = checkinEmail(lang);
+      if (await sendEmail(to, mail.subject, mail.text)) delivered++;
+    }
+    sent += delivered;
 
-    for (const to of recipients) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Alieni <no-reply@alieni.nl>",
-          to,
-          subject: "Hebben jullie een match gevonden? — Alieni",
-          text: [
-            "Hoi!",
-            "",
-            "Jullie hadden een leuk gesprek op Alieni, maar het is even stil.",
-            "Hebben jullie een match gevonden? Bevestig het dan in de app —",
-            "pas daarna start het abonnement en zijn contactgegevens zichtbaar.",
-            "Nog niet de juiste klik? Er staan genoeg andere profielen voor je klaar.",
-            "",
-            "Groetjes, Alieni · Connect · Clean · Thrive",
-          ].join("\n"),
-        }),
-      });
-      sent++;
+    // Mark only after a successful send; if nothing could be sent the next run retries.
+    if (delivered > 0) {
+      const { error: markErr } = await admin
+        .from("conversations")
+        .update({ checkin_sent_at: new Date().toISOString() })
+        .eq("id", row.conversation_id)
+        .is("checkin_sent_at", null);
+      if (markErr) console.warn("checkins: could not mark conversation as sent");
     }
   }
 

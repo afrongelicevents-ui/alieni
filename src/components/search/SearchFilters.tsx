@@ -12,6 +12,8 @@ export function SearchFilters({ filters }: { filters: CleanerFilters }) {
   const tCommon = useTranslations("common");
   const locale = useLocale() as "nl" | "en";
   const action = getPathname({ href: "/search", locale });
+  // Mirrors searchCleaners: nearest first when a postcode or town is given, otherwise most verified jobs.
+  const defaultSort = filters.sort ?? (filters.q ? "distance" : "jobs");
 
   return (
     <form action={action} method="get" className="rounded-card-lg border border-line bg-section p-4">
@@ -97,10 +99,11 @@ export function SearchFilters({ filters }: { filters: CleanerFilters }) {
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-xs font-semibold text-ink/70">
           {t("sort")}
-          <select name="sort" defaultValue={filters.sort ?? ""} className="min-h-11 rounded-xl border border-line bg-white px-3 py-2 text-sm">
+          <select name="sort" defaultValue={defaultSort} className="min-h-11 rounded-xl border border-line bg-white px-3 py-2 text-sm">
             <option value="distance">{t("sortDistance")}</option>
             <option value="price">{t("sortPrice")}</option>
-            <option value="rating">{t("sortRating")}</option>
+            <option value="jobs">{t("sortJobs")}</option>
+            {filters.sort === "rating" ? <option value="rating">{t("sortRating")}</option> : null}
           </select>
         </label>
         <button
