@@ -134,7 +134,12 @@
     "reportIntroJob": "Why are you reporting this job? Every report is reviewed.",
     "reportReview": "Report this review",
     "reportTitleReview": "Report review",
-    "reportIntroReview": "Why are you reporting this review? Every report is reviewed."
+    "reportIntroReview": "Why are you reporting this review? Every report is reviewed.",
+    "reportMessage": "Report message",
+    "reportTitleMessage": "Report message",
+    "reportIntroMessage": "Why are you reporting this message? Only this message is sent to Alieni, not the rest of the conversation. Every report is reviewed.",
+    "reportError_own_message": "You cannot report your own message.",
+    "reportError_not_found": "This message is no longer available."
   },
   "favourites": {
     "title": "Favourites",

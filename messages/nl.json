@@ -134,7 +134,12 @@
     "reportIntroJob": "Waarom meld je deze klus? Elke melding wordt bekeken.",
     "reportReview": "Deze beoordeling melden",
     "reportTitleReview": "Beoordeling melden",
-    "reportIntroReview": "Waarom meld je deze beoordeling? Elke melding wordt bekeken."
+    "reportIntroReview": "Waarom meld je deze beoordeling? Elke melding wordt bekeken.",
+    "reportMessage": "Bericht melden",
+    "reportTitleMessage": "Bericht melden",
+    "reportIntroMessage": "Waarom meld je dit bericht? Alleen dit bericht gaat naar Alieni, de rest van het gesprek niet. Elke melding wordt bekeken.",
+    "reportError_own_message": "Je kunt je eigen bericht niet melden.",
+    "reportError_not_found": "Dit bericht is niet meer beschikbaar."
   },
   "favourites": {
     "title": "Favorieten",

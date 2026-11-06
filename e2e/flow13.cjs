@@ -99,6 +99,18 @@ async function registerBusiness(browser, viewport, track, email, company) {
     // ---------- price-neutral deal panel ----------
     ok(`[${label}] The deal panel states no price while none is active`, /Nothing is charged at the moment|nothing is charged/i.test(panel) && !/€\s?\d|subscription/i.test(panel.replace(/Payments are not activated/g, "").replace(/€\s?\d+([.,]\d+)?\s?\/\s?hr/g, "")));
 
+    // ---------- report a message ----------
+    const mconv = conv;
+    await rest(cs.access_token, "POST", "messages", { conversation_id: mconv.id, sender_id: cs.user.id, body: "Pay me outside the platform please" });
+    await rest(hs.access_token, "POST", "messages", { conversation_id: mconv.id, sender_id: hs.user.id, body: "Hello from the household" });
+    await h.goto(`${APP}/en/messages/${mconv.id}`, { waitUntil: "networkidle" });
+    ok(`[${label}] Only the other person's messages have a report button`, (await h.getByRole("button", { name: "Report message" }).count()) === 1);
+    await h.getByRole("button", { name: "Report message" }).click();
+    await h.getByRole("button", { name: "Send report" }).or(h.getByRole("button", { name: /^(Send|Submit)/ })).first().click();
+    await h.waitForSelector("text=Thanks for your report", { timeout: 15000 });
+    const mrep = (await tbl("reports")).find((r) => r.subject_type === "message");
+    ok(`[${label}] A reported message is stored with a snapshot of that message only`, Boolean(mrep) && /Pay me outside/.test(mrep.details || "") && !/Hello from the household/.test(mrep.details || ""));
+
     // ---------- report a job ----------
     const B = await registerBusiness(browser, viewport, track, `biz-${sfx}@example.com`, `Kantoor ${sfx.toUpperCase()}`);
     const bp = (await tbl("business_profiles"))[0]; const unit = (await tbl("business_units"))[0];

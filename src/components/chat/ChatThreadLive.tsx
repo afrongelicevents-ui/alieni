@@ -6,6 +6,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { maskContacts } from "@/lib/masking";
 import { formatHourlyRate } from "@/lib/money";
 import type { ConversationDetail } from "@/lib/chat-data";
+import { ReportButton } from "@/components/cleaners/ReportButton";
 import { answerMeetingProposal, proposeMeetingTime, respondMeeting, sendMessage, withdrawMeeting } from "@/app/[locale]/messages/actions";
 import { createClient } from "@/lib/supabase/client";
 import { DealPanelLive } from "./DealPanelLive";
@@ -216,13 +217,14 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
       {/* messages */}
       <ol className="mt-4 flex flex-col gap-2">
         {conversation.messages.map((message) => (
-          <li key={message.id} className={`flex ${message.mine ? "justify-end" : "justify-start"}`}>
+          <li key={message.id} className={`flex flex-col ${message.mine ? "items-end" : "items-start"}`}>
             <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${message.mine ? "rounded-br-md bg-forest text-white" : "rounded-bl-md bg-section text-ink"}`}>
               <p className="whitespace-pre-wrap break-words">{message.body}</p>
               {message.masked && message.body.includes("•") ? (
                 <p className={`mt-1 text-[11px] font-semibold ${message.mine ? "text-white/85" : "text-ink/70"}`}>🔒 {t("maskedTag")}</p>
               ) : null}
             </div>
+            {!message.mine ? <div className="max-w-[90%]"><ReportButton subjectId={message.id} subjectType="message" compact /></div> : null}
           </li>
         ))}
         {pending.map((p) => (

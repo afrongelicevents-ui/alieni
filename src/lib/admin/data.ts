@@ -94,7 +94,7 @@ export async function listReports(): Promise<{ demo: boolean; reports: AdminRepo
     demo: false,
     reports: rows.map((r) => ({
       id: r.id,
-      subject: r.subject_type === "cleaner_profile" ? `Ad: ${cleanerName.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : r.subject_type === "job" ? `Job: ${jobLabel.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : `${r.subject_type} ${r.subject_id.slice(0, 8)}`,
+      subject: r.subject_type === "cleaner_profile" ? `Ad: ${cleanerName.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : r.subject_type === "job" ? `Job: ${jobLabel.get(r.subject_id) ?? r.subject_id.slice(0, 8)}` : r.subject_type === "message" ? "Message" : r.subject_type === "review" ? "Review" : `${r.subject_type} ${r.subject_id.slice(0, 8)}`,
       subjectType: r.subject_type,
       reason: r.reason,
       details: r.details ?? "",

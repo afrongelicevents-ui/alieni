@@ -23,6 +23,7 @@ the live database; the new database parts (14, 15, 16, 17) are files in `supabas
 | Realtime chat | Messages and the meeting/deal panel update live (with the 8-second refresh as fallback). The content-security policy allows the Supabase websocket (`wss://`, and `ws://` for local testing). |
 | Role separation and navigation | Household, cleaner, business and admin each get their own header/bottom navigation and guarded pages; admin is sent to `/admin` from role-specific pages; signed-in users skip login/sign-up; `?next=` is kept through login and e-mail confirmation; wrong-role visits get a clear notice instead of a silent redirect; cleaner home links jump to the right profile step; business Calendar only shows when turnover is enabled for the business type. |
 | Cleaner ad | At least one availability slot is required to publish; the ad shows the moderation notice instead of "online" when held back; role is checked before every ad/profile write. |
+| Reports | Ads, jobs, reviews and now single chat messages can be reported; for a message only that message is copied into the report (admins never get access to chats). |
 | Retention and cleanup | Daily cron also purges old records (`purge_old_records`); rate limits and banned-word checks on messages; reports on reviews and jobs; hidden reviews. |
 | Home page | Shows real published ads (best verified first, then newest); labelled samples only when there are none. |
 
@@ -35,7 +36,7 @@ the live database; the new database parts (14, 15, 16, 17) are files in `supabas
 | Parts 15, 16, 17 applied twice | no errors, no changes; a failing script rolls back completely |
 | Unit tests (`npm test`) | 135 passed |
 | Types, lint, translations (`npm run check:i18n`) | clean, 1358 keys per language, nl and en identical |
-| Browser flows 1 to 13, phone and desktop | 499 checks passed |
+| Browser flows 1 to 13, phone and desktop | 503 checks passed |
 | Website crawl (`e2e/audit.cjs`) | 150 pages, 0 problems |
 | Application leak scan, six roles | outsiders never see VAT, contact or street; only a job's city |
 | Charging gate | no payment, mandate or subscription code path runs while `PAYMENTS_ACTIVE` is not `true` |
@@ -54,13 +55,14 @@ falls back to refresh there); the access rules are verified on the real Postgres
 
 - Business payment method (SEPA mandate) for month-end billing: nothing writes `mollie_customer_id`; billing cannot run, and no price is active. Deliberate while payments stay inactive.
 - Meeting "met" status; per-location assignment of cleaners (the misleading display was removed).
-- Reports exist for ads, reviews and jobs; messages have no report button.
 - Admin: no jobs list/removal tab, no manual iCal sync button, no payments overview for businesses.
 - A guest who starts "Post a job" and logs in as a household is redirected to home without a notice.
 - A disputed work record is not yet routed to the cleaner/admin attention count.
 - Linen add-on (settings screen labelled "phase 2, off").
 - Cleaner minimum-rate hints in the form errors mention a EUR 15 example; the real minimum comes from the admin setting.
 - Unused translation keys remain (harmless).
+
+A separate test Supabase project can be set up with `TEST_SUPABASE_SETUP.md` (never the live project).
 
 ## Not verifiable from here
 
