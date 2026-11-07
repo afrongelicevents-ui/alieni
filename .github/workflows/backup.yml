@@ -1,0 +1,57 @@
+name: Weekly database backup
+
+# SWITCHED OFF. See docs/BACKUP.md for how to switch it on.
+# It only runs when the repository variable BACKUP_ENABLED is exactly "true".
+# The schedule below is commented out on purpose; remove the leading "#" to enable it.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "23 3 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    if: ${{ vars.BACKUP_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Refuse to run on a public repository
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+          ALLOW_PUBLIC: ${{ vars.BACKUP_ALLOW_PUBLIC_REPO }}
+        run: |
+          if [ "$IS_PRIVATE" != "true" ] && [ "$ALLOW_PUBLIC" != "yes" ]; then
+            echo "This repository is public: make it private first (docs/BACKUP.md)."; exit 1
+          fi
+
+      - name: Install the PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump (public + auth schemas, data only), compress and encrypt
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" && test -n "$BACKUP_PASSPHRASE"
+          umask 077
+          f="alieni-$(date -u +%Y-%m-%d)"
+          pg_dump "$SUPABASE_DB_URL" --data-only --no-owner --no-privileges --schema=public --schema=auth \
+            | gzip -9 \
+            | gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 -o "$f.sql.gz.gpg"
+          ls -l "$f.sql.gz.gpg"
+
+      - name: Keep for 30 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: alieni-backup
+          path: alieni-*.sql.gz.gpg
+          retention-days: 30
+          if-no-files-found: error
