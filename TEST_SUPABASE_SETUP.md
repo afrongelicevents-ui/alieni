@@ -9,9 +9,21 @@ build at the live project. Nothing in this guide touches the live project, and n
 3. Authentication → URL configuration: Site URL = the preview or local URL; add `<that URL>/**` to the redirect URLs.
 
 ## 2. Load the database
-In the test project's SQL Editor run the files in `supabase/migrations/` **in order, one file at a time**,
-`0001_…` up to `0028_…` (each file is safe to run twice; a failing file rolls back completely).
-Paste long files in parts if the editor refuses them (split at a blank line between statements).
+Run every file in `supabase/migrations/` **in order** (`0001_…` to `0028_…`) against the test project. Each file is safe to run twice;
+a failing file rolls back completely. Pick one way:
+
+**Way A: from a computer (about 5 minutes, recommended).** Copy the connection string (Supabase → Project settings → Database →
+Connection string → Session pooler, with your database password filled in) and run in the repository folder:
+
+```bash
+export DB_URL='postgresql://...'   # the test project's string, NOT the live one
+for f in supabase/migrations/*.sql; do echo "$f"; psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
+```
+
+**Way B: from a phone (30 to 40 minutes).** Run `python3 scripts/split-migrations.py` (Claude can do this for you). It writes
+`test-setup/part-01.sql` to `part-48.sql`, each at most 100 lines. In the test project's SQL Editor paste and run them
+one at a time, in order. The last line of every part says `END OF PART n`: if you do not see it, the paste was cut off.
+The parts were verified to produce exactly the same database as the migrations.
 
 Check afterwards (should return `t` for every column):
 
@@ -21,6 +33,7 @@ select
   exists (select 1 from pg_proc where proname = 'erase_user_data')             as privacy,
   exists (select 1 from pg_proc where proname = 'answer_meeting_proposal')     as meetings,
   exists (select 1 from pg_proc where proname = 'purge_old_records')           as retention,
+  exists (select 1 from pg_policies where tablename = 'cleaner_profiles' and policyname = 'cleaner deletes own ad') as review_fixes,
   not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname = 'public' and p.prosecdef and p.proconfig is null) as search_path_fixed;
 ```
