@@ -13,7 +13,7 @@ export function Footer() {
     <footer className="border-t border-line bg-section pb-24 md:pb-10">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
         <div>
-          <LogoLockup size="lg" />
+          <span className="inline-block rounded-xl bg-white p-1.5 shadow-sm"><LogoLockup size="lg" /></span>
           <p className="mt-4 max-w-xs text-sm text-ink/70">{t("footer.notice")}</p>
           <div className="mt-4">
             <LocaleSwitcher />
