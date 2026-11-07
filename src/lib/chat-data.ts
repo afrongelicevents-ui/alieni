@@ -142,7 +142,7 @@ export async function getConversation(id: string, userId: string): Promise<Conve
 
   const [{ data: other }, { data: cp }, { data: meeting }, { data: conn }, { data: msgs }, { data: bp }] = await Promise.all([
     supabase.from("profiles").select("display_name, city").eq("id", otherId).maybeSingle(),
-    supabase.from("cleaner_profiles").select("id, rate_cents, photo_path, profiles ( city )").eq("user_id", conv.cleaner_id).maybeSingle(),
+    supabase.from("cleaner_profiles").select("id, rate_cents, photo_path, profiles!cleaner_profiles_user_id_fkey ( city )").eq("user_id", conv.cleaner_id).maybeSingle(),
     conv.meeting_request_id
       ? supabase.from("meeting_requests").select("id, type, proposed_weekday, proposed_block, status").eq("id", conv.meeting_request_id).maybeSingle()
       : Promise.resolve({ data: null }),

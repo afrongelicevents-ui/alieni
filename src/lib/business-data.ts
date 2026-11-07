@@ -114,7 +114,7 @@ function monthStartIso(): string {
 async function cleanerNames(supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>, ids: string[]): Promise<Map<string, string>> {
   const uniq = [...new Set(ids.filter(Boolean))];
   if (!uniq.length) return new Map();
-  const { data } = await supabase.from("cleaner_profiles").select("id, profiles ( display_name )").in("id", uniq);
+  const { data } = await supabase.from("cleaner_profiles").select("id, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", uniq);
   return new Map(((data ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]).map((r) => [r.id, r.profiles?.display_name ?? "—"]));
 }
 
@@ -128,8 +128,8 @@ type BusinessJobRow = {
 /** The business's own jobs with their quotations. Falls back to the older columns until Part 15 has been run. */
 async function fetchBusinessJobs(supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>, businessId: string): Promise<{ data: BusinessJobRow[] }> {
   const run = (cols: string) => supabase.from("jobs").select(cols).eq("business_id", businessId).neq("status", "removed").order("created_at", { ascending: false }).limit(50);
-  let res = await run("id, status, space_type, frequency, created_at, description, start_date, end_date, weekdays, visit_start, visit_hours, awarded_response_id, ended_at, ended_by, job_responses ( id, cleaner_profile_id, rate_cents, message, status, valid_until )");
-  if (res.error) res = await run("id, status, space_type, frequency, created_at, description, job_responses ( id, cleaner_profile_id, rate_cents, message )");
+  let res = await run("id, status, space_type, frequency, created_at, description, start_date, end_date, weekdays, visit_start, visit_hours, awarded_response_id, ended_at, ended_by, job_responses!job_responses_job_id_fkey ( id, cleaner_profile_id, rate_cents, message, status, valid_until )");
+  if (res.error) res = await run("id, status, space_type, frequency, created_at, description, job_responses!job_responses_job_id_fkey ( id, cleaner_profile_id, rate_cents, message )");
   return { data: ((res.data ?? []) as unknown as BusinessJobRow[]).map((j) => ({ ...j, job_responses: j.job_responses ?? [] })) };
 }
 

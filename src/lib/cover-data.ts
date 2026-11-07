@@ -45,7 +45,7 @@ export async function getCoverRequests(userId: string): Promise<CoverRequestRow[
   const cpIds = [...new Set(rows.map((r) => r.accepted_by).filter(Boolean))] as string[];
   const ids = rows.map((r) => r.id);
   const [{ data: cps }, { data: fees }] = await Promise.all([
-    cpIds.length ? supabase.from("cleaner_profiles").select("id, emergency_rate_cents, rate_cents, profiles ( display_name )").in("id", cpIds) : Promise.resolve({ data: [] }),
+    cpIds.length ? supabase.from("cleaner_profiles").select("id, emergency_rate_cents, rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", cpIds) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from("fee_events").select("reference_id, amount_cents, status").eq("reference_table", "emergency_requests").in("reference_id", ids) : Promise.resolve({ data: [] }),
   ]);
   const cpOf = new Map(((cps ?? []) as unknown as { id: string; emergency_rate_cents: number | null; rate_cents: number; profiles: { display_name: string } | null }[]).map((c) => [c.id, c]));

@@ -27,8 +27,8 @@ export async function HouseholdHome({ user }: { user: SessionUser }) {
   const cleanerUserIds = ((conns ?? []) as { cleaner_id: string }[]).map((c) => c.cleaner_id);
   const requestProfileIds = ((requests ?? []) as { cleaner_profile_id: string }[]).map((r) => r.cleaner_profile_id);
   const [{ data: cpByUser }, { data: cpById }] = await Promise.all([
-    cleanerUserIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, rate_cents, profiles ( display_name, city )").in("user_id", cleanerUserIds) : Promise.resolve({ data: [] }),
-    requestProfileIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, profiles ( display_name )").in("id", requestProfileIds) : Promise.resolve({ data: [] }),
+    cleanerUserIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name, city )").in("user_id", cleanerUserIds) : Promise.resolve({ data: [] }),
+    requestProfileIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", requestProfileIds) : Promise.resolve({ data: [] }),
   ]);
   type Cp = { id: string; user_id: string; photo_path: string | null; rate_cents?: number; profiles: { display_name: string; city?: string | null } | null };
   const byUser = new Map(((cpByUser ?? []) as unknown as Cp[]).map((c) => [c.user_id, c]));

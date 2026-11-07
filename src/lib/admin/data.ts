@@ -84,7 +84,7 @@ export async function listReports(): Promise<{ demo: boolean; reports: AdminRepo
   const jobLabel = new Map(((jobRows ?? []) as { id: string; space_type: string; city: string | null; frequency: string }[]).map((j) => [j.id, `${j.space_type} · ${j.city ?? ""} · ${j.frequency}`]));
   const reporterIds = rows.map((r) => r.reporter_id).filter((x): x is string => Boolean(x));
   const [{ data: cleaners }, { data: reporters }] = await Promise.all([
-    cleanerIds.length ? supabase.from("cleaner_profiles").select("id, status, profiles ( display_name )").in("id", cleanerIds) : Promise.resolve({ data: [] }),
+    cleanerIds.length ? supabase.from("cleaner_profiles").select("id, status, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", cleanerIds) : Promise.resolve({ data: [] }),
     reporterIds.length ? supabase.from("profiles").select("id, display_name").in("id", reporterIds) : Promise.resolve({ data: [] }),
   ]);
   const cleanerName = new Map(((cleaners ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]).map((c) => [c.id, c.profiles?.display_name ?? "—"]));
@@ -114,7 +114,7 @@ export async function listVog(): Promise<{ demo: boolean; items: VogItem[] }> {
       { id: "v2", cleaner: "Maria V.", city: "Utrecht", issuedAt: "2026-06-12", status: "approved", hasFile: false },
     ] };
   }
-  const { data } = await supabase.from("vog_documents").select("id, issued_at, status, storage_path, cleaner_profiles ( profiles ( display_name, city ) )").order("created_at", { ascending: false }).limit(200);
+  const { data } = await supabase.from("vog_documents").select("id, issued_at, status, storage_path, cleaner_profiles ( profiles!cleaner_profiles_user_id_fkey ( display_name, city ) )").order("created_at", { ascending: false }).limit(200);
   const rows = (data ?? []) as unknown as { id: string; issued_at: string; status: VogItem["status"]; storage_path: string | null; cleaner_profiles: { profiles: { display_name: string; city: string | null } | null } | null }[];
   return { demo: false, items: rows.map((r) => ({ id: r.id, cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", city: r.cleaner_profiles?.profiles?.city ?? "", issuedAt: r.issued_at, status: r.status, hasFile: Boolean(r.storage_path) })) };
 }
@@ -132,7 +132,7 @@ export type AdminAd = { id: string; name: string; city: string; rateCents: numbe
 export async function listAds(): Promise<{ demo: boolean; ads: AdminAd[] }> {
   const supabase = await createClient();
   if (!supabase) return { demo: true, ads: SAMPLE_CLEANERS.map((c) => ({ id: c.id, name: c.name, city: c.city, rateCents: c.rateCents, status: "published", verifiedJobs: c.verifiedJobs, createdAt: "" })) };
-  const { data } = await supabase.from("cleaner_profiles").select("id, status, rate_cents, verified_jobs_count, created_at, profiles ( display_name, city )").order("created_at", { ascending: false }).limit(500);
+  const { data } = await supabase.from("cleaner_profiles").select("id, status, rate_cents, verified_jobs_count, created_at, profiles!cleaner_profiles_user_id_fkey ( display_name, city )").order("created_at", { ascending: false }).limit(500);
   const rows = (data ?? []) as unknown as { id: string; status: string; rate_cents: number; verified_jobs_count: number; created_at: string; profiles: { display_name: string; city: string | null } | null }[];
   return { demo: false, ads: rows.map((r) => ({ id: r.id, name: r.profiles?.display_name ?? "—", city: r.profiles?.city ?? "", rateCents: r.rate_cents, status: r.status, verifiedJobs: r.verified_jobs_count, createdAt: r.created_at.slice(0, 10) })) };
 }
@@ -166,7 +166,7 @@ export async function listEmergencies(): Promise<{ demo: boolean; items: AdminEm
   const cpIds = rows.map((r) => r.accepted_by).filter((x): x is string => Boolean(x));
   const [{ data: names }, { data: cps }] = await Promise.all([
     ids.length ? supabase.from("profiles").select("id, display_name").in("id", ids) : Promise.resolve({ data: [] }),
-    cpIds.length ? supabase.from("cleaner_profiles").select("id, profiles ( display_name )").in("id", cpIds) : Promise.resolve({ data: [] }),
+    cpIds.length ? supabase.from("cleaner_profiles").select("id, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", cpIds) : Promise.resolve({ data: [] }),
   ]);
   const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
   const cleanerOf = new Map(((cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]).map((c) => [c.id, c.profiles?.display_name ?? "—"]));
@@ -258,7 +258,7 @@ export async function listFeeEvents(): Promise<{ demo: boolean; events: AdminFee
 export async function listWorkRecords(): Promise<{ demo: boolean; work: AdminWork[] }> {
   const supabase = await createClient();
   if (!supabase) return { demo: true, work: [] };
-  const { data } = await supabase.from("work_records").select("id, service_key, scheduled_start, completed_at, outcome, business_confirmed_at, notes, business_profiles ( company_name ), cleaner_profiles ( profiles ( display_name ) )").order("scheduled_start", { ascending: false }).limit(500);
+  const { data } = await supabase.from("work_records").select("id, service_key, scheduled_start, completed_at, outcome, business_confirmed_at, notes, business_profiles ( company_name ), cleaner_profiles ( profiles!cleaner_profiles_user_id_fkey ( display_name ) )").order("scheduled_start", { ascending: false }).limit(500);
   const rows = (data ?? []) as unknown as { id: string; service_key: string; scheduled_start: string | null; completed_at: string | null; outcome: string; business_confirmed_at: string | null; notes: string | null; business_profiles: { company_name: string } | null; cleaner_profiles: { profiles: { display_name: string } | null } | null }[];
   return { demo: false, work: rows.map((r) => ({ id: r.id, business: r.business_profiles?.company_name ?? "—", cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", serviceKey: r.service_key, scheduledStart: r.scheduled_start, completedAt: r.completed_at, outcome: r.outcome, confirmedAt: r.business_confirmed_at, notes: r.notes })) };
 }

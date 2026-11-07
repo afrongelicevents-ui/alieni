@@ -61,7 +61,7 @@ export default async function EmergencyPage({ params }: { params: Promise<{ loca
       let cleanerName: string | null = null;
       let cleanerRateCents: number | null = null;
       if (r.accepted_by) {
-        const { data: cp } = await supabase.from("cleaner_profiles").select("emergency_rate_cents, rate_cents, profiles ( display_name )").eq("id", r.accepted_by).maybeSingle();
+        const { data: cp } = await supabase.from("cleaner_profiles").select("emergency_rate_cents, rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name )").eq("id", r.accepted_by).maybeSingle();
         const row = cp as unknown as { emergency_rate_cents: number | null; rate_cents: number; profiles: { display_name: string } | null } | null;
         cleanerName = row?.profiles?.display_name ?? null;
         cleanerRateCents = row?.emergency_rate_cents ?? row?.rate_cents ?? null;

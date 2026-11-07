@@ -36,7 +36,7 @@ export function profilePhotoUrl(path: string | null | undefined): string | null 
 }
 
 const SELECT =
-  "id, user_id, rate_cents, min_hours, services, languages, postcode_area, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, emergency_rate_cents, profiles ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
+  "id, user_id, rate_cents, min_hours, services, languages, postcode_area, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, emergency_rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
 
 type ReviewAgg = { rating: number; count: number; items: SampleCleaner["reviews"] };
 

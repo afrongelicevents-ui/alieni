@@ -208,7 +208,7 @@ function parseSelect(select) {
   const cols = []; const embeds = [];
   let depth = 0, buf = "", name = "";
   for (const ch of select || "*") {
-    if (ch === "(") { if (depth === 0) { name = buf.trim(); buf = ""; } else buf += ch; depth++; }
+    if (ch === "(") { if (depth === 0) { name = buf.trim().replace(/!.*$/, ""); buf = ""; } else buf += ch; depth++; }
     else if (ch === ")") { depth--; if (depth === 0) { embeds.push({ name, select: buf }); buf = ""; } else buf += ch; }
     else if (ch === "," && depth === 0) { if (buf.trim()) cols.push(buf.trim()); buf = ""; }
     else buf += ch;

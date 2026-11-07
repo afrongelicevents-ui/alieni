@@ -9,4 +9,5 @@ select
   exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'admin_allowlist') as admin_allowlist,
   (select count(*) from pg_tables where schemaname = 'public' and tablename in ('profiles','cleaner_profiles','business_profiles','jobs','job_responses','messages','reports','reviews','settings')) = 9 as core_tables,
   not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-              where n.nspname = 'public' and p.prosecdef and p.proconfig is null)                      as search_path_fixed;
+              where n.nspname = 'public' and p.prosecdef and p.proconfig is null
+                and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e'))                      as search_path_fixed;

@@ -45,7 +45,7 @@ export default async function JobsPage({
     const responderIds = [...new Set(rows.flatMap((r) => (r.job_responses ?? []).map((x) => x.cleaner_profile_id)))];
     const nameOf = new Map<string, string>();
     if (responderIds.length) {
-      const { data: cps } = await supabase.from("cleaner_profiles").select("id, profiles ( display_name )").in("id", responderIds);
+      const { data: cps } = await supabase.from("cleaner_profiles").select("id, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", responderIds);
       for (const c of (cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]) nameOf.set(c.id, c.profiles?.display_name ?? "—");
     }
     jobs = toBoardJobs(rows, { companyOf, nameOf, myCleanerProfileId, myBusinessId });

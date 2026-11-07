@@ -87,7 +87,7 @@ export type MyQuote = {
 export async function getQuotesForCleaner(supabase: Client, cleanerProfileId: string, companyOf: (ids: string[]) => Promise<Map<string, string>>): Promise<MyQuote[]> {
   const { data, error } = await supabase
     .from("job_responses")
-    .select("id, job_id, rate_cents, message, status, valid_until, jobs ( id, business_id, space_type, frequency, city, status, ended_at, start_date, end_date, weekdays, visit_start, visit_hours )")
+    .select("id, job_id, rate_cents, message, status, valid_until, jobs!job_responses_job_id_fkey ( id, business_id, space_type, frequency, city, status, ended_at, start_date, end_date, weekdays, visit_start, visit_hours )")
     .eq("cleaner_profile_id", cleanerProfileId)
     .order("created_at", { ascending: false })
     .limit(50);
