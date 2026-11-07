@@ -1,0 +1,10 @@
+This file starts the "Set up TEST database" workflow when it is changed on the alieni-dev branch
+(GitHub only shows the "Run workflow" button for workflows on the default branch).
+
+To run it: open this file on GitHub (branch alieni-dev) -> pencil icon -> add a new line below with today's date
+-> "Commit changes" (commit directly to alieni-dev). Then watch Actions -> "Set up TEST database".
+
+It only ever touches the project named in the secret TEST_SUPABASE_PROJECT_REF and refuses the live project.
+Safe to run again: migrations that are already applied are skipped.
+
+Run log:
