@@ -35,7 +35,9 @@ See the end of `DEVELOPMENT_STATUS.md` (8 items). The ones that matter most:
 3. The preview must get its own test database before anyone tests with it.
 4. Add the original brief to `docs/briefs/`.
 
-## 4. Your morning task (phone, about 10 minutes)
+## 4. (Superseded) Your morning task
+> The test database was set up automatically on the existing project `alieni`; see `DEVELOPMENT_STATUS.md`. The steps below are only needed to create a separate project later.
+
 Goal: a separate test database that the preview can use. Do these in order. Never use the keys of the live project here.
 
 1. supabase.com → sign in → **New project**. Name: `alieni-test`. Region: **EU (Frankfurt)**. Set a database password and save it in your password manager. Tap **Create** and wait about 2 minutes.

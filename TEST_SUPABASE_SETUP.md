@@ -1,5 +1,7 @@
 # Setting up a separate test Supabase project
 
+> **Current situation:** no separate project exists. By the owner's decision the existing project `alieni` is used as the test database (see DEVELOPMENT_STATUS.md, decisions 3 and 12). This guide is for creating a separate one later.
+
 Use a **separate, empty Supabase project** for testing (a Vercel preview deployment or a local run). Never point a test
 build at the live project. Nothing in this guide touches the live project, and nothing here has been run for you.
 
