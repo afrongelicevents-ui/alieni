@@ -30,6 +30,9 @@ export default async function AdminUsersPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
+            {users.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-ink/70">{t("listEmpty")}</td></tr>
+            ) : null}
             {users.map((user) => (
               <tr key={user.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{user.name}</td>

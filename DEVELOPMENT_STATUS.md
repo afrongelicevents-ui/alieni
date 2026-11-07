@@ -1,7 +1,7 @@
 # Alieni: development status
 
 State of the repository at the end of the development phase. Nothing here has been committed, pushed, deployed or run on
-the live database; the new database parts (14, 15, 16, 17) are files in `supabase/migrations/` that still have to be applied.
+the live database; the new database parts (14, 15, 16, 17, 18) are files in `supabase/migrations/` that still have to be applied.
 
 ## What was built or completed in this phase
 
@@ -18,6 +18,7 @@ the live database; the new database parts (14, 15, 16, 17) are files in `supabas
 | Admin | Suspend / restore a user; report handling no longer republishes ads or claims actions that did not happen; settings now enforced (rate floor, banned words). |
 | Frontend fixes | Header buttons on phones, admin tabs scroll on phones, long cleaner names, emergency time inputs, error and not-found pages, language switch keeps the query, search default sort matches its label, errors shown instead of swallowed. |
 | Session | Session refresh in the proxy (no random sign-outs). |
+| Security review fixes (Part 18, migration 0028) | An admin-hidden ad cannot be undone by deleting and re-creating it; a removed job cannot be put back online by its owner; distance search works again (it broke when the exact location was hidden) and measures to a point snapped to a ~1 km grid, so it cannot be used to find a home address. |
 | Pricing stays inactive (Part 17, migration 0027) | `paymentsActive()` is true only when `MOLLIE_API_KEY` is present AND `PAYMENTS_ACTIVE=true`; without both, no customer, mandate, charge or subscription is ever created. Seeded prices are zeroed; a missing fee setting means EUR 0; the admin settings form defaults to 0,00. All public copy is price-neutral ("nothing is charged at the moment"); price wording appears only when an admin has set a price and payments are on. E-mails no longer promise a subscription. |
 | Meetings lifecycle | A cleaner can accept, decline or propose another time; the household agrees, declines or withdraws; both sides are notified; database functions enforce who may do what. |
 | Realtime chat | Messages and the meeting/deal panel update live (with the 8-second refresh as fallback). The content-security policy allows the Supabase websocket (`wss://`, and `ws://` for local testing). |
@@ -31,9 +32,9 @@ the live database; the new database parts (14, 15, 16, 17) are files in `supabas
 
 | Check | Result |
 |---|---|
-| Real Postgres, fresh database (all migrations 0001-0027) | 280 / 280 |
-| Real Postgres, upgrade path (0001-0023 with data, then 0024-0027) | 450 / 450 |
-| Parts 15, 16, 17 applied twice | no errors, no changes; a failing script rolls back completely |
+| Real Postgres, fresh database (all migrations 0001-0028) | 283 / 283 |
+| Real Postgres, upgrade path (0001-0023 with data, then 0024-0028) | 453 / 453 |
+| Parts 15 to 18 applied twice | no errors, no changes; a failing script rolls back completely |
 | Unit tests (`npm test`) | 135 passed |
 | Types, lint, translations (`npm run check:i18n`) | clean, 1358 keys per language, nl and en identical |
 | Browser flows 1 to 13, phone and desktop | 503 checks passed |
@@ -47,7 +48,7 @@ falls back to refresh there); the access rules are verified on the real Postgres
 ## Order to bring the live project up to date (needs approval, not done)
 
 1. Deploy the app version (it falls back gracefully until the parts are applied).
-2. Run, in order, on the live database: Deel 14, 15a-15d, 16a-16f and 17 (migration 0027) from the setup page (the setup page is not yet updated with Deel 17) (each is safe to run twice), then the
+2. Run, in order, on the live database (only after the owner approves): migrations 0024 to 0028 (Deel 14 to 18). Each is safe to run twice. The local setup page does not yet contain Deel 17 and 18, and the live project must not be touched before the test project has been checked.
    verification query shown under 15d and 16f.
 3. Add the environment variables listed in the README launch checklist.
 
@@ -68,3 +69,16 @@ A separate test Supabase project can be set up with `TEST_SUPABASE_SETUP.md` (ne
 
 Live Supabase settings (exposed schemas, GraphQL exposure, SQL-editor transaction behaviour), e-mail delivery, domain,
 Mollie, load and backup restore.
+
+## DECISIONS FOR ME (owner)
+
+Each of these was decided with the safest option so work could continue. Change any of them if you disagree.
+
+1. **Production branch.** GitHub still shows `claude/new-session-iodsy8` as the default (and only original) branch and no `main`, although you said `main` was created. Chosen: all work goes to the separate branch `alieni-dev`, which only creates previews. Please re-check in GitHub (Settings -> Branches) and Vercel (Settings -> Environments -> Production Branch) that production is a branch that nobody works on.
+2. **Public repository.** The GitHub repository is public. Chosen: nothing secret is in it, and the backup workflow refuses to run while it is public. Recommended: make it private before real data exists.
+3. **Preview uses the live database.** Previews currently point at the live Supabase project. Chosen: no testing that writes data until the test project from `TEST_SUPABASE_SETUP.md` exists; then give Preview its own keys.
+4. **Original brief.** The code mentions "brief section ..." but the original brief is not in the repository. Chosen: only the planning document is in `docs/briefs/`. Please add the original brief there.
+5. **Backups.** The weekly backup workflow is written but switched off. Chosen: dumps are encrypted and kept as workflow artifacts for 30 days. Switching it on needs two secrets (see `docs/BACKUP.md`).
+6. **Distances.** Distance search measures to a point snapped to a ~1 km grid instead of the exact home, so a home address cannot be found by repeated searches. Chosen: privacy over exact kilometres.
+7. **Removed jobs.** A job removed by its owner can no longer be put back online by the owner (there was no button for it anyway); an admin still can.
+8. **`MOLLIE_WEBHOOK_SECRET`** is listed in `.env.example` but the code does not read it. Chosen: leave it, noted as unused.

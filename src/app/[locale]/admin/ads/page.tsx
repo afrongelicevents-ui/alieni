@@ -33,6 +33,9 @@ export default async function AdminAdsPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
+            {ads.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-ink/70">{t("listEmpty")}</td></tr>
+            ) : null}
             {ads.map((ad) => (
               <tr key={ad.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{ad.name}</td>

@@ -19,6 +19,8 @@ alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(name, '/') $$;
 -- PostGIS stand-ins: location columns become plain text, distance helpers return neutral values.
 create domain geography as text;
+create domain geometry as text;
+create function st_snaptogrid(g geometry, size double precision) returns geometry language sql immutable as $$ select g $$;
 create function st_dwithin(a geography, b geography, m double precision) returns boolean language sql immutable as $$ select true $$;
 create function st_distance(a geography, b geography) returns double precision language sql immutable as $$ select 0::double precision $$;
 create function st_makepoint(x double precision, y double precision) returns text language sql immutable as $$ select 'POINT(' || x || ' ' || y || ')' $$;

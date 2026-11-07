@@ -42,6 +42,9 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
             <tr><th className="px-4 py-3">{t("colCompany")}</th><th className="px-4 py-3">{t("colType")}</th><th className="px-4 py-3">{t("colUnits")}</th><th className="px-4 py-3">{t("colMonthly")}</th><th className="px-4 py-3">{t("colStatus")}</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
+            {businesses.length === 0 ? (
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-ink/70">{t("listEmpty")}</td></tr>
+            ) : null}
             {businesses.map((b) => (
               <tr key={b.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{b.company}</td>

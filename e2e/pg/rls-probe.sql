@@ -446,7 +446,7 @@ end $$;
 do $$
 declare
   bu uuid; cu uuid; c2 uuid; hh uuid; ad uuid; bid uuid; cp1 uuid; cp2 uuid; unitid uuid;
-  er uuid; res text; n int; cid uuid; ok boolean; st text;
+  er uuid; res text; n int; cid uuid; ok boolean; st text; dist numeric; jid uuid;
 begin
   select uid into bu from probe_users where role = 'business';
   select uid into cu from probe_users where role = 'cleaner';
@@ -769,6 +769,39 @@ begin
     if n <> 0 then raise exception 'a hidden review is public'; end if;
     perform pg_temp.fl('anon', 'a hidden review is not public', true, null);
   exception when others then reset role; perform pg_temp.fl('anon', 'a hidden review is not public', false, sqlstate || ' ' || sqlerrm); end;
+
+  -- 20. review fixes (0028): moderated ads cannot be deleted, removed jobs stay removed, distances without the exact location
+  begin
+    perform set_config('request.jwt.claim.sub', '', true);
+    update cleaner_profiles set status = 'removed', moderated = true where id = cp2;
+    perform set_config('request.jwt.claim.sub', c2::text, true); set local role authenticated;
+    delete from cleaner_profiles where id = cp2;
+    reset role;
+    if not exists (select 1 from cleaner_profiles where id = cp2) then raise exception 'a moderated ad was deleted by its owner'; end if;
+    perform set_config('request.jwt.claim.sub', '', true);
+    update cleaner_profiles set status = 'published', moderated = false where id = cp2;
+    perform pg_temp.fl('cleaner', 'a moderated ad cannot be deleted and re-created by its owner', true, null);
+  exception when others then reset role; perform set_config('request.jwt.claim.sub', '', true); update cleaner_profiles set status = 'published', moderated = false where id = cp2; perform pg_temp.fl('cleaner', 'a moderated ad cannot be deleted and re-created by its owner', false, sqlstate || ' ' || sqlerrm); end;
+  begin
+    perform set_config('request.jwt.claim.sub', '', true);
+    select id into jid from jobs where business_id = bid and status not in ('filled', 'removed') limit 1;
+    if jid is null then raise exception 'no job to test with'; end if;
+    update jobs set status = 'removed' where id = jid;
+    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
+    update jobs set status = 'published' where id = jid;
+    reset role; perform pg_temp.fl('business', 'an owner cannot put a removed job back online', false, 'update worked');
+  exception when others then reset role; perform pg_temp.fl('business', 'an owner cannot put a removed job back online', sqlerrm like '%job is removed%', sqlstate || ' ' || sqlerrm); end;
+  begin
+    perform set_config('request.jwt.claim.sub', '', true);
+    update cleaner_profiles set status = 'published', location = 'SRID=4326;POINT(6.2234 52.3012)' where id = cp2;
+    set local role anon;
+    select distance_km into dist from cleaner_distances(6.2234, 52.3012) where id = cp2;
+    reset role;
+    if dist is null then raise exception 'no distance returned for a published ad'; end if;
+    set local role anon;
+    begin perform location from cleaner_profiles limit 1; reset role; raise exception 'exact location is readable'; exception when insufficient_privilege then reset role; end;
+    perform pg_temp.fl('anon', 'distances work for visitors while the exact location stays unreadable (grid snapping is PostGIS-only, not checked here)', true, null);
+  exception when others then reset role; perform pg_temp.fl('anon', 'distances work for visitors while the exact location stays unreadable (grid snapping is PostGIS-only, not checked here)', false, sqlstate || ' ' || sqlerrm); end;
 end $$;
 
 insert into probe_results select 'privacy', who, label, got = want, case when got = want then null else 'got ' || got || ', expected ' || want end from pcheck;

@@ -10,7 +10,7 @@ build at the live project. Nothing in this guide touches the live project, and n
 
 ## 2. Load the database
 In the test project's SQL Editor run the files in `supabase/migrations/` **in order, one file at a time**,
-`0001_…` up to `0027_…` (each file is safe to run twice; a failing file rolls back completely).
+`0001_…` up to `0028_…` (each file is safe to run twice; a failing file rolls back completely).
 Paste long files in parts if the editor refuses them (split at a blank line between statements).
 
 Check afterwards (should return `t` for every column):

@@ -20,6 +20,9 @@ export default async function AdminEmergencyPage({ params }: { params: Promise<{
             <tr><th className="px-4 py-3">{t("colRequester")}</th><th className="px-4 py-3">{t("colCity")}</th><th className="px-4 py-3">{t("colWindow")}</th><th className="px-4 py-3">{t("colStatus")}</th><th className="px-4 py-3">{t("colCleaner")}</th><th className="px-4 py-3">{t("colAttendance")}</th><th className="px-4 py-3">{t("colStrikes")}</th><th className="px-4 py-3 text-right">{t("colFee")}</th></tr>
           </thead>
           <tbody className="divide-y divide-line">
+            {items.length === 0 ? (
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-ink/70">{t("listEmpty")}</td></tr>
+            ) : null}
             {items.map((e) => (
               <tr key={e.id}>
                 <td className="px-4 py-3 font-semibold text-ink">{e.requester} <span className="text-xs font-medium text-ink/70">({t(`role_${e.requesterType}` as "role_household")})</span></td>

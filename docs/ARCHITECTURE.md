@@ -16,7 +16,7 @@ household · cleaner · business · admin. A role is stored in `profiles.role`; 
 | `src/lib/` | Data access (`*-data.ts`), rules (`jobs.ts`, `services-shared.ts`), `mollie.ts` (charging gate), `notify.ts` + `email.ts` (locale-aware e-mails), `site-settings.ts`, `auth.ts`, `guard.ts`. |
 | `src/proxy.ts` | Session refresh and locale routing. |
 | `messages/nl.json`, `messages/en.json` | All text; key sets must be identical (`npm run check:i18n`). |
-| `supabase/migrations/` | `0001` … `0027`, applied in order. Each is safe to run twice. |
+| `supabase/migrations/` | `0001` … `0028`, applied in order. Each is safe to run twice. |
 | `e2e/` | Browser flows (`flow*.cjs`), stand-in database (`supa-emu.cjs`), real-Postgres checks (`pg/`). |
 
 ## Data and privacy rules worth knowing

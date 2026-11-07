@@ -762,7 +762,8 @@
     "userError_self": "You cannot suspend yourself.",
     "userError_is_admin": "An administrator cannot be suspended.",
     "userError_not_found": "User not found.",
-    "userError_not_configured": "This needs the service key (not set yet)."
+    "userError_not_configured": "This needs the service key (not set yet).",
+    "listEmpty": "Nothing to show yet."
   },
   "jobs": {
     "title": "Cleaning jobs",

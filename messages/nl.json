@@ -762,7 +762,8 @@
     "userError_self": "Je kunt jezelf niet blokkeren.",
     "userError_is_admin": "Een beheerder kan niet worden geblokkeerd.",
     "userError_not_found": "Gebruiker niet gevonden.",
-    "userError_not_configured": "Dit vraagt de service-sleutel (nog niet ingesteld)."
+    "userError_not_configured": "Dit vraagt de service-sleutel (nog niet ingesteld).",
+    "listEmpty": "Nog niets om te tonen."
   },
   "jobs": {
     "title": "Schoonmaakklussen",
