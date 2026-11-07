@@ -50,10 +50,9 @@ Goal: a separate test database that the preview can use. Do these in order. Neve
 7. Before you sign up: test project → **SQL Editor** → run (use your own address in lower case):
    `insert into public.admin_allowlist (email) values ('your-address@example.com') on conflict do nothing;`
    (This works only after the database is loaded, step 8.)
-8. **Load the database** (this is the part that cannot be done in 10 minutes on a phone):
-   - Easiest: send me a message "load the test database". I cannot reach Supabase from here, so I will prepare the 48 parts in `test-setup/` for you (already generated); you paste them one by one in the SQL Editor (30 to 40 minutes on a phone), or
-   - From a computer, 5 minutes, using the loop in `TEST_SUPABASE_SETUP.md` (Way A).
-   Afterwards run the check query at the end of section 2 in `TEST_SUPABASE_SETUP.md`: every column must say `t`.
+8. **Load the database**: use the GitHub Action "Set up TEST database" (about 5 minutes once its three secrets exist). Steps are in
+   `TEST_SUPABASE_SETUP.md` → "Way C". (Pasting 48 parts by hand is the last-resort fallback, "Way B".)
+   Afterwards the run summary must show every check as ✅.
 
 ## 5. Click-through test list (do this on the preview AFTER step 8)
 Use new test e-mail addresses (for example `test+household@yourdomain`). Tick what works, note what looks wrong.

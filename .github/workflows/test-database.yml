@@ -1,0 +1,167 @@
+name: Set up TEST database
+
+# Applies migrations 0001-0028 to the TEST Supabase project ONLY, with the Supabase CLI, then runs a check query.
+# It refuses to run against the live project. Read docs: TEST_SUPABASE_SETUP.md ("Way C").
+#
+# How it is started:
+#  1. "Run workflow" (workflow_dispatch). GitHub only shows this button for workflows on the DEFAULT branch.
+#  2. Fallback that works from the alieni-dev branch: edit and commit the file test-database/RUN.txt on alieni-dev
+#     (add a line, commit). Only that one file starts the workflow.
+#
+# Secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   TEST_SUPABASE_PROJECT_REF, TEST_SUPABASE_DB_PASSWORD, SUPABASE_ACCESS_TOKEN
+# Optional variables (same page -> Variables): TEST_ADMIN_EMAIL, TEST_SITE_URL, LIVE_SUPABASE_PROJECT_REF
+on:
+  workflow_dispatch:
+  push:
+    branches: [alieni-dev]
+    paths: ["test-database/RUN.txt"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-database-setup
+  cancel-in-progress: false
+
+env:
+  # The live project's reference (it is part of the public site address, not a secret). Never loaded by this workflow.
+  LIVE_REF: vfxhctncrjlbvasavluu
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 1. Safety checks (refuse the live project)
+        env:
+          REF: ${{ secrets.TEST_SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.TEST_SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          EXTRA_LIVE_REF: ${{ vars.LIVE_SUPABASE_PROJECT_REF }}
+        run: |
+          set -euo pipefail
+          for v in REF SUPABASE_DB_PASSWORD SUPABASE_ACCESS_TOKEN; do
+            if [ -z "${!v}" ]; then
+              case "$v" in
+                REF) n=TEST_SUPABASE_PROJECT_REF;; SUPABASE_DB_PASSWORD) n=TEST_SUPABASE_DB_PASSWORD;; *) n=SUPABASE_ACCESS_TOKEN;;
+              esac
+              echo "::error::The secret $n is missing. Add it under Settings → Secrets and variables → Actions."; exit 1
+            fi
+          done
+          REF="$(printf '%s' "$REF" | tr 'A-Z' 'a-z' | tr -d '[:space:]')"
+          echo "REF=$REF" >> "$GITHUB_ENV"
+          # first check: the reference itself, before Supabase is asked anything
+          LIVE_REFS="$LIVE_REF $EXTRA_LIVE_REF" bash scripts/test-db-guard.sh "$REF" --ref-only
+          # second check: the project's name comes from the Supabase API, so a wrong reference is caught by name as well
+          code=$(curl -sS -o project.json -w '%{http_code}' -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$REF" || true)
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase did not return the project (HTTP $code). Check TEST_SUPABASE_PROJECT_REF and that the access token belongs to the account that owns the test project."; exit 1
+          fi
+          name="$(jq -r '.name // ""' project.json)"
+          region="$(jq -r '.region // ""' project.json)"
+          rm -f project.json
+          LIVE_REFS="$LIVE_REF $EXTRA_LIVE_REF" bash scripts/test-db-guard.sh "$REF" "$name"
+          echo "PROJECT_NAME=$name" >> "$GITHUB_ENV"
+          echo "Region: $region"
+
+      - name: 2. Check the migration files
+        run: |
+          set -euo pipefail
+          n=$(ls supabase/migrations/*.sql | wc -l)
+          echo "$n migration files"
+          bad=$(ls supabase/migrations | grep -vE '^[0-9]{4}_[a-z0-9_]+\.sql$' || true)
+          if [ -n "$bad" ]; then echo "::error::Unexpected file names: $bad"; exit 1; fi
+          for i in $(seq -w 1 28); do ls supabase/migrations/00$i\_*.sql >/dev/null 2>&1 || { echo "::error::Migration 00$i is missing"; exit 1; }; done
+          echo "0001 to 0028 present"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 3. Link to the TEST project and apply the migrations
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.TEST_SUPABASE_DB_PASSWORD }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          supabase --version
+          mkdir -p supabase
+          [ -f supabase/config.toml ] || printf 'project_id = "alieni-test"\n' > supabase/config.toml
+          supabase link --project-ref "$REF"
+          echo "---- migrations that will be applied (dry run) ----"
+          supabase db push --include-all --dry-run
+          echo "---- applying ----"
+          if supabase db push --help 2>&1 | grep -q -- '--yes'; then
+            supabase db push --include-all --yes
+          else
+            set +o pipefail
+            yes | supabase db push --include-all
+            rc=${PIPESTATUS[1]}
+            set -o pipefail
+            [ "$rc" = "0" ]
+          fi
+
+      - name: 4. Check query (every value must be true)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          jq -n --rawfile q scripts/test-db-check.sql '{query: $q}' > q.json
+          curl -fsS -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            --data @q.json -o check.json
+          rm -f q.json
+          ROW='(if type == "array" then .[0] else (.result // [{}])[0] end)'
+          jq -r "$ROW | to_entries[] | \"\(.key): \(.value)\"" check.json
+          {
+            echo "### TEST database: $PROJECT_NAME"
+            echo ""
+            echo "| Check | Result |"
+            echo "|---|---|"
+            jq -r "$ROW | to_entries[] | \"| \(.key) | \(if .value == true then \"✅\" else \"❌\" end) |\"" check.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          if ! jq -e "$ROW | (to_entries | length > 0) and (to_entries | all(.value == true))" check.json >/dev/null; then
+            echo "::error::At least one check is false. See the table above."; exit 1
+          fi
+          echo "All checks passed."
+
+      - name: 5. Optional extras for the test project (admin address, sign-up without e-mail confirmation)
+        continue-on-error: true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          ADMIN_EMAIL: ${{ vars.TEST_ADMIN_EMAIL }}
+          SITE_URL: ${{ vars.TEST_SITE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -n "${ADMIN_EMAIL:-}" ]; then
+            email="$(printf '%s' "$ADMIN_EMAIL" | tr 'A-Z' 'a-z' | tr -d '[:space:]')"
+            if [[ "$email" =~ ^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$ ]]; then
+              jq -n --arg q "insert into public.admin_allowlist (email) values ('$email') on conflict do nothing;" '{query: $q}' > q.json
+              curl -fsS -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
+                -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @q.json -o /dev/null
+              rm -f q.json
+              echo "Admin address added to the allow-list. Sign up with it to become admin."
+            else
+              echo "::warning::TEST_ADMIN_EMAIL is not a valid e-mail address; skipped."
+            fi
+          else
+            echo "No TEST_ADMIN_EMAIL variable set; skipped."
+          fi
+          # test project only: accounts work without a mailbox; optionally set the site address
+          if [ -n "${SITE_URL:-}" ]; then
+            site="${SITE_URL%/}"
+            [[ "$site" =~ ^https://[A-Za-z0-9.-]+(/[A-Za-z0-9._~-]*)*$ ]] || { echo "::warning::TEST_SITE_URL must start with https://; address not set."; site=""; }
+          else
+            site=""
+          fi
+          if [ -n "$site" ]; then
+            body=$(jq -n --arg s "$site" '{mailer_autoconfirm: true, site_url: $s, uri_allow_list: ($s + "/**")}')
+          else
+            body='{"mailer_autoconfirm": true}'
+          fi
+          curl -fsS -X PATCH "https://api.supabase.com/v1/projects/$REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data "$body" -o /dev/null
+          echo "Auth settings updated (confirm e-mail off${site:+, site address set})."

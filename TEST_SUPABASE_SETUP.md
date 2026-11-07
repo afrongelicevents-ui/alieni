@@ -20,7 +20,27 @@ export DB_URL='postgresql://...'   # the test project's string, NOT the live one
 for f in supabase/migrations/*.sql; do echo "$f"; psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
-**Way B: from a phone (30 to 40 minutes).** Run `python3 scripts/split-migrations.py` (Claude can do this for you). It writes
+**Way C: GitHub Action (recommended from a phone, about 5 minutes after the secrets are added).** The workflow
+"Set up TEST database" (`.github/workflows/test-database.yml`) applies all migrations 0001 to 0028 to the test project with the
+Supabase CLI, then runs the check query and shows the result in the run summary. It refuses to run for the live project
+(by reference and by name: the project's name must contain "test"). Steps:
+
+1. Create the test project (section 1). Name it `alieni-test`. Copy its **Reference ID** (Project settings → General) and the database password you chose.
+2. Create a Supabase access token: supabase.com → your avatar → **Account → Access Tokens → Generate new token**.
+   The token belongs to your whole account: the workflow only ever uses the test reference, but delete the token again afterwards.
+3. GitHub → repository → Settings → Secrets and variables → Actions → **New repository secret**, three times:
+   `TEST_SUPABASE_PROJECT_REF` (the Reference ID), `TEST_SUPABASE_DB_PASSWORD` (the database password), `SUPABASE_ACCESS_TOKEN` (the token).
+   Optional **Variables** tab: `TEST_ADMIN_EMAIL` (your test address in lower case; it is put on the admin allow-list)
+   and `TEST_SITE_URL` (the preview address, starting with https://; it is set as the site address). The workflow also turns
+   "Confirm email" off in the test project.
+4. Start it: Actions → **Set up TEST database** → **Run workflow**. GitHub only shows that button for workflows on the
+   *default* branch. If the workflow is not listed, use the fallback: open the file `test-database/RUN.txt` on the branch
+   `alieni-dev`, tap the pencil, add a line, **Commit changes** directly to `alieni-dev`. That starts the same workflow.
+5. Open the run. Green means: migrations applied and every check true. The **Summary** shows a table of checks.
+   Red: open the failed step; the messages say what to fix (a missing secret, a wrong reference, a refused live project).
+6. Delete the access token (step 2). Running the workflow again is safe: applied migrations are skipped.
+
+**Way B: pasting from a phone (30 to 40 minutes, only if Way C is not possible).** Run `python3 scripts/split-migrations.py` (Claude can do this for you). It writes
 `test-setup/part-01.sql` to `part-48.sql`, each at most 100 lines. In the test project's SQL Editor paste and run them
 one at a time, in order. The last line of every part says `END OF PART n`: if you do not see it, the paste was cut off.
 The parts were verified to produce exactly the same database as the migrations.
