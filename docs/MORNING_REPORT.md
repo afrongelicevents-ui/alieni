@@ -2,7 +2,7 @@
 
 ## 1. Preview and latest commit
 - **Branch:** `alieni-dev` (never `main`, never `claude/new-session-iodsy8`). Only a preview deployment is created.
-- **Latest commit:** __COMMIT__
+- **Latest commit:** the top of branch `alieni-dev` on GitHub. The last code commit is `b241c7b`; the final commit after it only fills in the numbers of this report.
 - **Vercel build:** succeeded for the latest pushed commits (so the production build works).
 - **Preview address:** the sandbox cannot open `vercel.app`, so I could not read the exact address. Open it in Vercel → project `alieni` → Deployments → the top `alieni-dev` entry → Visit. The deployment page for the last build is
   https://vercel.com/afrongelicevents-ui/alieni/HoLhFP9J4xhqCb9YLDYm3QRruwzk (the preview address is on it). Vercel's stable branch address normally looks like `alieni-git-alieni-dev-<team>.vercel.app`.
@@ -10,7 +10,7 @@
 
 ## 2. What is finished and what is open
 **Finished tonight**
-- All checks re-run: types, lint, 135 unit tests, translations, real Postgres fresh (__PGF__) and upgrade (__PGU__), browser flows 1-13 (__FLOWS__ checks), crawl (__CRAWL__).
+- All checks re-run: types, lint, 135 unit tests, translations, real Postgres fresh (283 of 283) and upgrade (453 of 453), browser flows 1-13 (503 checks), crawl (150 pages, 0 problems).
 - Security review (read-only, then verified on a real Postgres). Two real weaknesses found and fixed in migration **0028**, plus one broken feature:
   1. an admin-hidden ad could be undone by deleting and re-creating it;
   2. a removed job could be put back online by its owner;
