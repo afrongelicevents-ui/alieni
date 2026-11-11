@@ -1,7 +1,7 @@
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ChatThreadLive } from "@/components/chat/ChatThreadLive";
-import { LoginPrompt } from "@/components/auth/LoginPrompt";
 import { getSessionUser } from "@/lib/auth";
 import { getConversation } from "@/lib/chat-data";
 
@@ -17,13 +17,8 @@ export default async function ConversationPage({
   const t = await getTranslations("chat");
   const user = await getSessionUser();
 
-  if (!user) {
-    return (
-      <section className="mx-auto max-w-2xl px-4 py-8">
-        <LoginPrompt next={`/messages/${id}`} text={t("loginText")} />
-      </section>
-    );
-  }
+  // private page: signed out → log in, then come back to this conversation
+  if (!user) redirect(`/${locale}/login?next=${encodeURIComponent(`/messages/${id}`)}`);
 
   const conversation = /^[0-9a-f-]{36}$/i.test(id) ? await getConversation(id, user.id) : null;
   if (!conversation) {

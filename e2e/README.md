@@ -19,6 +19,7 @@ SUPABASE_SERVICE_ROLE_KEY=emu-service-key NEXT_PUBLIC_SUPABASE_URL=http://localh
 node e2e/flow11.cjs  # download my data, delete my account, public ad privacy, no placeholders on the legal pages
 node e2e/flow12.cjs  # reviews, business edits, turnover release, emergency screen, banned words, suspend (31 checks; port 3101 too)
 node e2e/flow13.cjs  # price-neutral copy, meeting lifecycle (propose/agree/withdraw), job report (31 checks)
+node e2e/flow14.cjs  # logged-out visitor: homepage + public pages open (phone hero), private pages → login → back (27 checks)
 node e2e/audit.cjs   # crawls every linked page on mobile + desktop: status, console errors, overflow
 ```
 

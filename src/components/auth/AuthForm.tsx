@@ -12,7 +12,7 @@ import { Turnstile } from "./Turnstile";
  */
 /** Only same-site paths may be used as the post-login destination. */
 function safeNext(next: string | undefined): string | null {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return null;
   return next;
 }
 

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -16,18 +17,8 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   const t = await getTranslations("account");
   const user = await getSessionUser();
 
-  if (!user) {
-    return (
-      <section className="mx-auto max-w-md px-4 py-10">
-        <h1 className="headline text-3xl text-ink">{t("title")}</h1>
-        <p className="mt-2 text-sm text-ink/70">{t("intro")}</p>
-        <ul className="mt-6 divide-y divide-line overflow-hidden rounded-card-lg border border-line bg-white">
-          <li><Row href="/login" label={t("loginSignup")} /></li>
-          <li><Row href="/signup" label={t("createAccount")} /></li>
-        </ul>
-      </section>
-    );
-  }
+  // private page: signed out → log in, then come back here
+  if (!user) redirect(`/${locale}/login?next=${encodeURIComponent("/account")}`);
 
   const supabase = (await createClient())!;
   const { data: hp } = user.role === "household" ? await supabase.from("household_profiles").select("postcode_area, needs, home_type").eq("user_id", user.id).maybeSingle() : { data: null };
