@@ -27,10 +27,10 @@ function BuildingIcon() {
       <rect x="8" y="12" width="16" height="29" rx="1.5" />
       <rect x="27" y="20" width="13" height="21" rx="1.5" opacity="0.85" />
       <rect x="12" y="17" width="3.5" height="3.5" fill="#2E8BFF" />
-      <rect x="18" y="17" width="3.5" height="3.5" fill="#EEF6F0" />
-      <rect x="12" y="24" width="3.5" height="3.5" fill="#EEF6F0" />
-      <rect x="18" y="24" width="3.5" height="3.5" fill="#EEF6F0" />
-      <rect x="31" y="24" width="3.5" height="3.5" fill="#EEF6F0" />
+      <rect x="18" y="17" width="3.5" height="3.5" fill="#EEF4FD" />
+      <rect x="12" y="24" width="3.5" height="3.5" fill="#EEF4FD" />
+      <rect x="18" y="24" width="3.5" height="3.5" fill="#EEF4FD" />
+      <rect x="31" y="24" width="3.5" height="3.5" fill="#EEF4FD" />
     </svg>
   );
 }

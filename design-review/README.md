@@ -39,12 +39,12 @@ Replace them with our own photo shoot later, keeping the file names and aspect r
 ## Copy rules kept from the brief
 
 - No "trusted / vetted / verified" claims, no "24/7 support", no user numbers, no invented testimonials.
-- No fixed prices in marketing copy (flow13): the household fee appears only while charging is active
-  (`getPublicHouseholdFeeCents`); otherwise the copy is price-neutral. Cleaner hourly rates on ad cards are fine.
-- Approved headline (reference): "Your Complete **Cleaning** Solution" / "Jouw complete **schoonmaakoplossing**".
-  Section titles: "Explore Alieni" — "A complete platform for the cleaning industry".
-- Alternative headline, NOT used (awaiting a decision): "Find a cleaner near you. Meet first, then decide." /
+- Headline (as approved on the design branch): "Find a cleaner near you. Meet first, then decide." /
   "Vind een schoonmaker bij jou in de buurt. Eerst kennismaken, dan beslissen."
+- Prices follow alieni-dev's rule (flow13): the household price line appears only while charging is active
+  (`getPublicHouseholdFeeCents`) and reads exactly as designed then; while nothing is charged it says
+  "Searching and meeting are free". The minimum hourly rate is read from Admin → Settings and shown as an
+  hourly rate ("From €15/hr"), never as a fixed price.
 
 ## Database
 

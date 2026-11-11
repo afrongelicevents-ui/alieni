@@ -1554,19 +1554,18 @@
     },
     "hero": {
       "eyebrow": "Schonere ruimtes. Een sterkere community.",
-      "text": "Vind zelfstandige schoonmakers bij jou in de buurt, zie hun tarief en reviews, en maak eerst kennis voordat je iets afspreekt.",
+      "text": "Zelfstandige schoonmakers in heel Nederland. Bekijk hun tarief en reviews, maak eerst kennis, en spreek pas iets af als het goed voelt.",
       "find": "Vind een schoonmaker",
       "explore": "Ontdek Alieni",
       "video": "Bekijk video",
       "closeVideo": "Video sluiten",
       "imageAlt": "Schoonmaker met gekruiste armen, glimlachend",
-      "pre": "Jouw complete",
-      "accent": "schoonmaakoplossing",
-      "post": ""
+      "line1": "Vind een schoonmaker bij jou in de buurt.",
+      "line2": "Eerst kennismaken, dan beslissen."
     },
     "trust": [
       "Gratis voor schoonmakers",
-      "Schoonmakers bepalen hun tarief",
+      "Vanaf {rate}/u",
       "Eerst kennismaken",
       "Echte reviews"
     ],
@@ -1587,8 +1586,8 @@
     "soon": "Binnenkort",
     "explore": {
       "title": "Ontdek Alieni",
-      "subtitle": "Een compleet platform voor de schoonmaakbranche",
-      "mobileTitle": "Een compleet platform voor de schoonmaakbranche"
+      "subtitle": "Wat je vandaag op Alieni kunt doen, en wat eraan komt.",
+      "mobileTitle": "Wat je op Alieni vindt"
     },
     "cards": {
       "findCleaners": {
@@ -1748,7 +1747,7 @@
         }
       ],
       "earnTitle": "Hoe Alieni geld verdient",
-      "earn": "Zoeken en kennismaken is gratis. Alieni verdient aan een maandbedrag dat huishoudens pas na een bevestigde afspraak betalen, en aan een vast maandbedrag voor bedrijven — een prijs zie je altijd vóórdat je iets afspreekt. We houden nooit een percentage in op het loon van een schoonmaker.",
+      "earn": "Huishoudens betalen een maandbedrag na een bevestigde afspraak; bedrijven betalen een vast maandbedrag per locatie, kamer of advertentie. We houden nooit een percentage in op het loon van een schoonmaker.",
       "notTitle": "Wat Alieni niet is",
       "not": "We zijn geen werkgever of schoonmaakbureau. Schoonmakers zijn zelfstandig en maken hun eigen afspraken. Alieni controleert geen identiteitsbewijzen of KvK-nummers; alleen schoonmakers voor scholen tonen een goedgekeurde VOG.",
       "step3Priced": "Huishoudens betalen {price} per maand, pas nadat beide kanten bevestigen. Schoonmakers betalen nooit. Het loon gaat rechtstreeks naar de schoonmaker."

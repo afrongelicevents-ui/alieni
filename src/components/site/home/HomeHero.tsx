@@ -15,9 +15,10 @@ const TRUST_ICONS: IconName[] = ["person", "scale", "chat", "star"];
  *   trust strip under the buttons.
  * `photoUrl` is an admin-uploaded replacement (Admin → Photos), ideally a cut-out PNG.
  */
-export async function HomeHero({ photoUrl, videoUrl }: { photoUrl: string | null; videoUrl: string | null }) {
+/** `rateFloor`: the minimum hourly rate (Admin → Settings), formatted — shown as "From €15/hr". */
+export async function HomeHero({ photoUrl, videoUrl, rateFloor }: { photoUrl: string | null; videoUrl: string | null; rateFloor: string }) {
   const t = await getTranslations("site");
-  const trust = t.raw("trust") as string[];
+  const trust = (t.raw("trust") as string[]).map((label) => label.replace("{rate}", rateFloor));
   const cut = DESIGN_IMAGES.heroCutout;
 
   return (
@@ -46,9 +47,8 @@ export async function HomeHero({ photoUrl, videoUrl }: { photoUrl: string | null
         <div className="relative z-10 pb-24 pt-8 sm:pb-28 lg:max-w-[46rem] lg:pb-28 lg:pt-16">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-bright lg:text-xs lg:text-royal">{t("hero.eyebrow")}</p>
           <h1 className="headline mt-3 text-[2.05rem] leading-[1.06] sm:text-5xl lg:text-[3.6rem] xl:text-[4rem]">
-            <span className="block">{t("hero.pre")}</span>
-            <span className="text-bright lg:text-royal">{t("hero.accent")}</span>
-            {t("hero.post") ? <> {t("hero.post")}</> : null}
+            <span className="block">{t("hero.line1")}</span>
+            <span className="block text-bright lg:text-royal">{t("hero.line2")}</span>
           </h1>
           <p className="mt-4 max-w-[55%] text-[15px] leading-relaxed text-white/90 sm:max-w-md lg:mt-5 lg:max-w-[34rem] lg:text-lg lg:text-body">{t("hero.text")}</p>
           <div className="mt-6 flex max-w-[55%] flex-col items-start gap-4 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center lg:mt-8">
@@ -66,7 +66,7 @@ export async function HomeHero({ photoUrl, videoUrl }: { photoUrl: string | null
             {trust.map((label, i) => (
               <li key={label} className="flex items-center gap-3 px-4 text-[13px] font-semibold leading-snug text-navy">
                 <Icon name={TRUST_ICONS[i] ?? "check"} className="h-7 w-7 shrink-0 text-royal" />
-                {label}
+                {label}{" "}
               </li>
             ))}
           </ul>

@@ -1554,19 +1554,18 @@
     },
     "hero": {
       "eyebrow": "Cleaner spaces. A stronger community.",
-      "text": "Find independent cleaners near you, see their rate and reviews, and meet them before you agree on anything.",
+      "text": "Independent cleaners across the Netherlands. See their rate and reviews, meet them first, and only agree when it feels right.",
       "find": "Find a cleaner",
       "explore": "Explore Alieni",
       "video": "Watch video",
       "closeVideo": "Close video",
       "imageAlt": "Cleaner with arms crossed, smiling",
-      "pre": "Your Complete",
-      "accent": "Cleaning",
-      "post": "Solution"
+      "line1": "Find a cleaner near you.",
+      "line2": "Meet first, then decide."
     },
     "trust": [
       "Free for cleaners",
-      "Cleaners set their own rate",
+      "From {rate}/hr",
       "Meet first, then decide",
       "Real reviews"
     ],
@@ -1587,8 +1586,8 @@
     "soon": "Coming soon",
     "explore": {
       "title": "Explore Alieni",
-      "subtitle": "A complete platform for the cleaning industry",
-      "mobileTitle": "A complete platform for the cleaning industry"
+      "subtitle": "What you can do on Alieni today, and what's coming next.",
+      "mobileTitle": "What you can find on Alieni"
     },
     "cards": {
       "findCleaners": {
@@ -1748,7 +1747,7 @@
         }
       ],
       "earnTitle": "How Alieni earns money",
-      "earn": "Searching and meeting are free. Alieni earns from a monthly fee that households pay only after a confirmed deal, and from a fixed monthly fee for businesses — any price is shown before you agree. We never take a percentage of a cleaner's wage.",
+      "earn": "Households pay a monthly fee after a confirmed deal; businesses pay a fixed monthly fee per location, room or listing. We never take a percentage of a cleaner's wage.",
       "notTitle": "What Alieni is not",
       "not": "We're not an employer or a cleaning agency. Cleaners are self-employed and make their own arrangements. Alieni doesn't check ID documents or KvK numbers; only cleaners for schools show an approved VOG.",
       "step3Priced": "Households pay {price} a month only after both sides confirm. Cleaners never pay. The cleaner's wage goes straight to the cleaner."

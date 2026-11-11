@@ -33,8 +33,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const page = pdf.addPage([595, 842]); // A4
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const forest = rgb(0.055, 0.29, 0.173);
-  const ink = rgb(0.043, 0.149, 0.09);
+  const forest = rgb(0.043, 0.122, 0.294); // brand navy #0B1F4B (variable name kept)
+  const ink = rgb(0.043, 0.122, 0.294); // navy text
   const draw = (text: string, x: number, y: number, size = 11, f = font, color = ink) =>
     page.drawText(text, { x, y, size, font: f, color });
 
