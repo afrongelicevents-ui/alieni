@@ -7,6 +7,7 @@ import { routing } from "@/i18n/routing";
 import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
+import { ChromeGate } from "@/components/layout/ChromeGate";
 import "../globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -49,10 +50,10 @@ export default async function LocaleLayout({
     <html lang={locale} className={jakarta.variable}>
       <body className="font-sans">
         <NextIntlClientProvider>
-          <Header />
+          <ChromeGate><Header /></ChromeGate>
           <main className="pb-16 md:pb-0">{children}</main>
-          <Footer />
-          <BottomNav />
+          <ChromeGate><Footer /></ChromeGate>
+          <ChromeGate><BottomNav /></ChromeGate>
         </NextIntlClientProvider>
       </body>
     </html>

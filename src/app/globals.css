@@ -16,6 +16,17 @@
   --color-section: #f4f7f5; /* section backgrounds */
   --color-line: #e1e8e3; /* borders */
 
+  /* 2026 redesign palette (navy / royal blue). Old forest/sun tokens are
+     retired page by page once the redesign is approved. */
+  --color-navy: #0b1f4b;
+  --color-navy-deep: #071638;
+  --color-royal: #1667e0;
+  --color-royal-dark: #0f53bd;
+  --color-bright: #2e8bff;
+  --color-tint: #eef4fd;
+  --color-body: #3b4a66;
+  --color-edge: #dbe5f4;
+
   /* Typography */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
@@ -62,3 +73,23 @@ body {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Eyebrow label with a short line before it ("— ABOUT ALIENI") */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
