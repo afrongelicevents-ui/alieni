@@ -37,8 +37,8 @@ the live database; the new database parts (14, 15, 16, 17, 18) are files in `sup
 | Parts 15 to 18 applied twice | no errors, no changes; a failing script rolls back completely |
 | Unit tests (`npm test`) | 141 passed |
 | Types, lint, translations (`npm run check:i18n`) | clean, 1358 keys per language, nl and en identical |
-| Browser flows 1 to 13, phone and desktop | 503 checks passed |
-| Website crawl (`e2e/audit.cjs`) | 150 pages, 0 problems |
+| Browser flows 1 to 14, phone and desktop | 530 checks passed |
+| Website crawl (`e2e/audit.cjs`) | 177 pages, 0 problems |
 | Application leak scan, six roles | outsiders never see VAT, contact or street; only a job's city |
 | Charging gate | no payment, mandate or subscription code path runs while `PAYMENTS_ACTIVE` is not `true` |
 
