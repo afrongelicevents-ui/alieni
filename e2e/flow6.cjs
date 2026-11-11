@@ -21,7 +21,17 @@ async function signUp(page, email, role) {
   await page.waitForLoadState("networkidle");
 }
 async function navLabels(page, mobile) {
-  return mobile ? page.locator("nav.fixed a").allTextContents() : page.locator("header nav.hidden a, header nav.md\\:flex a").allTextContents();
+  // Website navigation (redesign): no bottom bar. Phones use the hamburger
+  // menu; desktop uses the header's main menu (role links, or mega-menu buttons for guests).
+  if (mobile) {
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.waitForSelector("#mobile-menu");
+    const labels = await page.locator("#mobile-menu a").allTextContents();
+    await page.keyboard.press("Escape");
+    return labels.map((s) => s.trim());
+  }
+  const labels = await page.locator("header nav[aria-label='Main menu'] a, header nav[aria-label='Main menu'] button").allTextContents();
+  return labels.map((s) => s.trim());
 }
 async function accessToken(ctx) {
   const cookies = await ctx.cookies();

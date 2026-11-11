@@ -307,7 +307,7 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
             <span
               aria-current={i === step ? "step" : undefined}
               className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${
-                i < step ? "bg-forest text-white" : i === step ? "bg-sun text-ink" : "bg-section text-ink/70"
+                i < step ? "bg-forest text-white" : i === step ? "bg-sun text-white" : "bg-section text-ink/70"
               }`}
             >
               {i + 1}
@@ -603,7 +603,7 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
           type="button"
           onClick={next}
           disabled={busy}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sun px-8 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50"
         >
           {busy ? t("publishing") : step === 2 ? t("publish") : t("next")}
         </button>

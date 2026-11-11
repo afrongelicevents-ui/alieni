@@ -11,7 +11,7 @@ build at the live project. Nothing in this guide touches the live project, and n
 3. Authentication → URL configuration: Site URL = the preview or local URL; add `<that URL>/**` to the redirect URLs.
 
 ## 2. Load the database
-Run every file in `supabase/migrations/` **in order** (`0001_…` to `0028_…`) against the test project. Each file is safe to run twice;
+Run every file in `supabase/migrations/` **in order** (`0001_…` to `0029_…`) against the test project. Each file is safe to run twice;
 a failing file rolls back completely. Pick one way:
 
 **Way A: from a computer (about 5 minutes, recommended).** Copy the connection string (Supabase → Project settings → Database →
@@ -23,7 +23,7 @@ for f in supabase/migrations/*.sql; do echo "$f"; psql "$DB_URL" -v ON_ERROR_STO
 ```
 
 **Way C: GitHub Action (recommended from a phone, about 5 minutes after the secrets are added).** The workflow
-"Set up TEST database" (`.github/workflows/test-database.yml`) applies all migrations 0001 to 0028 to the test project with the
+"Set up TEST database" (`.github/workflows/test-database.yml`) applies all migrations 0001 to 0029 to the test project with the
 Supabase CLI, then runs the check query and shows the result in the run summary. It refuses to run for the live project
 (by reference and by name: the project's name must contain "test"). Steps:
 

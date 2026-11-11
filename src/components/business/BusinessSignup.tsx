@@ -171,7 +171,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
         {stepTitles.map((title, i) => (
           <li key={title} className="flex flex-1 flex-col items-center gap-1">
             <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-extrabold ${
-              i < step ? "bg-forest text-white" : i === step ? "bg-sun text-ink" : "bg-section text-ink/70"}`}>{i + 1}</span>
+              i < step ? "bg-forest text-white" : i === step ? "bg-sun text-white" : "bg-section text-ink/70"}`}>{i + 1}</span>
             <span className={`text-center text-xs font-semibold ${i === step ? "text-ink" : "text-ink/70"}`}>{title}</span>
           </li>
         ))}
@@ -272,7 +272,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
         <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0 || busy}
           className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line px-6 text-sm font-bold text-ink/70 disabled:opacity-40">{t("back")}</button>
         <button type="button" onClick={next} disabled={busy}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-8 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-8 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">
           {busy ? t("saving") : step === 3 ? t("finish") : t("next")}</button>
       </div>
     </div>

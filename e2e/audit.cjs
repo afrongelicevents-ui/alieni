@@ -26,7 +26,7 @@ const start = ["/", "/en"];
       await page.close();
     }
     rows.push(row);
-    console.log(`${row.mobile.status}/${row.desktop.status}  ovf ${row.mobile.overflow}  ${path}  ${row.mobile.errs.join(" | ")}`);
+    console.log(`${row.mobile.status}/${row.desktop.status}  ovf ${row.mobile.overflow}  ${path}  ${[...row.mobile.errs, ...row.desktop.errs.map((e) => "[desktop] " + e)].join(" | ")}`);
   }
   fs.writeFileSync(`${OUT}/audit-results.json`, JSON.stringify(rows, null, 2));
   const bad = rows.filter((r) => r.mobile.status !== 200 || r.desktop.status !== 200 || r.mobile.overflow > 0 || r.mobile.errs.length || r.desktop.errs.length);

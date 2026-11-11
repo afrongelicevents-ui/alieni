@@ -649,7 +649,7 @@
       "slot_business-restaurant": "Restaurants & cafés",
       "slot_business-office": "Kantoren & winkels",
       "slot_business-school": "Scholen & kinderopvang",
-      "where_hero-cleaner": "Staat rechts naast de kop op de homepage (staand, 3:4).",
+      "where_hero-cleaner": "Homepage, naast de kop. Het mooist: een staande foto met de achtergrond verwijderd (transparante PNG).",
       "where_business-airbnb": "Bovenaan /business/airbnb (liggend, 3:2).",
       "where_business-hotel": "Bovenaan /business/hotel (liggend, 3:2).",
       "where_business-restaurant": "Bovenaan /business/restaurant (liggend, 3:2).",
@@ -763,7 +763,36 @@
     "userError_is_admin": "Een beheerder kan niet worden geblokkeerd.",
     "userError_not_found": "Gebruiker niet gevonden.",
     "userError_not_configured": "Dit vraagt de service-sleutel (nog niet ingesteld).",
-    "listEmpty": "Nog niets om te tonen."
+    "listEmpty": "Nog niets om te tonen.",
+    "tabTestimonials": "Ervaringen",
+    "settingVideo": "Homepagevideo (YouTube- of Vimeo-link)",
+    "settingVideoHint": "Laat leeg om de knop “Bekijk video” te verbergen.",
+    "settingVideoInvalid": "Gebruik een YouTube- of Vimeo-link (https://…).",
+    "webModulesTitle": "Websitemodules",
+    "webModulesIntro": "Modules die nog niet gebouwd zijn tonen “Binnenkort” en een aanmeldpagina. Zet er een aan en geef de pagina op die moet openen (een pad op deze site, bijv. /jobs).",
+    "webLive": "Live",
+    "webSoon": "Binnenkort",
+    "webUrl": "Pagina als live",
+    "webUrlRequired": "Een live module heeft een pagina nodig (bijv. /jobs).",
+    "webUrlInvalid": "Gebruik een pad op deze site dat met / begint.",
+    "webInterest": "{count, plural, =0 {Geen aanmeldingen} one {# aanmelding} other {# aanmeldingen}}",
+    "webClear": "Lijst verwijderen",
+    "webClearConfirm": "Alle aanmeldingen voor deze module verwijderen? Doe dit nadat je de aankondiging hebt verstuurd.",
+    "testIntro": "Voeg alleen echte ervaringen toe van echte klanten of schoonmakers, met hun toestemming. Het blok op de homepage blijft verborgen zolang er geen gepubliceerd zijn.",
+    "testName": "Naam (zoals die getoond mag worden)",
+    "testRole": "Rol (bijv. Huishouden, Schoonmaker)",
+    "testCity": "Plaats",
+    "testQuote": "Citaat",
+    "testConsent": "Deze persoon heeft toestemming gegeven om naam en citaat op de website te tonen.",
+    "testPublish": "Tonen op de homepage",
+    "testAdd": "Ervaring toevoegen",
+    "testNone": "Nog geen ervaringen.",
+    "testPublished": "op de homepage",
+    "testHidden": "verborgen",
+    "testHide": "Verbergen",
+    "testShow": "Tonen",
+    "testDelete": "Verwijderen",
+    "testDeleteConfirm": "Deze ervaring verwijderen?"
   },
   "jobs": {
     "title": "Schoonmaakklussen",
@@ -1422,5 +1451,315 @@
     "notFoundTitle": "Pagina niet gevonden",
     "notFoundText": "Deze pagina bestaat niet (meer). Misschien is de link verouderd.",
     "loading": "Laden…"
+  },
+  "site": {
+    "utility": {
+      "independent": "Zelfstandige schoonmakers",
+      "reviews": "Echte reviews",
+      "meet": "Eerst kennismaken",
+      "join": "Volg Alieni"
+    },
+    "nav": {
+      "customers": "Voor klanten",
+      "professionals": "Voor schoonmakers",
+      "businesses": "Voor bedrijven",
+      "about": "Over ons",
+      "contact": "Contact",
+      "getStarted": "Aan de slag",
+      "search": "Zoeken",
+      "menu": "Menu openen",
+      "close": "Menu sluiten",
+      "account": "Account",
+      "main": "Hoofdmenu"
+    },
+    "mega": {
+      "customers": [
+        {
+          "t": "Vind een schoonmaker",
+          "d": "Zelfstandige schoonmakers bij jou in de buurt",
+          "href": "/search"
+        },
+        {
+          "t": "Zo werkt het",
+          "d": "Van zoeken tot eerste bezoek",
+          "href": "/about#how-it-works"
+        },
+        {
+          "t": "Spoedvervanging",
+          "d": "Vandaag nog iemand nodig",
+          "href": "/emergency"
+        }
+      ],
+      "professionals": [
+        {
+          "t": "Plaats je advertentie",
+          "d": "Jouw advertentie, jouw tarief, altijd gratis",
+          "href": "/cleaners/new"
+        },
+        {
+          "t": "Klussen van bedrijven",
+          "d": "Werk geplaatst door bedrijven",
+          "href": "/jobs"
+        },
+        {
+          "t": "Aanmelden als schoonmaker",
+          "d": "Gratis account in een paar minuten",
+          "href": "/signup"
+        }
+      ],
+      "businesses": [
+        {
+          "t": "Kantoren",
+          "d": "Vaste kantoorschoonmaak",
+          "href": "/business/office"
+        },
+        {
+          "t": "Hotels",
+          "d": "Kamers en wissels",
+          "href": "/business/hotel"
+        },
+        {
+          "t": "Airbnb-hosts",
+          "d": "Schoonmaak tussen gasten",
+          "href": "/business/airbnb"
+        },
+        {
+          "t": "Restaurants",
+          "d": "Keuken en zaal",
+          "href": "/business/restaurant"
+        },
+        {
+          "t": "Scholen",
+          "d": "Schoonmakers met goedgekeurde VOG",
+          "href": "/business/school"
+        }
+      ],
+      "about": [
+        {
+          "t": "Over Alieni",
+          "d": "Wat we doen en hoe we verdienen",
+          "href": "/about"
+        },
+        {
+          "t": "Contact",
+          "d": "Vragen? Neem contact op",
+          "href": "/contact"
+        },
+        {
+          "t": "Advertentie melden",
+          "d": "Help Alieni veilig te houden",
+          "href": "/contact#report"
+        }
+      ]
+    },
+    "hero": {
+      "eyebrow": "Schonere ruimtes. Een sterkere community.",
+      "text": "Vind zelfstandige schoonmakers bij jou in de buurt, zie hun tarief en reviews, en maak eerst kennis voordat je iets afspreekt.",
+      "find": "Vind een schoonmaker",
+      "explore": "Ontdek Alieni",
+      "video": "Bekijk video",
+      "closeVideo": "Video sluiten",
+      "imageAlt": "Schoonmaker met gekruiste armen, glimlachend",
+      "pre": "Jouw complete",
+      "accent": "schoonmaakoplossing",
+      "post": ""
+    },
+    "trust": [
+      "Gratis voor schoonmakers",
+      "Schoonmakers bepalen hun tarief",
+      "Eerst kennismaken",
+      "Echte reviews"
+    ],
+    "searchBar": {
+      "placeholder": "Postcode of plaats, bijv. 3512 Utrecht",
+      "button": "Zoeken",
+      "label": "Zoek schoonmakers op postcode of plaats"
+    },
+    "iconRow": {
+      "find": "Schoonmakers",
+      "businesses": "Bedrijven",
+      "suppliers": "Leveranciers",
+      "equipment": "Apparatuur",
+      "careers": "Vacatures",
+      "more": "Meer",
+      "label": "Categorieën"
+    },
+    "soon": "Binnenkort",
+    "explore": {
+      "title": "Ontdek Alieni",
+      "subtitle": "Een compleet platform voor de schoonmaakbranche",
+      "mobileTitle": "Een compleet platform voor de schoonmaakbranche"
+    },
+    "cards": {
+      "findCleaners": {
+        "t": "Vind schoonmakers",
+        "s": "Huishoudens"
+      },
+      "companies": {
+        "t": "Schoonmaakbedrijven",
+        "s": "Bedrijven"
+      },
+      "suppliers": {
+        "t": "Leveranciers & apparatuur",
+        "s": "Producten"
+      },
+      "linen": {
+        "t": "Linnen & wasserij",
+        "s": "Diensten"
+      },
+      "careers": {
+        "t": "Werk & kansen",
+        "s": "Vacatures"
+      },
+      "commercial": {
+        "t": "Schoonmaakdiensten",
+        "s": "Zakelijk"
+      }
+    },
+    "about": {
+      "eyebrow": "Over Alieni",
+      "title": "Meer dan een schoonmaakplatform",
+      "text": "Alieni is een Nederlandse marktplaats voor schoonmaak. Huishoudens en bedrijven vinden direct een zelfstandige schoonmaker. Schoonmakers bepalen zelf hun tarief en houden dat helemaal — wij houden niets in op iemands loon.",
+      "cta": "Meer over Alieni",
+      "imageAlt": "Schoonmaakspullen in een woonkamer"
+    },
+    "why": {
+      "eyebrow": "Waarom Alieni",
+      "pre": "Eenvoudig. Handig.",
+      "accent": "Eerlijk.",
+      "text": "Geen bureau ertussen, geen kleine lettertjes. Zo werkt het.",
+      "cta": "Begin vandaag",
+      "items": [
+        {
+          "t": "Schoonmakers betalen niets",
+          "d": "Een advertentie plaatsen is gratis. Je houdt 100% van je tarief."
+        },
+        {
+          "t": "Eerst kennismaken",
+          "d": "Telefoonnummers blijven verborgen in de chat tot jullie allebei bevestigen."
+        },
+        {
+          "t": "Zoeken en kennismaken is gratis",
+          "d": "Er wordt nu niets in rekening gebracht. Je ziet een prijs altijd vóórdat je iets afspreekt."
+        },
+        {
+          "t": "Wij bewaren geen adressen",
+          "d": "Geen huisadressen, geen bankgegevens. Zoekopdrachten op postcode worden niet opgeslagen."
+        }
+      ],
+      "itemPriced": {
+        "t": "{price} per maand — pas na een afspraak",
+        "d": "Huishoudens betalen pas als beide kanten bevestigen. Maandelijks opzegbaar."
+      }
+    },
+    "biz": {
+      "eyebrow": "Voor bedrijven",
+      "title": "Schone werkplekken zonder gedoe",
+      "text": "Kantoren, hotels, Airbnb-hosts, restaurants en scholen vinden direct zelfstandige schoonmakers.",
+      "points": [
+        "Vast bedrag per maand — geen commissie",
+        "Schoonmakers houden 100% van hun tarief",
+        "Spoed- en vervangingsdekking"
+      ],
+      "cta": "Voor bedrijven",
+      "mobileText": "Voor kantoren, hotels, Airbnb-hosts, restaurants en scholen. Vast bedrag per maand, geen commissie."
+    },
+    "community": {
+      "eyebrow": "Voor schoonmakers",
+      "title": "Jouw advertentie, jouw tarief, altijd gratis",
+      "text": "Plaats je advertentie, kies je gebied en uren, en kom in contact met huishoudens en bedrijven bij jou in de buurt.",
+      "points": [
+        "Altijd gratis voor schoonmakers",
+        "Je houdt 100% van wat je verdient",
+        "Jij bepaalt voor wie je werkt"
+      ],
+      "cta": "Plaats je advertentie"
+    },
+    "testimonials": {
+      "title": "Wat mensen zeggen",
+      "consent": "Gedeeld met toestemming."
+    },
+    "banner": {
+      "pre": "Schoonmaak geregeld,",
+      "accent": "zonder tussenpersoon.",
+      "text": "Sluit je aan bij huishoudens, bedrijven en professionals in heel Nederland.",
+      "cta": "Begin vandaag",
+      "imageAlt": "Grachtenpanden in Amsterdam"
+    },
+    "footer": {
+      "about": "Over ons",
+      "customers": "Klanten",
+      "professionals": "Schoonmakers",
+      "businesses": "Bedrijven",
+      "company": "Alieni",
+      "legal": "Juridisch",
+      "findCleaner": "Vind een schoonmaker",
+      "howItWorks": "Zo werkt het",
+      "emergency": "Spoedvervanging",
+      "placeAd": "Plaats je advertentie",
+      "jobs": "Klussen",
+      "signup": "Aanmelden",
+      "forBusinesses": "Voor bedrijven",
+      "businessSignup": "Bedrijf aanmelden",
+      "contact": "Contact",
+      "terms": "Voorwaarden",
+      "privacy": "Privacy",
+      "report": "Advertentie melden",
+      "rights": "Alle rechten voorbehouden.",
+      "kvk": "KvK",
+      "pricing": "Prijzen voor huishoudens zijn inclusief 21% btw.",
+      "language": "Taal",
+      "photos": "Foto's: Pexels / Unsplash",
+      "intro": "Alieni verbindt huishoudens en bedrijven met zelfstandige schoonmakers in Nederland. Schoonmakers zijn zelfstandig en niet in dienst van Alieni."
+    },
+    "notify": {
+      "title": "{module} komt binnenkort",
+      "text": "Dit deel van Alieni bouwen we nog. Laat je e-mailadres achter, dan laten we het je één keer weten zodra het opent — verder niets.",
+      "email": "E-mailadres",
+      "consent": "Ik ga ermee akkoord dat Alieni mijn e-mailadres alleen bewaart om te laten weten wanneer dit opent, en het daarna verwijdert (zie de privacyverklaring).",
+      "submit": "Houd me op de hoogte",
+      "done": "Dank je — we mailen je één keer zodra het opent.",
+      "error": "Dat ging niet goed. Controleer je e-mailadres en het vinkje, en probeer het opnieuw.",
+      "unavailable": "Aanmelden hiervoor kan nog niet. Probeer het later opnieuw.",
+      "back": "Terug naar de homepage"
+    },
+    "modules": {
+      "suppliers": "Leveranciers",
+      "equipment": "Apparatuur",
+      "careers": "Werk & vacatures",
+      "linen": "Linnen & wasserij"
+    },
+    "aboutPage": {
+      "title": "Over Alieni",
+      "intro": "Alieni is een Nederlandse online marktplaats waar huishoudens en bedrijven zelfstandige schoonmakers vinden — en schoonmakers werk vinden, op hun eigen voorwaarden.",
+      "howTitle": "Zo werkt het",
+      "steps": [
+        {
+          "t": "Zoek op postcode",
+          "d": "Bekijk zelfstandige schoonmakers bij jou in de buurt, met hun tarief, beschikbaarheid en reviews."
+        },
+        {
+          "t": "Eerst kennismaken",
+          "d": "Stuur een bericht en plan een kennismaking. Telefoonnummers blijven verborgen tot jullie allebei bevestigen."
+        },
+        {
+          "t": "Afspreken, dan betalen",
+          "d": "Een afspraak? Jullie bevestigen allebei, daarna worden contactgegevens zichtbaar. Er wordt nu niets in rekening gebracht; je ziet een prijs altijd eerst. Schoonmakers betalen nooit en het loon gaat rechtstreeks naar de schoonmaker."
+        }
+      ],
+      "earnTitle": "Hoe Alieni geld verdient",
+      "earn": "Zoeken en kennismaken is gratis. Alieni verdient aan een maandbedrag dat huishoudens pas na een bevestigde afspraak betalen, en aan een vast maandbedrag voor bedrijven — een prijs zie je altijd vóórdat je iets afspreekt. We houden nooit een percentage in op het loon van een schoonmaker.",
+      "notTitle": "Wat Alieni niet is",
+      "not": "We zijn geen werkgever of schoonmaakbureau. Schoonmakers zijn zelfstandig en maken hun eigen afspraken. Alieni controleert geen identiteitsbewijzen of KvK-nummers; alleen schoonmakers voor scholen tonen een goedgekeurde VOG.",
+      "step3Priced": "Huishoudens betalen {price} per maand, pas nadat beide kanten bevestigen. Schoonmakers betalen nooit. Het loon gaat rechtstreeks naar de schoonmaker."
+    },
+    "contactPage": {
+      "title": "Contact",
+      "intro": "Vragen over Alieni, je account of een advertentie?",
+      "email": "Mail ons op",
+      "noEmail": "Ons contactadres staat hier binnenkort. Ingelogde gebruikers kunnen ons bereiken via hun accountpagina.",
+      "reportTitle": "Advertentie melden",
+      "report": "Zie je iets wat niet klopt in een advertentie of bericht? Open de advertentie en gebruik de knop “Rapporteer deze advertentie”. We bekijken elke melding en laten je de uitkomst weten."
+    }
   }
 }

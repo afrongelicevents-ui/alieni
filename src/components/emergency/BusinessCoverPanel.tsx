@@ -101,7 +101,7 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
       {notice ? <p role="status" className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{notice}</p> : null}
 
       {!open ? (
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark">{t("newRequest")}</button>
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-white hover:bg-sun-dark">{t("newRequest")}</button>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4 rounded-card-lg border border-line bg-white p-6" data-cover-form>
           <h2 className="text-lg font-extrabold text-ink">{t("newRequest")}</h2>
@@ -139,7 +139,7 @@ export function BusinessCoverPanel({ units, requests, rules, ruleAmountCents, se
           <p className="text-xs text-ink/70">{t("addressNote")}</p>
           {errors.submit ? <p className="text-sm font-semibold text-red-700">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
           <div className="flex flex-wrap gap-2">
-            <button type="submit" disabled={busy === "new"} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{busy === "new" ? t("sending") : t("submit")}</button>
+            <button type="submit" disabled={busy === "new"} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-white hover:bg-sun-dark disabled:opacity-50">{busy === "new" ? t("sending") : t("submit")}</button>
             {requests.length ? <button type="button" onClick={() => setOpen(false)} className="inline-flex min-h-12 items-center rounded-full border border-line px-5 text-sm font-bold text-ink/70">{t("cancel").replace(/ .*/, "")}</button> : null}
           </div>
         </form>

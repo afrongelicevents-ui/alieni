@@ -69,12 +69,14 @@ export async function listSiteMedia(): Promise<Partial<Record<SiteMediaSlot, Sit
 }
 
 /**
- * Image URL for a slot: uploaded photo → bundled file in public/img → null.
+ * Image URL for a slot: uploaded photo → bundled file in public/img → null
+ * (`uploadedOnly`: skip the bundled fallback).
  * Pass a pre-fetched `rows` map when rendering several slots on one page.
  */
 export async function siteImageUrl(
   slot: SiteMediaSlot,
   rows?: Partial<Record<SiteMediaSlot, SiteMediaRow>>,
+  opts: { uploadedOnly?: boolean } = {},
 ): Promise<string | null> {
   const map = rows ?? (await listSiteMedia());
   const row = map[slot];
@@ -82,5 +84,6 @@ export async function siteImageUrl(
     const url = publicMediaUrl(row);
     if (url) return url;
   }
+  if (opts.uploadedOnly) return null;
   return hasPublicImage(`img/${slot}.webp`) ? `/img/${slot}.webp` : null;
 }

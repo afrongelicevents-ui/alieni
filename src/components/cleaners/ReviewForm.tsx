@@ -29,7 +29,7 @@ export function ReviewForm({ cleanerProfileId }: { cleanerProfileId: string }) {
       <h3 className="font-extrabold text-ink">{t("reviewFormTitle")}</h3>
       <div className="mt-2 flex gap-1" role="radiogroup" aria-label={t("reviewRatingLabel")}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={t("reviewStars", { count: n })} onClick={() => setRating(n)} className={`min-h-11 min-w-11 rounded-full border text-lg ${rating >= n ? "border-sun-dark bg-sun text-ink" : "border-line bg-white text-ink/40"}`}>★</button>
+          <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={t("reviewStars", { count: n })} onClick={() => setRating(n)} className={`min-h-11 min-w-11 rounded-full border text-lg ${rating >= n ? "border-sun-dark bg-sun text-white" : "border-line bg-white text-ink/40"}`}>★</button>
         ))}
       </div>
       <label className="mt-3 block text-sm font-semibold text-ink/80" htmlFor="review-body">{t("reviewBodyLabel")}</label>

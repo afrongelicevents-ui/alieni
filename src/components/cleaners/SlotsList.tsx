@@ -68,7 +68,7 @@ export function SlotsList({ slots, myCleanerId }: { slots: Slot[]; myCleanerId: 
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {s.status === "open" ? (
-                <button type="button" disabled={busy === s.id} onClick={() => reserve(s.id)} className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("reserve")}</button>
+                <button type="button" disabled={busy === s.id} onClick={() => reserve(s.id)} className="inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">{t("reserve")}</button>
               ) : null}
               {s.status === "reserved" && mine ? (
                 <form action={doneAction} className="flex flex-wrap items-end gap-2">

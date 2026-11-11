@@ -6,7 +6,6 @@ import { setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { getSessionUser } from "@/lib/auth";
 import { Header } from "@/components/layout/Header";
-import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import "../globals.css";
 
@@ -18,7 +17,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Alieni — Connect · Clean · Thrive",
+    default: "Alieni — schoonmakers bij jou in de buurt",
     template: "%s · Alieni",
   },
   description:
@@ -26,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0E4A2C",
+  themeColor: "#0B1F4B",
 };
 
 export function generateStaticParams() {
@@ -54,9 +53,8 @@ export default async function LocaleLayout({
       <body className="font-sans">
         <NextIntlClientProvider>
           <Header initialRole={initialRole} />
-          <main className="pb-16 md:pb-0">{children}</main>
+          <main>{children}</main>
           <Footer />
-          <BottomNav initialRole={initialRole} />
         </NextIntlClientProvider>
       </body>
     </html>

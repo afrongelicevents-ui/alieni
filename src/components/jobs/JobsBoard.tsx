@@ -76,7 +76,7 @@ function RespondForm({ jobId, visitHours, onDone }: { jobId: string; visitHours:
       </div>
       {perVisit !== null ? <p className="mt-2 text-xs font-semibold text-ink/80">{t("perVisit", { amount: formatEuro(perVisit, lang), hours: String(visitHours).replace(".", ",") })}</p> : null}
       {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
-      <button type="submit" disabled={busy} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">
+      <button type="submit" disabled={busy} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">
         {t("send")}
       </button>
     </form>

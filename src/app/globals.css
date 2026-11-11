@@ -5,16 +5,29 @@
  * Brand: ALIENI · Connect · Clean · Thrive
  */
 @theme {
-  /* Colours */
-  --color-forest: #0e4a2c; /* primary */
-  --color-forest-dark: #0a3820;
-  --color-ink: #0b2617; /* text */
-  --color-sun: #f7c21b; /* CTAs/accents — always with dark text */
-  --color-sun-dark: #e0ae0d;
-  --color-sun-text: #a47b00; /* yellow accent as TEXT on white — WCAG AA (large) */
-  --color-mint: #eef6f0; /* cards */
-  --color-section: #f4f7f5; /* section backgrounds */
-  --color-line: #e1e8e3; /* borders */
+  /* Colours — 2026 redesign (navy / royal blue). The old green/yellow is
+     retired: the legacy token names below now point at the new palette so
+     every page (dashboards, forms, admin, legal) switches at once. */
+  --color-navy: #0b1f4b; /* headings, dark sections */
+  --color-navy-deep: #071638; /* footer */
+  --color-royal: #1667e0; /* primary buttons, links, accents */
+  --color-royal-dark: #0f53bd;
+  --color-bright: #2e8bff; /* swooshes, accents on navy only */
+  --color-tint: #eef4fd; /* cards, strips */
+  --color-body: #3b4a66; /* muted body text */
+  --color-edge: #dbe5f4; /* borders */
+  --color-page: #f7fafe; /* section backgrounds */
+
+  /* Legacy names → new palette */
+  --color-forest: #0b1f4b;
+  --color-forest-dark: #071638;
+  --color-ink: #0b1f4b;
+  --color-sun: #1667e0;
+  --color-sun-dark: #0f53bd;
+  --color-sun-text: #1667e0;
+  --color-mint: #eef4fd;
+  --color-section: #f7fafe;
+  --color-line: #dbe5f4;
 
   /* Typography */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
@@ -42,7 +55,7 @@ body {
   line-height: 1.08;
 }
 
-/* Yellow swoosh underline for hero accent words */
+/* Swoosh underline for accent words */
 .swoosh {
   position: relative;
   display: inline-block;
@@ -62,3 +75,23 @@ body {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Eyebrow label with a short line before it ("— ABOUT ALIENI") */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

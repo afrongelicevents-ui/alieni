@@ -9,6 +9,8 @@ import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { z } from "zod";
 import { PRICING_MODELS, SERVICE_KEYS } from "@/lib/services";
 import type { SettingsValues } from "@/lib/admin/data";
+import { MODULE_KEYS, isModuleKey, safeModuleUrl } from "@/lib/site-modules";
+import { videoEmbedUrl } from "@/lib/video";
 
 export type AdminActionState = { ok: boolean; error?: string; url?: string };
 
@@ -158,6 +160,8 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
   const coverCancel = Number(values.coverCancelHours), coverStrikes = Math.round(Number(values.coverStrikeLimit)), coverDays = Math.round(Number(values.coverMaxDays));
   if (![coverCancel, coverStrikes, coverDays].every((n) => Number.isFinite(n) && n >= 0) || coverStrikes < 1 || coverDays < 0 || coverDays > 60) return { ok: false, error: "invalid" };
   if ([household, emH, emB, linen, floor].some((x) => x === null) || !Number.isFinite(vogMonths) || vogMonths < 1) return { ok: false, error: "invalid" };
+  const videoUrl = (values.videoUrl ?? "").trim();
+  if (videoUrl !== "" && !videoEmbedUrl(videoUrl)) return { ok: false, error: "invalid_video" };
   try {
     const { supabase, userId } = await requireAdmin();
     const rows = [
@@ -168,6 +172,7 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
       { key: "vog_max_age_months", value: vogMonths },
       { key: "cover_rules", value: { cancel_window_hours: coverCancel, strike_limit: coverStrikes, max_days_ahead: coverDays } },
       { key: "banned_words", value: values.bannedWords.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean) },
+      { key: "homepage_video_url", value: videoUrl },
     ].map((r) => ({ ...r, updated_at: new Date().toISOString() }));
     const { error } = await supabase.from("settings").upsert(rows, { onConflict: "key" });
     if (error) return { ok: false, error: "save_failed" };
@@ -293,6 +298,102 @@ export async function setUserSuspended(targetId: string, suspended: boolean): Pr
     await audit(supabase, userId, suspended ? "user_suspended" : "user_restored", targetId);
     revalidatePath("/admin/users");
     revalidatePath("/admin/ads");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+// ========== Website: module switches, notify lists, testimonials (brief §7/§8) ==========
+
+const moduleSchema = z.object({ live: z.boolean(), url: z.string().trim().max(200) });
+
+/** Switch future modules on/off. A module can only go live with a same-site link. */
+export async function saveWebsiteModules(input: Record<string, { live: boolean; url: string }>): Promise<AdminActionState> {
+  const out: Record<string, { live: boolean; url: string }> = {};
+  for (const key of MODULE_KEYS) {
+    const parsed = moduleSchema.safeParse(input[key]);
+    if (!parsed.success) return { ok: false, error: "invalid" };
+    const url = parsed.data.url === "" ? "" : safeModuleUrl(parsed.data.url);
+    if (parsed.data.url !== "" && url === "") return { ok: false, error: "invalid_url" };
+    if (parsed.data.live && url === "") return { ok: false, error: "url_required" };
+    out[key] = { live: parsed.data.live, url };
+  }
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("settings").upsert({ key: "website_modules", value: out, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "website_modules_saved", "settings", out);
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+/** Delete the "Notify me" list for a module (after the announcement went out). */
+export async function clearModuleInterest(moduleKey: string): Promise<AdminActionState> {
+  if (!isModuleKey(moduleKey)) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("module_interest").delete().eq("module", moduleKey);
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "module_interest_cleared", moduleKey);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+const testimonialSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  role: z.string().trim().max(80),
+  city: z.string().trim().max(80),
+  quote: z.string().trim().min(1).max(600),
+  consent: z.literal(true),
+  published: z.boolean(),
+});
+export type TestimonialInput = z.input<typeof testimonialSchema>;
+
+/** Add a REAL testimonial. Consent is required; nothing is ever pre-filled. */
+export async function addTestimonial(input: TestimonialInput): Promise<AdminActionState> {
+  const parsed = testimonialSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { name, role, city, quote, published } = parsed.data;
+    const { error } = await supabase.from("testimonials").insert({ name, role: role || null, city: city || null, quote, consent: true, published, created_by: userId });
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "testimonial_added", name, { published });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+export async function setTestimonialPublished(id: string, published: boolean): Promise<AdminActionState> {
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("testimonials").update({ published }).eq("id", id);
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, published ? "testimonial_published" : "testimonial_hidden", id);
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: errorCode(err) };
+  }
+}
+
+export async function deleteTestimonial(id: string): Promise<AdminActionState> {
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "invalid" };
+  try {
+    const { supabase, userId } = await requireAdmin();
+    const { error } = await supabase.from("testimonials").delete().eq("id", id);
+    if (error) return { ok: false, error: "save_failed" };
+    await audit(supabase, userId, "testimonial_deleted", id);
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

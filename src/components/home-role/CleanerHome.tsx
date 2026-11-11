@@ -100,7 +100,7 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
               <li key={r.id}>
                 <Link href={convOf.get(r.household_id) ? `/messages/${convOf.get(r.household_id)}` : "/messages"} className="flex items-center justify-between px-4 py-3 hover:bg-section">
                   <span><span className="font-bold text-ink">{nameOf.get(r.household_id) ?? "—"}</span><span className="ml-2 text-sm text-ink/70">{t(`type_${r.type}` as "type_in_person")}</span></span>
-                  <span className="rounded-full bg-sun px-3 py-1 text-xs font-bold text-ink">{t("respond")}</span>
+                  <span className="rounded-full bg-sun px-3 py-1 text-xs font-bold text-white">{t("respond")}</span>
                 </Link>
               </li>
             ))}

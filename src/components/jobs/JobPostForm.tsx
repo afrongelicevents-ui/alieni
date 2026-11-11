@@ -207,7 +207,7 @@ export function JobPostForm({ units, initialFrequency = "weekly" }: { units: Job
       <p className="rounded-xl bg-mint p-3 text-xs text-ink/80">{t("payNote")}</p>
       {errors.submit ? <p className="text-sm font-semibold text-red-700">{errors.submit}</p> : null}
 
-      <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark disabled:opacity-50">
+      <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-white hover:bg-sun-dark disabled:opacity-50">
         {busy ? t("posting") : t("submit")}
       </button>
     </form>

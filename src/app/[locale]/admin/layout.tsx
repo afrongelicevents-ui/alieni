@@ -41,6 +41,7 @@ export default async function AdminLayout({ children, params }: { children: Reac
     { href: "/admin/users", key: "tabUsers" },
     { href: "/admin/ads", key: "tabAds" },
     { href: "/admin/media", key: "tabMedia" },
+    { href: "/admin/testimonials", key: "tabTestimonials" },
     { href: "/admin/payments", key: "tabPayments" },
     { href: "/admin/settings", key: "tabSettings" },
   ] as const;

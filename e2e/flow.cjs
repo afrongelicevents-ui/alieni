@@ -67,11 +67,11 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   ok("Storage: file stored in site-media bucket + row in site_media", st2.objects.length === 1 && siteMedia.length === 1, JSON.stringify({ objects: st2.objects, rows: siteMedia.map((r) => r.slot) }));
   await page.screenshot({ path: `${OUT}/03-after-upload.png`, fullPage: true });
 
-  // 6. Home shows uploaded hero (desktop width, hero is hidden on phones by design)
+  // 6. Home shows the uploaded hero photo instead of the bundled cut-out
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const dpage = await desk.newPage();
   await dpage.goto(`${APP}/en`, { waitUntil: "networkidle" });
-  const heroSrc = await dpage.locator("section img[src*='storage'], section img[src*='_next/image']").first().getAttribute("src").catch(() => null);
+  const heroSrc = await dpage.locator("section img[src*='site-media']").first().getAttribute("src").catch(() => null);
   ok("Home: hero image now comes from storage (uploaded photo)", Boolean(heroSrc && decodeURIComponent(heroSrc).includes("site-media")), heroSrc || "no img");
   await dpage.screenshot({ path: `${OUT}/04-home-desktop.png` });
   await desk.close();

@@ -1,14 +1,10 @@
-# Marketing images (fallbacks)
+# Marketing images
 
-The owner uploads site photos from **Admin → Foto's** (stored in the public
-Supabase bucket `site-media`, see migration 0014). The files in this folder
-are only the fallback used when a slot has no uploaded photo yet:
+Real stock photos (Pexels licence — free for commercial use, no attribution
+required; credits are kept in `design-review/README.md`). Not AI-generated.
 
-- hero-cleaner.webp      (portrait 3:4, max 1200px wide)
-- business-airbnb.webp   (3:2, max 1600px wide)
-- business-hotel.webp
-- business-restaurant.webp
-- business-office.webp
-- business-school.webp
+- `site/` — homepage photos, configured in `src/lib/design-images.ts`
+- `hero-cleaner.webp`, `business-*.webp` — fallbacks for the Admin → Photos
+  slots (the owner's uploads, stored in Supabase, take priority)
 
-Illustrative AI-generated imagery — never presented as real Alieni cleaners.
+Replace any file with our own photo shoot later; keep the file name and aspect.

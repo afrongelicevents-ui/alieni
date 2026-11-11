@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_MODULES, isModuleKey, parseModules, type ModuleKey, type ModuleState } from "@/lib/site-modules";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "../supabase/server";
 import { computeKpis, type Kpis } from "./kpis";
@@ -200,7 +201,7 @@ export async function listPayments(): Promise<{ demo: boolean; payments: AdminPa
   return { demo: false, payments: rows.map((p) => ({ id: p.id, invoiceNumber: invoiceOf.get(p.id) ?? null, household: nameOf.get(p.household_id) ?? "—", cleaner: p.connection_id ? nameOf.get(cleanerOfConn.get(p.connection_id) ?? "") ?? "—" : "—", amountCents: p.amount_cents, status: statusMap[p.status] ?? "pending", paidAt: p.paid_at })) };
 }
 
-export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string };
+export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string; videoUrl: string };
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function getSettings(): Promise<{ demo: boolean; values: SettingsValues | null }> {
   const supabase = await createClient();
@@ -225,6 +226,7 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
       rateFloorEuro: euro(num(map.get("rate_floor_cents"), 1500)),
       vogMaxAgeMonths: String(num(map.get("vog_max_age_months"), 12)),
       bannedWords: Array.isArray(map.get("banned_words")) ? (map.get("banned_words") as string[]).join(", ") : "",
+      videoUrl: typeof map.get("homepage_video_url") === "string" ? (map.get("homepage_video_url") as string) : "",
     },
   };
 }
@@ -261,4 +263,24 @@ export async function listWorkRecords(): Promise<{ demo: boolean; work: AdminWor
   const { data } = await supabase.from("work_records").select("id, service_key, scheduled_start, completed_at, outcome, business_confirmed_at, notes, business_profiles ( company_name ), cleaner_profiles ( profiles!cleaner_profiles_user_id_fkey ( display_name ) )").order("scheduled_start", { ascending: false }).limit(500);
   const rows = (data ?? []) as unknown as { id: string; service_key: string; scheduled_start: string | null; completed_at: string | null; outcome: string; business_confirmed_at: string | null; notes: string | null; business_profiles: { company_name: string } | null; cleaner_profiles: { profiles: { display_name: string } | null } | null }[];
   return { demo: false, work: rows.map((r) => ({ id: r.id, business: r.business_profiles?.company_name ?? "—", cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", serviceKey: r.service_key, scheduledStart: r.scheduled_start, completedAt: r.completed_at, outcome: r.outcome, confirmedAt: r.business_confirmed_at, notes: r.notes })) };
+}
+
+// ========== Website: module switches + notify counts, testimonials ==========
+export type AdminTestimonial = { id: string; name: string; role: string | null; city: string | null; quote: string; published: boolean; created_at: string };
+
+export async function listWebsiteModules(): Promise<{ demo: boolean; modules: Record<ModuleKey, ModuleState>; interest: Partial<Record<ModuleKey, number>> }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, modules: DEFAULT_MODULES, interest: {} };
+  const { data } = await supabase.from("settings").select("value").eq("key", "website_modules").maybeSingle();
+  const interest: Partial<Record<ModuleKey, number>> = {};
+  const { data: rows } = await supabase.from("module_interest").select("module").limit(10000);
+  for (const r of (rows ?? []) as { module: string }[]) if (isModuleKey(r.module)) interest[r.module] = (interest[r.module] ?? 0) + 1;
+  return { demo: false, modules: parseModules(data?.value), interest };
+}
+
+export async function listTestimonials(): Promise<{ demo: boolean; items: AdminTestimonial[] }> {
+  const supabase = await createClient();
+  if (!supabase) return { demo: true, items: [] };
+  const { data } = await supabase.from("testimonials").select("id, name, role, city, quote, published, created_at").order("created_at", { ascending: false }).limit(200);
+  return { demo: false, items: (data ?? []) as AdminTestimonial[] };
 }

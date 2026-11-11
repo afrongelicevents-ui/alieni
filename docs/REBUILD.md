@@ -18,7 +18,7 @@ except the secrets (keys) and the data (see `BACKUP.md`). Allow about 2 hours wi
 1. supabase.com → New project, region **EU (Frankfurt)**. Save the database password in a password manager.
 2. Authentication → Sign In / Providers → Email: **Confirm email ON** for a real site.
 3. Authentication → URL configuration: Site URL = the new site URL; add `<site URL>/**` to redirect URLs.
-4. SQL Editor: run every file in `supabase/migrations/` in order, `0001_…` to `0028_…`, one file at a time.
+4. SQL Editor: run every file in `supabase/migrations/` in order, `0001_…` to `0029_…`, one file at a time.
    Paste long files in parts at a blank line. Each file is safe to run twice.
 5. Check (every column must show `t`):
    ```sql

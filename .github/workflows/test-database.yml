@@ -1,6 +1,6 @@
 name: Set up TEST database
 
-# Applies migrations 0001-0028 to the TEST Supabase project ONLY, with the Supabase CLI, then runs a check query.
+# Applies migrations 0001-0029 to the TEST Supabase project ONLY, with the Supabase CLI, then runs a check query.
 # It refuses to run against the live project. Read docs: TEST_SUPABASE_SETUP.md ("Way C").
 #
 # How it is started:
@@ -74,8 +74,8 @@ jobs:
           echo "$n migration files"
           bad=$(ls supabase/migrations | grep -vE '^[0-9]{4}_[a-z0-9_]+\.sql$' || true)
           if [ -n "$bad" ]; then echo "::error::Unexpected file names: $bad"; exit 1; fi
-          for i in $(seq -w 1 28); do ls supabase/migrations/00$i\_*.sql >/dev/null 2>&1 || { echo "::error::Migration 00$i is missing"; exit 1; }; done
-          echo "0001 to 0028 present"
+          for i in $(seq -w 1 29); do ls supabase/migrations/00$i\_*.sql >/dev/null 2>&1 || { echo "::error::Migration 00$i is missing"; exit 1; }; done
+          echo "0001 to 0029 present"
 
       - uses: supabase/setup-cli@v1
         with:
