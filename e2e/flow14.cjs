@@ -1,6 +1,7 @@
 /* Public vs private pages for a logged-out visitor (phone + desktop):
  *  1. the homepage (/, /nl, /en) and every public page open without logging in — the hero is visible on a phone;
- *     also with a leftover (broken) login cookie, and tapping the Alieni logo stays on the homepage
+ *     also with a leftover (broken) login cookie or a session that was ended elsewhere, in a fresh tab,
+ *     and tapping the Alieni logo stays on the homepage
  *  2. private pages (dashboards, chats, bookings, admin, account) send you to log in, with a return path
  *  3. after logging in you land on the page you wanted
  *  4. "Log in" / "Get started" only open the login / sign-up page when tapped
@@ -98,6 +99,33 @@ const PRIVATE = [
     await s.waitForURL((url) => /^\/en\/?$/.test(url.pathname), { timeout: 10000 }).catch(() => {});
     ok(`[${label}] with an expired login cookie the logo still opens the homepage`, /^\/en\/?$/.test(new URL(s.url()).pathname) && !onLogin(s), path(s));
     await sctx.close();
+
+    // ---------- 1c. a real session that was ended elsewhere (logout on another device, password change, clean-up) ----------
+    // Supabase Auth then refuses the session while the access token still looks valid for up to an hour.
+    const ectx = await browser.newContext(opts);
+    const e = await ectx.newPage(); track(e);
+    const eEmail = `f14.ended.${label}@example.com`;
+    await e.goto(`${APP}/en/signup?role=household`, { waitUntil: "networkidle" });
+    await e.fill("input[type=email]", eEmail);
+    const eName = e.locator("input[autocomplete='given-name']");
+    if (await eName.count()) await eName.fill("Ended");
+    await e.fill("input[type=password]", "Test-Password-123");
+    await e.getByRole("button", { name: "Create account" }).click();
+    await e.waitForURL(/\/en\/home$/, { timeout: 15000 });
+    await e.close();
+    await fetch(`${EMU}/__emu/revoke?email=${encodeURIComponent(eEmail)}`);
+    for (const start of ["/", "/en"]) {
+      const t = await ectx.newPage(); track(t); // a fresh tab
+      const res = await t.goto(`${APP}${start}`, { waitUntil: "networkidle" });
+      const th1 = (await t.locator("main h1").first().textContent().catch(() => "")) || "";
+      ok(`[${label}] session ended elsewhere: a fresh tab on ${start} opens the homepage with the hero`, res.status() === 200 && !onLogin(t) && /cleaner|schoonmaker/i.test(th1), path(t));
+      await t.goto(`${APP}/en/about`, { waitUntil: "networkidle" });
+      await t.locator("header a[aria-label='Alieni — home']").first().click();
+      await t.waitForURL((url) => /^\/en\/?$/.test(url.pathname), { timeout: 10000 }).catch(() => {});
+      ok(`[${label}] session ended elsewhere: the logo opens the homepage (${start})`, /^\/en\/?$/.test(new URL(t.url()).pathname) && !onLogin(t), path(t));
+      await t.close();
+    }
+    await ectx.close();
 
     // ---------- 3. after logging in you return to the page you wanted ----------
     const lctx = await browser.newContext(opts);

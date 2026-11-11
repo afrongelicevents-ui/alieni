@@ -138,6 +138,10 @@ table("settings").push(
   { key: "linen_addon", value: { enabled: false, price_per_unit_cents: 400 } }, { key: "vog_max_age_months", value: 12 },
 );
 
+// Sessions ended on the auth server (logout elsewhere, password change, clean-up). Like real Supabase, Auth then
+// refuses the session (getUser / refresh) while PostgREST still accepts the unexpired access token.
+const revokedUsers = new Set();
+
 // ---------- helpers ----------
 function b64url(buf) { return Buffer.from(buf).toString("base64").replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_"); }
 function jwt(user) {
@@ -616,17 +620,19 @@ const server = http.createServer(async (req, res) => {
   if (p === "/auth/v1/token" && req.method === "POST") {
     const { email, password, refresh_token } = json();
     if (url.searchParams.get("grant_type") === "refresh_token") {
-      const u = [...users.values()][0];
+      const u = [...users.values()].find((x) => !revokedUsers.has(x.id));
       return u ? send(res, 200, session(u)) : send(res, 400, { error: "invalid_grant" });
     }
     const u = users.get(String(email || "").toLowerCase());
     if (!u || u.password !== password) return send(res, 400, { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" });
+    revokedUsers.delete(u.id); // a new login is a new, valid session
     void refresh_token;
     return send(res, 200, session(u));
   }
   if (p === "/auth/v1/user" && req.method === "GET") {
     const u = userFromAuth(req);
     if (!u) return send(res, 401, { code: 401, error_code: "bad_jwt", msg: "invalid JWT" });
+    if (revokedUsers.has(u.id)) return send(res, 403, { code: 403, error_code: "session_not_found", msg: "Session from session_id claim in JWT does not exist" });
     return send(res, 200, userJson(u));
   }
   if (p === "/auth/v1/logout") return send(res, 204, "");
@@ -678,7 +684,8 @@ const server = http.createServer(async (req, res) => {
   // ---- introspection for the test ----
   if (p === "/__emu/state") return send(res, 200, { users: [...users.values()].map((u) => ({ email: u.email, role: roleOf(u.id) })), tables: Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])), objects: [...objects.keys()], log: log.slice(-40) });
   if (p === "/__emu/table") return send(res, 200, table(url.searchParams.get("name") || ""));
-  if (p === "/__emu/reset") { users.clear(); objects.clear(); log.length = 0; for (const k of Object.keys(tables)) if (k !== "settings") delete tables[k]; seedCatalog(); return send(res, 200, { ok: true }); }
+  if (p === "/__emu/revoke") { const u = users.get(String(url.searchParams.get("email") || "").toLowerCase()); if (u) revokedUsers.add(u.id); return send(res, u ? 200 : 404, { ok: Boolean(u) }); }
+  if (p === "/__emu/reset") { revokedUsers.clear(); users.clear(); objects.clear(); log.length = 0; for (const k of Object.keys(tables)) if (k !== "settings") delete tables[k]; seedCatalog(); return send(res, 200, { ok: true }); }
   return send(res, 404, { error: `unhandled ${req.method} ${p}` });
 });
 server.listen(PORT, () => console.log(`supa-emu on ${PORT}`));
