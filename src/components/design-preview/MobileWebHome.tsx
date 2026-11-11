@@ -57,7 +57,7 @@ function Hero({ c, showVideo }: { c: PreviewCopy; showVideo: boolean }) {
         </h1>
         <p className="mt-4 max-w-[56%] text-[14px] leading-relaxed text-white/90 [text-shadow:0_1px_10px_rgba(7,22,56,0.8)]">{c.hero.text}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <a href="#" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-royal px-6 text-[15px] font-bold shadow-[0_10px_24px_-10px_rgba(46,139,255,0.9)]">
+          <a href="#" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-royal px-6 text-[15px] font-bold">
             {c.hero.find} <Icon name="arrow" className="h-5 w-5" />
           </a>
           {showVideo ? (
@@ -126,25 +126,20 @@ function About({ c }: { c: PreviewCopy }) {
 function Why({ c }: { c: PreviewCopy }) {
   return (
     <section className="mt-8 px-4">
-      <div className="relative overflow-hidden rounded-[22px] bg-navy px-5 pb-28 pt-6 text-white">
-        <div className="absolute inset-x-0 bottom-0 h-28">
-          <DesignImage name="skyline" alt="" fill sizes="100vw" className="object-cover object-bottom" />
-          <div className="absolute inset-0 bg-gradient-to-b from-navy via-navy/30 to-transparent" />
-        </div>
+      <div className="relative overflow-hidden rounded-[22px] bg-navy px-5 pb-6 pt-6 text-white">
         <div className="relative">
-          <p className="eyebrow text-[11px] text-white/85">{c.why.eyebrow}</p>
-          <h2 className="headline mt-2 text-[1.85rem]">
+          <h2 className="headline text-[1.85rem]">
             {c.why.pre} <span className="text-bright">{c.why.accent}</span>
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-white/85">{c.why.text}</p>
-          <ul className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10">
+          <dl className="mt-4 divide-y divide-white/15">
             {c.why.items.map((i) => (
-              <li key={i.t} className="flex flex-col items-center gap-2 bg-navy px-2 py-4 text-center text-[13px] font-semibold leading-snug">
-                <Icon name={i.icon as IconName} className="h-8 w-8 text-bright" />
-                {i.t}
-              </li>
+              <div key={i.t} className="py-3.5">
+                <dt className="font-bold leading-snug">{i.t}</dt>
+                <dd className="mt-1 text-[13px] leading-relaxed text-white/75">{i.d}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
           <a href="#" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-6 text-[15px] font-bold text-navy">
             {c.why.cta} <Icon name="arrow" className="h-5 w-5" />
           </a>
@@ -157,16 +152,12 @@ function Why({ c }: { c: PreviewCopy }) {
 function Explore({ c }: { c: PreviewCopy }) {
   return (
     <section className="mt-12 px-4">
-      <div className="flex items-center justify-center gap-4">
-        <span className="h-0.5 w-8 rounded bg-royal" />
-        <p className="text-sm font-bold uppercase tracking-[0.18em] text-navy">{c.explore.mobileEyebrow}</p>
-        <span className="h-0.5 w-8 rounded bg-royal" />
-      </div>
-      <h2 className="headline mt-2 text-center text-[1.45rem] leading-tight">{c.explore.mobileTitle}</h2>
+      <p className="text-sm font-bold text-royal">{c.explore.mobileEyebrow}</p>
+      <h2 className="headline mt-1 text-[1.45rem] leading-tight">{c.explore.mobileTitle}</h2>
       <ul className="mt-6 grid grid-cols-2 gap-3">
         {c.explore.cards.map((card) => (
           <li key={card.t}>
-            <a href="#" className="group block overflow-hidden rounded-2xl border border-edge bg-white shadow-[0_8px_20px_-16px_rgba(11,31,75,0.4)]">
+            <a href="#" className="group block overflow-hidden rounded-2xl border border-edge bg-white">
               <div className="relative aspect-[2/1]">
                 <DesignImage name={card.img as DesignImageKey} alt="" fill sizes="45vw" className="object-cover" />
                 {card.soon ? <SoonBadge label={c.soon} className="absolute left-2 top-2" /> : null}
@@ -194,7 +185,7 @@ function Business({ c }: { c: PreviewCopy }) {
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-tint text-royal">
             <Icon name="building" className="h-6 w-6" />
           </span>
-          <p className="eyebrow text-[11px] text-royal before:hidden">{c.biz.eyebrow}</p>
+          <p className="text-sm font-bold text-royal">{c.biz.eyebrow}</p>
         </div>
         <h2 className="headline mt-3 text-[1.45rem] leading-tight">{c.biz.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-body">{c.biz.mobileText}</p>

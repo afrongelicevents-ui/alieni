@@ -46,15 +46,15 @@ export const en = {
     pre: "Your Complete",
     accent: "Cleaning",
     post: "Solution",
-    text: "Find trusted cleaners, discover professional services, and explore the full cleaning ecosystem — all in one place.",
+    text: "Find independent cleaners near you, see their rate and reviews, and meet them before you agree on anything.",
     find: "Find a Cleaner",
     explore: "Explore Alieni",
     video: "Watch Video",
   },
   trust: [
-    { icon: "person", t: "Independent professionals" },
-    { icon: "bolt", t: "Easy Booking & Management" },
-    { icon: "handshake", t: "Business Solutions" },
+    { icon: "person", t: "Free for cleaners" },
+    { icon: "scale", t: "From €15 an hour" },
+    { icon: "chat", t: "Meet first, then decide" },
     { icon: "star", t: "Real reviews" },
   ],
   searchBar: { placeholder: "Search for cleaners, services or businesses…", button: "Search", label: "Search Alieni" },
@@ -69,7 +69,7 @@ export const en = {
   soon: "Coming soon",
   explore: {
     title: "Explore Alieni",
-    subtitle: "A complete platform for the cleaning industry",
+    subtitle: "Everything around cleaning, in one place. Some parts are still being built.",
     mobileEyebrow: "Explore Alieni",
     mobileTitle: "A complete ecosystem for the cleaning industry",
     cards: [
@@ -84,20 +84,20 @@ export const en = {
   about: {
     eyebrow: "About Alieni",
     title: "More than just a cleaning platform",
-    text: "Alieni connects households, businesses and professionals within the cleaning industry — creating opportunities, simplifying access and building a cleaner, healthier community.",
+    text: "Alieni is a Dutch marketplace for cleaning. Households and businesses find independent cleaners directly. Cleaners set their own rate and keep all of it — we never take a cut of anyone's wage.",
     cta: "Learn More",
   },
   why: {
     eyebrow: "Why choose Alieni?",
     pre: "Simple. Convenient.",
     accent: "Fair.",
-    text: "A smarter way to find services, grow your business and be part of the cleaning industry.",
+    text: "No agency in between, no small print. This is how it works.",
     cta: "Get Started Today",
     items: [
-      { icon: "person", t: "Independent professionals", d: "Cleaners set their own rates and hours." },
-      { icon: "bolt", t: "Easy Booking & Management", d: "Messages, meetings and agreements in one place." },
-      { icon: "users", t: "Business Opportunities", d: "Work for cleaners, cover for businesses." },
-      { icon: "star", t: "Real reviews", d: "Only from people who actually met." },
+      { icon: "person", t: "Cleaners pay nothing", d: "Placing an ad is free. Cleaners keep 100% of their rate." },
+      { icon: "chat", t: "Meet before you agree", d: "Phone numbers stay hidden in the chat until you both confirm." },
+      { icon: "calendar", t: "€14.95 a month — only after a deal", d: "Households pay once both sides confirm. Cancel any month." },
+      { icon: "shield", t: "We don't store addresses", d: "No home addresses, no bank details. Postcode searches aren't saved." },
     ],
   },
   biz: {
@@ -115,7 +115,7 @@ export const en = {
     points: ["Free for cleaners, always", "You keep 100% of what you earn", "You decide who you work for"],
     cta: "Place your ad",
   },
-  banner: { pre: "Together for a", accent: "Cleaner Tomorrow", text: "Join households, businesses and professionals across the Netherlands.", cta: "Get Started Today" },
+  banner: { pre: "Cleaning sorted,", accent: "no middleman.", text: "Join households, businesses and professionals across the Netherlands.", cta: "Get Started Today" },
   footer: {
     about: "Alieni connects households and businesses with independent cleaners in the Netherlands.",
     cols: [
@@ -171,15 +171,15 @@ export const nl: PreviewCopy = {
     pre: "Jouw complete",
     accent: "schoonmaak",
     post: "oplossing",
-    text: "Vind schoonmakers, ontdek professionele diensten en verken de hele schoonmaakwereld — alles op één plek.",
+    text: "Vind zelfstandige schoonmakers bij jou in de buurt, zie hun tarief en reviews, en maak eerst kennis voordat je iets afspreekt.",
     find: "Vind een schoonmaker",
     explore: "Ontdek Alieni",
     video: "Bekijk video",
   },
   trust: [
-    { icon: "person", t: "Zelfstandige professionals" },
-    { icon: "bolt", t: "Makkelijk boeken & beheren" },
-    { icon: "handshake", t: "Zakelijke oplossingen" },
+    { icon: "person", t: "Gratis voor schoonmakers" },
+    { icon: "scale", t: "Vanaf €15 per uur" },
+    { icon: "chat", t: "Eerst kennismaken" },
     { icon: "star", t: "Echte reviews" },
   ],
   searchBar: { placeholder: "Zoek schoonmakers, diensten of bedrijven…", button: "Zoeken", label: "Zoeken op Alieni" },
@@ -194,7 +194,7 @@ export const nl: PreviewCopy = {
   soon: "Binnenkort",
   explore: {
     title: "Ontdek Alieni",
-    subtitle: "Een compleet platform voor de schoonmaakbranche",
+    subtitle: "Alles rond schoonmaak op één plek. Een deel bouwen we nog.",
     mobileEyebrow: "Ontdek Alieni",
     mobileTitle: "Een compleet ecosysteem voor de schoonmaakbranche",
     cards: [
@@ -209,20 +209,20 @@ export const nl: PreviewCopy = {
   about: {
     eyebrow: "Over Alieni",
     title: "Meer dan een schoonmaakplatform",
-    text: "Alieni verbindt huishoudens, bedrijven en professionals in de schoonmaakbranche — we creëren kansen, maken toegang eenvoudig en bouwen aan een schonere, gezondere community.",
+    text: "Alieni is een Nederlandse marktplaats voor schoonmaak. Huishoudens en bedrijven vinden direct een zelfstandige schoonmaker. Schoonmakers bepalen zelf hun tarief en houden dat helemaal — wij houden niets in op iemands loon.",
     cta: "Meer weten",
   },
   why: {
     eyebrow: "Waarom Alieni?",
     pre: "Eenvoudig. Handig.",
     accent: "Eerlijk.",
-    text: "Een slimmere manier om diensten te vinden, je bedrijf te laten groeien en deel uit te maken van de schoonmaakbranche.",
+    text: "Geen bureau ertussen, geen kleine lettertjes. Zo werkt het.",
     cta: "Begin vandaag",
     items: [
-      { icon: "person", t: "Zelfstandige professionals", d: "Schoonmakers bepalen zelf tarief en uren." },
-      { icon: "bolt", t: "Makkelijk boeken & beheren", d: "Berichten, afspraken en kennismakingen op één plek." },
-      { icon: "users", t: "Zakelijke kansen", d: "Werk voor schoonmakers, vervanging voor bedrijven." },
-      { icon: "star", t: "Echte reviews", d: "Alleen van mensen die elkaar echt ontmoet hebben." },
+      { icon: "person", t: "Schoonmakers betalen niets", d: "Een advertentie plaatsen is gratis. Je houdt 100% van je tarief." },
+      { icon: "chat", t: "Eerst kennismaken", d: "Telefoonnummers blijven verborgen in de chat tot jullie allebei bevestigen." },
+      { icon: "calendar", t: "€14,95 per maand — pas na een afspraak", d: "Huishoudens betalen pas als beide kanten bevestigen. Maandelijks opzegbaar." },
+      { icon: "shield", t: "Wij bewaren geen adressen", d: "Geen huisadressen, geen bankgegevens. Zoekopdrachten op postcode worden niet opgeslagen." },
     ],
   },
   biz: {
@@ -240,7 +240,7 @@ export const nl: PreviewCopy = {
     points: ["Altijd gratis voor schoonmakers", "Je houdt 100% van wat je verdient", "Jij bepaalt voor wie je werkt"],
     cta: "Plaats je advertentie",
   },
-  banner: { pre: "Samen voor een", accent: "schonere toekomst", text: "Sluit je aan bij huishoudens, bedrijven en professionals in heel Nederland.", cta: "Begin vandaag" },
+  banner: { pre: "Schoonmaak geregeld,", accent: "zonder tussenpersoon.", text: "Sluit je aan bij huishoudens, bedrijven en professionals in heel Nederland.", cta: "Begin vandaag" },
   footer: {
     about: "Alieni verbindt huishoudens en bedrijven met zelfstandige schoonmakers in Nederland.",
     cols: [

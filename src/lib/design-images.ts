@@ -7,7 +7,6 @@ export const DESIGN_IMAGES = {
   heroCutout: { src: "/img/design/hero-cleaner-cutout.webp", width: 800, height: 896 },
   heroInterior: { src: "/img/design/hero-interior.webp", width: 900, height: 1341 },
   aboutLiving: { src: "/img/design/about-living.webp", width: 600, height: 660 },
-  skyline: { src: "/img/design/skyline.webp", width: 1206, height: 288 },
   catFindCleaners: { src: "/img/design/cat-find-cleaners.webp", width: 348, height: 174 },
   catCompanies: { src: "/img/design/cat-companies.webp", width: 350, height: 174 },
   catSuppliers: { src: "/img/design/cat-suppliers.webp", width: 350, height: 174 },

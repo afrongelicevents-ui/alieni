@@ -73,7 +73,7 @@ function Hero({ c }: { c: PreviewCopy }) {
           </h1>
           <p className="mt-5 max-w-[34rem] text-lg leading-relaxed text-body">{c.hero.text}</p>
           <div className="mt-8 flex flex-wrap gap-4">
-            <a href="#" className="inline-flex min-h-[52px] items-center gap-2 rounded-full bg-royal px-7 text-base font-bold text-white shadow-[0_10px_24px_-10px_rgba(22,103,224,0.8)] hover:bg-royal-dark">
+            <a href="#" className="inline-flex min-h-[52px] items-center gap-2 rounded-full bg-royal px-7 text-base font-bold text-white  hover:bg-royal-dark">
               {c.hero.find} <Icon name="arrow" className="h-5 w-5" />
             </a>
             <a href="#explore" className="inline-flex min-h-[52px] items-center gap-2 rounded-full border-[1.5px] border-navy bg-white/70 px-7 text-base font-bold text-navy hover:bg-tint">
@@ -82,7 +82,7 @@ function Hero({ c }: { c: PreviewCopy }) {
           </div>
 
           {/* trust strip overlapping the hero's bottom-left */}
-          <ul className="mt-12 grid max-w-[52rem] grid-cols-[1fr_1.15fr_1fr_0.9fr] divide-x divide-edge rounded-2xl border border-white bg-tint/90 px-2 py-4 shadow-[0_14px_34px_-18px_rgba(11,31,75,0.35)] backdrop-blur">
+          <ul className="mt-12 grid max-w-[52rem] grid-cols-[1fr_1.15fr_1fr_0.9fr] divide-x divide-edge rounded-2xl border border-edge bg-white/95 px-2 py-4">
             {c.trust.map((t) => (
               <li key={t.t} className="flex items-center gap-3 px-4 text-[13px] font-semibold leading-snug text-navy">
                 <Icon name={t.icon as IconName} className="h-8 w-8 shrink-0 text-royal" />
@@ -101,7 +101,7 @@ function Hero({ c }: { c: PreviewCopy }) {
             height={DESIGN_IMAGES.heroCutout.height}
             priority
             sizes="(min-width: 1024px) 520px, 0px"
-            className="absolute bottom-0 right-[6%] h-auto w-[min(520px,92%)] drop-shadow-[0_20px_30px_rgba(11,31,75,0.25)]"
+            className="absolute bottom-0 right-[6%] h-auto w-[min(520px,92%)] "
           />
         </div>
       </div>
@@ -118,17 +118,17 @@ function Explore({ c }: { c: PreviewCopy }) {
   return (
     <section id="explore" className="bg-[#F7FAFE] pb-20 pt-10">
       <div className="mx-auto max-w-[1360px] px-6 lg:px-10">
-        <div className="flex items-center gap-6">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-royal/40" />
-          <h2 className="headline text-center text-[2.4rem] text-navy">{c.explore.title}</h2>
-          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-royal/40" />
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-edge pb-6">
+          <div>
+            <h2 className="headline text-[2.4rem] text-navy">{c.explore.title}</h2>
+            <p className="mt-1 text-lg text-body">{c.explore.subtitle}</p>
+          </div>
         </div>
-        <p className="mt-1 text-center text-lg text-body">{c.explore.subtitle}</p>
 
         <ul className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {c.explore.cards.map((card) => (
             <li key={card.t}>
-              <a href="#" className="group flex h-[104px] items-center overflow-hidden rounded-[18px] border border-edge bg-white shadow-[0_8px_24px_-16px_rgba(11,31,75,0.35)] transition-shadow hover:shadow-[0_14px_30px_-14px_rgba(11,31,75,0.4)]">
+              <a href="#" className="group flex h-[104px] items-center overflow-hidden rounded-[14px] border border-edge bg-white transition-colors hover:border-royal">
                 <div className="relative h-full w-[38%] shrink-0">
                   <DesignImage name={card.img as DesignImageKey} alt="" fill sizes="200px" className="object-cover" />
                   {card.soon ? <SoonBadge label={c.soon} className="absolute left-2 top-2" /> : null}
@@ -156,23 +156,19 @@ function Why({ c }: { c: PreviewCopy }) {
     <section className="bg-white py-20">
       <div className="mx-auto grid max-w-[1360px] items-start gap-12 px-6 lg:grid-cols-[1fr_2fr] lg:px-10">
         <div>
-          <p className="eyebrow text-royal">{c.why.eyebrow}</p>
-          <h2 className="headline mt-3 text-[2.6rem] text-navy">
+          <h2 className="headline text-[2.6rem] text-navy">
             {c.why.pre} <span className="text-royal">{c.why.accent}</span>
           </h2>
           <p className="mt-4 max-w-sm text-lg text-body">{c.why.text}</p>
         </div>
-        <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <dl className="grid gap-x-12 sm:grid-cols-2">
           {c.why.items.map((i) => (
-            <li key={i.t} className="rounded-[18px] border border-edge bg-tint/60 p-6">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-royal shadow-sm">
-                <Icon name={i.icon as IconName} className="h-6 w-6" />
-              </span>
-              <h3 className="mt-4 text-base font-bold leading-snug text-navy">{i.t}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-body">{i.d}</p>
-            </li>
+            <div key={i.t} className="border-t-2 border-navy py-6">
+              <dt className="text-xl font-extrabold leading-snug tracking-[-0.01em] text-navy">{i.t}</dt>
+              <dd className="mt-2 text-[15px] leading-relaxed text-body">{i.d}</dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       </div>
     </section>
   );
@@ -188,17 +184,14 @@ function BusinessAndCommunity({ c }: { c: PreviewCopy }) {
       <div className="mx-auto grid max-w-[1360px] gap-6 px-6 lg:grid-cols-2 lg:px-10">
         {blocks.map(({ b, dark }) => (
           <div key={b.title} className={`relative overflow-hidden rounded-[22px] p-10 ${dark ? "bg-navy text-white" : "border border-edge bg-white text-navy"}`}>
-            {dark ? <HeroSwoosh variant="dark" className="absolute -right-10 top-0 h-full w-1/3 opacity-60" /> : null}
             <div className="relative">
-              <p className={`eyebrow ${dark ? "text-bright" : "text-royal"}`}>{b.eyebrow}</p>
-              <h2 className="headline mt-3 max-w-md text-[2rem]">{b.title}</h2>
+              <p className={`text-sm font-bold ${dark ? "text-bright" : "text-royal"}`}>{b.eyebrow}</p>
+              <h2 className="headline mt-2 max-w-md text-[2rem]">{b.title}</h2>
               <p className={`mt-3 max-w-md ${dark ? "text-white/80" : "text-body"}`}>{b.text}</p>
               <ul className="mt-6 space-y-3">
                 {b.points.map((p) => (
                   <li key={p} className="flex items-center gap-3 font-semibold">
-                    <span className={`flex h-7 w-7 items-center justify-center rounded-full ${dark ? "bg-royal text-white" : "bg-tint text-royal"}`}>
-                      <Icon name="check" className="h-4 w-4" />
-                    </span>
+                    <Icon name="check" className={`h-5 w-5 shrink-0 ${dark ? "text-bright" : "text-royal"}`} />
                     {p}
                   </li>
                 ))}
@@ -219,12 +212,7 @@ function Banner({ c }: { c: PreviewCopy }) {
     <section className="bg-[#F7FAFE] pb-20">
       <div className="mx-auto max-w-[1360px] px-6 lg:px-10">
         <div className="relative flex min-h-[200px] items-center overflow-hidden rounded-[22px] bg-navy">
-          <div className="absolute inset-y-0 right-0 w-[56%]">
-            <DesignImage name="skyline" alt="" fill sizes="60vw" className="object-cover object-right" />
-            <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/30 to-transparent" />
-          </div>
-          <HeroSwoosh variant="dark" className="absolute left-[38%] top-0 h-full w-[18%] -scale-x-100 opacity-70" />
-          <div className="relative flex w-full flex-wrap items-center justify-between gap-6 px-12 py-10 lg:w-[62%]">
+          <div className="relative flex w-full flex-wrap items-center justify-between gap-6 px-12 py-12">
             <div>
               <h2 className="headline text-[2.3rem] text-white">
                 {c.banner.pre}
