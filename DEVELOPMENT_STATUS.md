@@ -32,10 +32,10 @@ the live database; the new database parts (14, 15, 16, 17, 18) are files in `sup
 
 | Check | Result |
 |---|---|
-| Real Postgres, fresh database (all migrations 0001-0028) | 283 / 283 |
-| Real Postgres, upgrade path (0001-0023 with data, then 0024-0028) | 453 / 453 |
+| Real Postgres, fresh database (all migrations 0001-0029) | 293 / 293 |
+| Real Postgres, upgrade path (0001-0023 with data, then 0024-0029) | 473 / 473 |
 | Parts 15 to 18 applied twice | no errors, no changes; a failing script rolls back completely |
-| Unit tests (`npm test`) | 135 passed |
+| Unit tests (`npm test`) | 141 passed |
 | Types, lint, translations (`npm run check:i18n`) | clean, 1358 keys per language, nl and en identical |
 | Browser flows 1 to 13, phone and desktop | 503 checks passed |
 | Website crawl (`e2e/audit.cjs`) | 150 pages, 0 problems |
@@ -91,6 +91,8 @@ Each of these was decided with the safest option so work could continue. Change 
 15. **Legacy price setting.** The settings row `business_unit_prices_cents` still holds the old placeholder amounts (hotel 3.00 ... school 99.00). Nothing reads it while payments are off (no Mollie key, `PAYMENTS_ACTIVE` unset); clean it up when pricing is decided.
 16. **Vercel previews need a Vercel login.** The project has "Vercel authentication" on, so only logged-in team members can open previews. Chosen: leave it on.
 17. **Tokens.** The Supabase access token and the Vercel token were saved as secrets on the Claude environment `alieni`. Delete both tokens (and remove the saved credentials from that environment) when you no longer need them.
+18. **Migration 0029 is applied to `alieni` (vfxhctncrjlbvasavluu).** Applied on 2026-11-11 (16:28 UTC), at the owner's request, as one transaction via the Supabase Management API: `0029_website_content.sql` exactly as in git (sha256 `c0c51d4f…68707`), nothing else. Before: 0024-0028 were present; the two new tables did not exist; a backup of the `settings` table (the only existing table 0029 touches, 9 rows) was taken and handed to the owner. Check afterwards: tables `testimonials` and `module_interest` with row security on and 5 policies; the 9 existing settings rows unchanged, 2 new keys (`website_modules`, `homepage_video_url`); 14/14 functional checks as admin and as anonymous visitor (inside a transaction that was rolled back, so no test rows remain). The database is now at 0001-0029. `LBH Test` was not touched. Delete the Supabase token used for this (see 17).
+19. **Why the site asked phones to log in.** The Vercel project's Deployment Protection is "Standard" (`all_except_custom_domains`): every `*.vercel.app` address (the `alieni-dev` preview and also `alieni.vercel.app`) first shows Vercel's own login; only the custom domains (`alieni.nl`, `www.alieni.nl`, `alieni.com`) open directly. The app itself opens all public pages without login (checked by `e2e/flow14.cjs`). Changing this is a Vercel setting (Settings → Deployment Protection) and the owner's decision (see 16).
 
 ## Old production code against the new database (measured)
 Production (commit 25c7d0e) was run locally against the migrated database and all four roles were driven through it; every one of its 114 database queries was also run as each role.
