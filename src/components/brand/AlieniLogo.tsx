@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 /*
  * Placeholder Alieni logo for the 2026 redesign: blue gradient "A" mark +
  * "Alieni" wordmark. This is the ONE place to swap in the final logo.
@@ -12,9 +14,12 @@ type Props = {
   className?: string;
 };
 
-export function AlieniMark({ size = 40, idSuffix = "m" }: { size?: number; idSuffix?: string }) {
-  const a = `alieni-a-${idSuffix}`;
-  const b = `alieni-b-${idSuffix}`;
+export function AlieniMark({ size = 40 }: { size?: number }) {
+  // Unique gradient ids per instance: a hidden copy (e.g. the mobile logo on
+  // desktop) must not own the gradients another copy points at.
+  const uid = useId().replace(/:/g, "");
+  const a = `alieni-a-${uid}`;
+  const b = `alieni-b-${uid}`;
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
       <defs>
@@ -40,7 +45,7 @@ export function AlieniMark({ size = 40, idSuffix = "m" }: { size?: number; idSuf
 export function AlieniLogo({ height = 40, tone = "navy", markOnly = false, className = "" }: Props) {
   return (
     <span className={`inline-flex items-center gap-2 ${className}`} aria-label="Alieni" role="img">
-      <AlieniMark size={height} idSuffix={tone} />
+      <AlieniMark size={height} />
       {markOnly ? null : (
         <span
           className={`font-extrabold tracking-[-0.04em] ${tone === "white" ? "text-white" : "text-navy"}`}

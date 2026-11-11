@@ -22,6 +22,7 @@ export type Settings = {
   rateFloorEuro: string;
   vogMaxAgeMonths: string;
   bannedWords: string;
+  videoUrl: string;
 };
 
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -37,6 +38,7 @@ const DEFAULTS: Settings = {
   rateFloorEuro: "15,00",
   vogMaxAgeMonths: "12",
   bannedWords: "",
+  videoUrl: "",
 };
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
@@ -65,7 +67,7 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
     const r = await saveSettings(settings);
     setBusy(false);
     if (r.ok) setSaved(true);
-    else setError(r.error === "invalid" ? t("settingsInvalid") : t("actionFailed"));
+    else setError(r.error === "invalid" ? t("settingsInvalid") : r.error === "invalid_video" ? t("settingVideoInvalid") : t("actionFailed"));
   }
 
   const field = (label: string, value: string, onChange: (v: string) => void, hint?: string) => (
@@ -118,6 +120,12 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
         <label className="text-sm font-semibold text-ink/80">
           {t("settingBannedWords")}
           <textarea value={settings.bannedWords} onChange={(e) => update({ bannedWords: e.target.value })} rows={3} placeholder={t("settingBannedWordsHint")} className={`mt-1 ${inputCls}`} />
+        </label>
+
+        <label className="text-sm font-semibold text-ink/80">
+          {t("settingVideo")}
+          <input type="url" inputMode="url" value={settings.videoUrl} onChange={(e) => update({ videoUrl: e.target.value })} placeholder="https://www.youtube.com/watch?v=…" className={`mt-1 ${inputCls}`} />
+          <p className="mt-1 text-xs font-medium text-ink/70">{t("settingVideoHint")}</p>
         </label>
 
         <div className="flex items-center gap-3">

@@ -20,7 +20,8 @@ const csp = [
   "font-src 'self'",
   `img-src 'self' blob: data:${supabaseOrigin ? ` ${supabaseOrigin}` : ""}`,
   `connect-src 'self'${supabaseOrigin ? ` ${supabaseOrigin} ${supabaseOrigin.replace("https://", "wss://")}` : ""} https://challenges.cloudflare.com`,
-  "frame-src https://challenges.cloudflare.com",
+  // Homepage video modal (Admin → Settings): YouTube (no-cookie) and Vimeo only.
+  "frame-src https://challenges.cloudflare.com https://www.youtube-nocookie.com https://player.vimeo.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

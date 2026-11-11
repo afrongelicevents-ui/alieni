@@ -16,7 +16,7 @@ export function HowItWorks() {
         <ol className="mt-8 grid gap-6 md:grid-cols-3">
           {steps.map((step, i) => (
             <li key={step.title} className="flex flex-col items-center gap-3 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-ink">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-white">
                 {i + 1}
               </span>
               <h3 className="text-lg font-extrabold text-ink">{step.title}</h3>

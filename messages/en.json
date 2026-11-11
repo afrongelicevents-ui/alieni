@@ -581,7 +581,7 @@
       "slot_business-restaurant": "Restaurants & cafés",
       "slot_business-office": "Offices & shops",
       "slot_business-school": "Schools & childcare",
-      "where_hero-cleaner": "Shown next to the headline on the homepage (portrait, 3:4).",
+      "where_hero-cleaner": "Homepage hero, next to the headline. Best: a portrait photo with the background removed (transparent PNG).",
       "where_business-airbnb": "Top of /business/airbnb (landscape, 3:2).",
       "where_business-hotel": "Top of /business/hotel (landscape, 3:2).",
       "where_business-restaurant": "Top of /business/restaurant (landscape, 3:2).",
@@ -682,7 +682,36 @@
     "att_unknown": "—",
     "att_came": "yes",
     "att_no_show": "no-show",
-    "colStrikes": "Strikes"
+    "colStrikes": "Strikes",
+    "tabTestimonials": "Testimonials",
+    "settingVideo": "Homepage video (YouTube or Vimeo link)",
+    "settingVideoHint": "Leave empty to hide the “Watch video” button.",
+    "settingVideoInvalid": "Use a YouTube or Vimeo link (https://…).",
+    "webModulesTitle": "Website modules",
+    "webModulesIntro": "Modules that aren't built yet show “Coming soon” and a Notify-me page. Switch one on and give the page it should open (a path on this site, e.g. /jobs).",
+    "webLive": "Live",
+    "webSoon": "Coming soon",
+    "webUrl": "Page when live",
+    "webUrlRequired": "A live module needs a page (e.g. /jobs).",
+    "webUrlInvalid": "Use a path on this site that starts with /.",
+    "webInterest": "{count, plural, =0 {No sign-ups} one {# sign-up} other {# sign-ups}}",
+    "webClear": "Delete list",
+    "webClearConfirm": "Delete all sign-ups for this module? Do this after you've sent the announcement.",
+    "testIntro": "Add only real testimonials from real customers or cleaners, with their permission. The homepage section stays hidden while none are published.",
+    "testName": "Name (as they want it shown)",
+    "testRole": "Role (e.g. Household, Cleaner)",
+    "testCity": "City",
+    "testQuote": "Quote",
+    "testConsent": "This person gave permission to show their name and quote on the website.",
+    "testPublish": "Show on the homepage",
+    "testAdd": "Add testimonial",
+    "testNone": "No testimonials yet.",
+    "testPublished": "on the homepage",
+    "testHidden": "hidden",
+    "testHide": "Hide",
+    "testShow": "Show",
+    "testDelete": "Delete",
+    "testDeleteConfirm": "Delete this testimonial?"
   },
   "jobs": {
     "title": "Cleaning jobs",
@@ -1238,5 +1267,309 @@
     "completedAt": "done {time}",
     "confirmedByBusiness": "confirmed by business",
     "noTypesNote": "You have not picked any work types yet; tick them in your profile to see matching jobs here."
+  },
+  "site": {
+    "utility": {
+      "independent": "Independent cleaners",
+      "reviews": "Real reviews",
+      "meet": "Meet first, then decide",
+      "join": "Follow Alieni"
+    },
+    "nav": {
+      "customers": "For customers",
+      "professionals": "For professionals",
+      "businesses": "For businesses",
+      "about": "About",
+      "contact": "Contact",
+      "getStarted": "Get started",
+      "search": "Search",
+      "menu": "Open menu",
+      "close": "Close menu",
+      "account": "Account",
+      "main": "Main menu"
+    },
+    "mega": {
+      "customers": [
+        {
+          "t": "Find a cleaner",
+          "d": "Independent cleaners near you",
+          "href": "/search"
+        },
+        {
+          "t": "How it works",
+          "d": "From search to first visit",
+          "href": "/about#how-it-works"
+        },
+        {
+          "t": "Emergency cover",
+          "d": "Someone needed today",
+          "href": "/emergency"
+        }
+      ],
+      "professionals": [
+        {
+          "t": "Place your ad",
+          "d": "Your ad, your rate, always free",
+          "href": "/cleaners/new"
+        },
+        {
+          "t": "Jobs from businesses",
+          "d": "Work posted by businesses",
+          "href": "/jobs"
+        },
+        {
+          "t": "Sign up as a cleaner",
+          "d": "Free account in a few minutes",
+          "href": "/signup"
+        }
+      ],
+      "businesses": [
+        {
+          "t": "Offices",
+          "d": "Regular office cleaning",
+          "href": "/business/office"
+        },
+        {
+          "t": "Hotels",
+          "d": "Rooms and turnovers",
+          "href": "/business/hotel"
+        },
+        {
+          "t": "Airbnb hosts",
+          "d": "Cleaning between guests",
+          "href": "/business/airbnb"
+        },
+        {
+          "t": "Restaurants",
+          "d": "Kitchen and dining room",
+          "href": "/business/restaurant"
+        },
+        {
+          "t": "Schools",
+          "d": "Cleaners with an approved VOG",
+          "href": "/business/school"
+        }
+      ],
+      "about": [
+        {
+          "t": "About Alieni",
+          "d": "What we do and how we earn",
+          "href": "/about"
+        },
+        {
+          "t": "Contact",
+          "d": "Questions? Get in touch",
+          "href": "/contact"
+        },
+        {
+          "t": "Report an ad",
+          "d": "Help keep Alieni safe",
+          "href": "/contact#report"
+        }
+      ]
+    },
+    "hero": {
+      "eyebrow": "Cleaner spaces. A stronger community.",
+      "line1": "Find a cleaner near you.",
+      "line2": "Meet first, then decide.",
+      "text": "Independent cleaners across the Netherlands. See their rate and reviews, meet them first, and only agree when it feels right.",
+      "find": "Find a cleaner",
+      "explore": "Explore Alieni",
+      "video": "Watch video",
+      "closeVideo": "Close video",
+      "imageAlt": "Cleaner with arms crossed, smiling"
+    },
+    "trust": [
+      "Free for cleaners",
+      "From €15 an hour",
+      "Meet first, then decide",
+      "Real reviews"
+    ],
+    "searchBar": {
+      "placeholder": "Postcode or town, e.g. 3512 Utrecht",
+      "button": "Search",
+      "label": "Search for cleaners by postcode or town"
+    },
+    "iconRow": {
+      "find": "Find cleaners",
+      "businesses": "Businesses",
+      "suppliers": "Suppliers",
+      "equipment": "Equipment",
+      "careers": "Careers",
+      "more": "More",
+      "label": "Categories"
+    },
+    "soon": "Coming soon",
+    "explore": {
+      "title": "Explore Alieni",
+      "subtitle": "What you can do on Alieni today, and what's coming next.",
+      "mobileTitle": "What you can find on Alieni"
+    },
+    "cards": {
+      "findCleaners": {
+        "t": "Find cleaners",
+        "s": "Households"
+      },
+      "companies": {
+        "t": "Cleaning companies",
+        "s": "Businesses"
+      },
+      "suppliers": {
+        "t": "Suppliers & equipment",
+        "s": "Products"
+      },
+      "linen": {
+        "t": "Linen & laundry",
+        "s": "Services"
+      },
+      "careers": {
+        "t": "Jobs & opportunities",
+        "s": "Careers"
+      },
+      "commercial": {
+        "t": "Cleaning services",
+        "s": "Commercial"
+      }
+    },
+    "about": {
+      "eyebrow": "About Alieni",
+      "title": "More than just a cleaning platform",
+      "text": "Alieni is a Dutch marketplace for cleaning. Households and businesses find independent cleaners directly. Cleaners set their own rate and keep all of it — we never take a cut of anyone's wage.",
+      "cta": "More about Alieni",
+      "imageAlt": "Cleaning supplies in a living room"
+    },
+    "why": {
+      "eyebrow": "Why Alieni",
+      "pre": "Simple. Convenient.",
+      "accent": "Fair.",
+      "text": "No agency in between, no small print. This is how it works.",
+      "cta": "Get started today",
+      "items": [
+        {
+          "t": "Cleaners pay nothing",
+          "d": "Placing an ad is free. Cleaners keep 100% of their rate."
+        },
+        {
+          "t": "Meet before you agree",
+          "d": "Phone numbers stay hidden in the chat until you both confirm."
+        },
+        {
+          "t": "{price} a month — only after a deal",
+          "d": "Households pay once both sides confirm. Cancel any month."
+        },
+        {
+          "t": "We don't store addresses",
+          "d": "No home addresses, no bank details. Postcode searches aren't saved."
+        }
+      ]
+    },
+    "biz": {
+      "eyebrow": "For businesses",
+      "title": "Clean workplaces without the hassle",
+      "text": "Offices, hotels, Airbnb hosts, restaurants and schools find independent cleaners directly.",
+      "points": [
+        "Fixed monthly fee — no commission",
+        "Cleaners keep 100% of their rate",
+        "Emergency and replacement cover"
+      ],
+      "cta": "For businesses",
+      "mobileText": "For offices, hotels, Airbnb hosts, restaurants and schools. Fixed monthly fee, no commission."
+    },
+    "community": {
+      "eyebrow": "For cleaners",
+      "title": "Your ad, your rate, always free",
+      "text": "Place your ad, choose your area and hours, and get in touch with households and businesses near you.",
+      "points": [
+        "Free for cleaners, always",
+        "You keep 100% of what you earn",
+        "You decide who you work for"
+      ],
+      "cta": "Place your ad"
+    },
+    "testimonials": {
+      "title": "What people say",
+      "consent": "Shared with permission."
+    },
+    "banner": {
+      "pre": "Cleaning sorted,",
+      "accent": "no middleman.",
+      "text": "Join households, businesses and professionals across the Netherlands.",
+      "cta": "Get started today",
+      "imageAlt": "Canal houses in Amsterdam"
+    },
+    "footer": {
+      "about": "About",
+      "customers": "Customers",
+      "professionals": "Professionals",
+      "businesses": "Businesses",
+      "company": "Company",
+      "legal": "Legal",
+      "findCleaner": "Find a cleaner",
+      "howItWorks": "How it works",
+      "emergency": "Emergency cover",
+      "placeAd": "Place your ad",
+      "jobs": "Jobs",
+      "signup": "Sign up",
+      "forBusinesses": "For businesses",
+      "businessSignup": "Business sign-up",
+      "contact": "Contact",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "report": "Report an ad",
+      "rights": "All rights reserved.",
+      "kvk": "KvK",
+      "pricing": "Household prices include 21% VAT (btw).",
+      "language": "Language",
+      "photos": "Photos: Pexels / Unsplash",
+      "intro": "Alieni connects households and businesses with independent cleaners in the Netherlands. Cleaners are self-employed, not employed by Alieni."
+    },
+    "notify": {
+      "title": "{module} is coming soon",
+      "text": "We're still building this part of Alieni. Leave your email and we'll let you know once when it opens — nothing else.",
+      "email": "Email address",
+      "consent": "I agree that Alieni stores my email address only to tell me when this opens, and deletes it afterwards (see the privacy policy).",
+      "submit": "Notify me",
+      "done": "Thanks — we'll email you once when it opens.",
+      "error": "That didn't work. Check your email address and the checkbox, and try again.",
+      "unavailable": "Sign-ups for this aren't open yet. Please try again later.",
+      "back": "Back to the homepage"
+    },
+    "modules": {
+      "suppliers": "Suppliers",
+      "equipment": "Equipment",
+      "careers": "Jobs & careers",
+      "linen": "Linen & laundry"
+    },
+    "aboutPage": {
+      "title": "About Alieni",
+      "intro": "Alieni is a Dutch online marketplace where households and businesses find independent cleaners — and cleaners find work, on their own terms.",
+      "howTitle": "How it works",
+      "steps": [
+        {
+          "t": "Search by postcode",
+          "d": "See independent cleaners near you, with their rate, availability and reviews."
+        },
+        {
+          "t": "Meet first",
+          "d": "Send a message and plan an introduction. Phone numbers stay hidden until you both confirm."
+        },
+        {
+          "t": "Agree, then pay",
+          "d": "Households pay {price} a month only after both sides confirm. Cleaners never pay. The cleaner's wage goes straight to the cleaner."
+        }
+      ],
+      "earnTitle": "How Alieni earns money",
+      "earn": "Households pay a monthly fee after a confirmed deal; businesses pay a fixed monthly fee per location, room or listing. We never take a percentage of a cleaner's wage.",
+      "notTitle": "What Alieni is not",
+      "not": "We're not an employer or a cleaning agency. Cleaners are self-employed and make their own arrangements. Alieni doesn't check ID documents or KvK numbers; only cleaners for schools show an approved VOG."
+    },
+    "contactPage": {
+      "title": "Contact",
+      "intro": "Questions about Alieni, your account or an ad?",
+      "email": "Email us at",
+      "noEmail": "Our contact address will be listed here shortly. Signed-in users can reach us from their account page.",
+      "reportTitle": "Report an ad",
+      "report": "See something wrong in an ad or a message? Open the ad and use the “Report this ad” button. We review every report and let you know the outcome."
+    }
   }
 }

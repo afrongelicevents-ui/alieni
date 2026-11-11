@@ -64,7 +64,7 @@ export default async function BusinessLandingPage({
           <ol className="mt-6 grid gap-6 md:grid-cols-3">
             {steps.map((step, i) => (
               <li key={step.title} className="flex flex-col gap-2">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-ink">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-white">
                   {i + 1}
                 </span>
                 <h3 className="text-lg font-extrabold text-ink">{step.title}</h3>

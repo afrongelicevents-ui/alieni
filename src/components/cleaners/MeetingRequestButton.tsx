@@ -59,7 +59,7 @@ export function MeetingRequestButton({ cleaner, signedIn }: { cleaner: SampleCle
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-sun px-6 py-3 font-bold text-ink transition-colors hover:bg-sun-dark"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-sun px-6 py-3 font-bold text-white transition-colors hover:bg-sun-dark"
         >
           {t("cta")}
         </button>
@@ -152,7 +152,7 @@ export function MeetingRequestButton({ cleaner, signedIn }: { cleaner: SampleCle
           type="button"
           onClick={submit}
           disabled={busy}
-          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50"
+          className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50"
         >
           {busy ? t("sending") : signedIn ? t("submit") : t("submitLogin")}
         </button>

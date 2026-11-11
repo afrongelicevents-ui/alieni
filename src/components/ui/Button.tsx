@@ -8,7 +8,7 @@ const base =
 
 const variants: Record<Variant, string> = {
   // Yellow CTAs always carry dark text (brief §9).
-  primary: "bg-sun text-ink hover:bg-sun-dark",
+  primary: "bg-sun text-white hover:bg-sun-dark",
   secondary: "border-2 border-forest text-forest hover:bg-mint",
   dark: "bg-forest text-white hover:bg-forest-dark",
 };

@@ -17,9 +17,17 @@ async function signUp(page, email, role) {
   await page.waitForLoadState("networkidle");
 }
 async function navLabels(page, mobile) {
-  return mobile
-    ? page.locator("nav.fixed a").allTextContents()
-    : page.locator("header nav.hidden a, header nav.md\\:flex a").allTextContents();
+  // Website navigation (redesign): no bottom bar. Phones use the hamburger
+  // menu; desktop uses the header's main menu (role links, or mega-menu buttons for guests).
+  if (mobile) {
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.waitForSelector("#mobile-menu");
+    const labels = await page.locator("#mobile-menu a").allTextContents();
+    await page.keyboard.press("Escape");
+    return labels.map((s) => s.trim());
+  }
+  const labels = await page.locator("header nav[aria-label='Main menu'] a, header nav[aria-label='Main menu'] button").allTextContents();
+  return labels.map((s) => s.trim());
 }
 async function accessToken(ctx) {
   const cookies = await ctx.cookies();
@@ -50,7 +58,8 @@ async function restPatch(token, table, query, body) {
     const g = await (await browser.newContext({ viewport })).newPage(); track(g);
     await g.goto(`${APP}/en`, { waitUntil: "networkidle" });
     const gnav = await navLabels(g, mobile);
-    ok(`[${label}] Guest nav: Home, Search, Jobs, Business${mobile ? ", Log in" : ""}`, gnav.includes("Home") && gnav.includes("Search") && gnav.includes("Jobs") && gnav.includes("Business"), gnav.join("|"));
+    ok(`[${label}] Guest nav: ${mobile ? "menu with Find a cleaner, Jobs from businesses, Log in" : "For customers, For professionals, For businesses, About"}`,
+      mobile ? ["Find a cleaner", "Jobs from businesses", "Log in"].every((x) => gnav.includes(x)) : ["For customers", "For professionals", "For businesses", "About"].every((x) => gnav.includes(x)), gnav.join("|"));
     await g.goto(`${APP}/en/signup`, { waitUntil: "networkidle" });
     ok(`[${label}] Sign-up starts with the three choices`, (await g.getByRole("link", { name: /looking for a cleaner for my home/ }).count()) === 1 && (await g.getByRole("link", { name: /I'm a cleaner/ }).count()) === 1 && (await g.getByRole("link", { name: /business that needs cleaning/ }).count()) === 1);
     await g.screenshot({ path: `${OUT}/f5-${suffix}-signup-choice.png` });

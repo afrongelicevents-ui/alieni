@@ -52,7 +52,7 @@ export function BusinessDashboard({ bundle, tiles, unitPriceCents }: { bundle: B
           ) : (
             <p className="mt-3 rounded-xl bg-white/10 p-3 text-xs text-white/90">{t("statementModelNone")}</p>
           )}
-          <Link href="/business/billing" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-sun px-4 text-xs font-bold text-ink">{t("statementLink")}</Link>
+          <Link href="/business/billing" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-sun px-4 text-xs font-bold text-white">{t("statementLink")}</Link>
         </section>
 
         {/* waiting on you */}

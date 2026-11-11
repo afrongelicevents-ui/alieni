@@ -1,18 +1,20 @@
 /*
- * All photography used by the redesigned marketing pages, in one place.
- * These are TEMPORARY assets cut from the design reference images; replace
- * the files (or the paths here) with our own photo shoot later.
+ * All photography on the marketing pages, in one place. Real stock photos
+ * (Pexels licence: free for commercial use) — credits in design-review/README.md.
+ * Swap a file here (or the path) when our own photo shoot is ready.
+ * The homepage hero can also be replaced from Admin → Photos.
  */
 export const DESIGN_IMAGES = {
-  heroCutout: { src: "/img/design/hero-cleaner-cutout.webp", width: 800, height: 896 },
-  heroInterior: { src: "/img/design/hero-interior.webp", width: 900, height: 1341 },
-  aboutLiving: { src: "/img/design/about-living.webp", width: 600, height: 660 },
-  catFindCleaners: { src: "/img/design/cat-find-cleaners.webp", width: 348, height: 174 },
-  catCompanies: { src: "/img/design/cat-companies.webp", width: 350, height: 174 },
-  catSuppliers: { src: "/img/design/cat-suppliers.webp", width: 350, height: 174 },
-  catLinen: { src: "/img/design/cat-linen.webp", width: 348, height: 170 },
-  catJobs: { src: "/img/design/cat-jobs.webp", width: 350, height: 170 },
-  catCommercial: { src: "/img/design/cat-commercial.webp", width: 350, height: 170 },
+  heroCutout: { src: "/img/site/hero-cleaner-cutout.webp", width: 800, height: 858 },
+  heroInterior: { src: "/img/site/hero-interior.webp", width: 900, height: 1350 },
+  aboutLiving: { src: "/img/site/about-living.webp", width: 640, height: 704 },
+  dutchStreet: { src: "/img/site/dutch-street.webp", width: 1400, height: 700 },
+  catFindCleaners: { src: "/img/site/cat-find-cleaners.webp", width: 720, height: 360 },
+  catCompanies: { src: "/img/site/cat-companies.webp", width: 720, height: 360 },
+  catSuppliers: { src: "/img/site/cat-suppliers.webp", width: 720, height: 360 },
+  catLinen: { src: "/img/site/cat-linen.webp", width: 720, height: 360 },
+  catJobs: { src: "/img/site/cat-jobs.webp", width: 720, height: 360 },
+  catCommercial: { src: "/img/site/cat-commercial.webp", width: 720, height: 360 },
 } as const;
 
 export type DesignImageKey = keyof typeof DESIGN_IMAGES;

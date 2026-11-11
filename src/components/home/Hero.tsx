@@ -27,7 +27,7 @@ export function Hero({ imageUrl }: { imageUrl: string | null }) {
               <svg viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true">
                 <path
                   d="M2 9 C 30 2, 90 2, 118 7"
-                  stroke="#F7C21B"
+                  stroke="#2E8BFF"
                   strokeWidth="5"
                   strokeLinecap="round"
                   fill="none"

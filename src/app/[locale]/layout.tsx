@@ -5,9 +5,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/layout/Header";
-import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
-import { ChromeGate } from "@/components/layout/ChromeGate";
 import "../globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -18,7 +16,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Alieni — Connect · Clean · Thrive",
+    default: "Alieni — schoonmakers bij jou in de buurt",
     template: "%s · Alieni",
   },
   description:
@@ -26,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0E4A2C",
+  themeColor: "#0B1F4B",
 };
 
 export function generateStaticParams() {
@@ -50,10 +48,9 @@ export default async function LocaleLayout({
     <html lang={locale} className={jakarta.variable}>
       <body className="font-sans">
         <NextIntlClientProvider>
-          <ChromeGate><Header /></ChromeGate>
-          <main className="pb-16 md:pb-0">{children}</main>
-          <ChromeGate><Footer /></ChromeGate>
-          <ChromeGate><BottomNav /></ChromeGate>
+          <Header />
+          <main>{children}</main>
+          <Footer />
         </NextIntlClientProvider>
       </body>
     </html>

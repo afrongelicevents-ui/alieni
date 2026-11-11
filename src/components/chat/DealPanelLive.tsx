@@ -27,7 +27,7 @@ export function DealPanelLive({ conversation }: { conversation: ConversationDeta
     router.refresh();
   }
 
-  const btnPrimary = "inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50";
+  const btnPrimary = "inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50";
   const btnGhost = "inline-flex min-h-11 items-center justify-center rounded-full border-2 border-line px-5 text-sm font-bold text-ink/70 hover:bg-section disabled:opacity-50";
 
   async function pay() {
@@ -48,7 +48,7 @@ export function DealPanelLive({ conversation }: { conversation: ConversationDeta
         <h3 className="font-extrabold text-ink">{t("pausedTitle")}</h3>
         <p className="mt-1 text-sm text-ink/80">{conversation.role === "household" ? t("pausedTextHousehold") : t("pausedTextCleaner")}</p>
         {conversation.role === "household" && conversation.paymentsEnabled ? (
-          <button type="button" disabled={busy} onClick={pay} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("payUpdateCta")}</button>
+          <button type="button" disabled={busy} onClick={pay} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">{t("payUpdateCta")}</button>
         ) : null}
         {error ? <p className="mt-2 text-sm font-semibold text-red-700">{t("error")}</p> : null}
       </div>
@@ -66,7 +66,7 @@ export function DealPanelLive({ conversation }: { conversation: ConversationDeta
             <div className="mt-3 rounded-xl bg-white p-3">
               <p className="text-sm font-semibold text-ink">{t("payTitle")}</p>
               <p className="mt-1 text-xs text-ink/70">{t("payText")}</p>
-              <button type="button" disabled={busy} onClick={pay} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("payCta")}</button>
+              <button type="button" disabled={busy} onClick={pay} className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-5 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">{t("payCta")}</button>
             </div>
           ) : (
             <p className="mt-3 rounded-xl bg-white p-3 text-xs text-ink/70">{t("payLater")}</p>

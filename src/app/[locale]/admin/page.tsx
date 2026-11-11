@@ -37,7 +37,7 @@ export default async function AdminDashboardPage({
             {pendingVog > 0 ? ` · ${t("pendingVogText", { count: pendingVog })}` : ""}
           </p>
         </div>
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-ink">{needs}</span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-white">{needs}</span>
       </Link>
 
       <h2 className="headline mt-8 text-xl text-ink">{t("kpiTitle")}</h2>

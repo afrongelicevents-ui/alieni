@@ -56,7 +56,7 @@ export function EmergencyCleanerList({ open, mine, optedIn, myRateCents, strikes
               <p className="font-extrabold text-ink">{r.city} ({r.postcode.slice(0, 4)}) · {dayOf(r.windowStart)}{timeOf(r.windowStart)}–{timeOf(r.windowEnd)} · {r.hours} {t("hoursShort")}</p>
               <p className="mt-1 text-sm text-ink/80">{r.tasks}</p>
               <p className="mt-1 text-xs text-ink/70">{myRateCents ? `${t("yourRate", { rate: formatEuro(myRateCents, lang) })} · ` : ""}{t("addressAfterAccept")}</p>
-              <button type="button" disabled={busy === r.id} onClick={() => accept(r.id)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{t("accept")}</button>
+              <button type="button" disabled={busy === r.id} onClick={() => accept(r.id)} className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-sun px-6 text-sm font-bold text-white hover:bg-sun-dark disabled:opacity-50">{t("accept")}</button>
             </li>
           ))}
         </ul>

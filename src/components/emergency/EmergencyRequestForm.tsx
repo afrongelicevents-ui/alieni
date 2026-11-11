@@ -130,7 +130,7 @@ export function EmergencyRequestForm({ active, requesterType }: { active: Active
       </p>
       <p className="text-xs text-ink/70">{t("addressNote")}</p>
       {errors.submit ? <p className="text-sm font-semibold text-red-700">{errors.submit}{errors.detail ? <span className="mt-1 block break-words font-mono text-xs font-normal text-red-700/80" data-error-detail>{errors.detail}</span> : null}</p> : null}
-      <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-ink hover:bg-sun-dark disabled:opacity-50">{busy ? t("sending") : t("submit")}</button>
+      <button type="submit" disabled={busy} className="inline-flex min-h-12 items-center justify-center rounded-full bg-sun px-8 font-bold text-white hover:bg-sun-dark disabled:opacity-50">{busy ? t("sending") : t("submit")}</button>
     </form>
   );
 }
