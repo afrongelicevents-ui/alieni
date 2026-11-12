@@ -32,7 +32,7 @@ type Draft = {
  * step 1 (Supabase Auth); the profile and units are saved through a server
  * action at the end. Signed-in users skip the account fields.
  */
-type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>>; businessPricing?: BusinessPricing };
+type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>>; businessPricing?: BusinessPricing; signupsPaused?: boolean };
 
 const subscribeNothing = () => () => {};
 const readSaved = () => { try { return window.localStorage.getItem(DRAFT_KEY); } catch { return null; } };
@@ -47,8 +47,9 @@ export function BusinessSignup(props: SignupProps) {
   return <BusinessSignupForm key={restored ? "restored" : "fresh"} {...props} restored={restored} />;
 }
 
-function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPrices = {}, businessPricing = DEFAULT_BUSINESS_PRICING, restored }: SignupProps & { restored?: Partial<Draft> }) {
+function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPrices = {}, businessPricing = DEFAULT_BUSINESS_PRICING, signupsPaused = false, restored }: SignupProps & { restored?: Partial<Draft> }) {
   const t = useTranslations("business");
+  const tAuth = useTranslations("auth");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
 
   const [step, setStep] = useState(0);
@@ -101,6 +102,10 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
     setErrors({});
     try {
       if (!signedIn && !accountCreated) {
+        if (signupsPaused) {
+          setErrors({ submit: tAuth("signupsPaused") });
+          return;
+        }
         const supabase = createClient();
         if (!supabase) {
           setErrors({ submit: t("error_not_configured") });
@@ -178,6 +183,10 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
           </li>
         ))}
       </ol>
+
+      {signupsPaused && !signedIn ? (
+        <p className="mt-6 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80" data-signup-closed="paused">{tAuth("signupsPaused")}</p>
+      ) : null}
 
       <div className="mt-6 rounded-card-lg border border-line bg-white p-6">
         {step === 0 ? (

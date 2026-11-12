@@ -9,6 +9,7 @@ import { Turnstile } from "./Turnstile";
 /**
  * Login / signup form. Fully wired to Supabase Auth — until the project
  * keys are configured it shows a friendly "not active yet" state instead.
+ * `paused` (Admin → Settings → Sign-ups, pre-launch mode) closes sign-up only; logging in keeps working.
  */
 /** Only same-site paths may be used as the post-login destination. */
 function safeNext(next: string | undefined): string | null {
@@ -16,7 +17,7 @@ function safeNext(next: string | undefined): string | null {
   return next;
 }
 
-export function AuthForm({ mode, defaultRole = "household", next }: { mode: "login" | "signup"; defaultRole?: string; next?: string }) {
+export function AuthForm({ mode, defaultRole = "household", next, paused = false }: { mode: "login" | "signup"; defaultRole?: string; next?: string; paused?: boolean }) {
   const t = useTranslations("auth");
   const supabase = createClient();
   const locale = useLocale();
@@ -28,7 +29,9 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
   const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
   const [message, setMessage] = useState("");
 
-  const active = supabase !== null;
+  const configured = supabase !== null;
+  const closed = mode === "signup" && paused;
+  const active = configured && !closed;
   const [resent, setResent] = useState(false);
 
   /** Map Supabase's technical messages to plain language (nl/en via messages). */
@@ -51,7 +54,7 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) return;
+    if (!supabase || !active) return;
     setStatus("busy");
     setMessage("");
     try {
@@ -102,8 +105,8 @@ export function AuthForm({ mode, defaultRole = "household", next }: { mode: "log
   return (
     <form onSubmit={submit} className="rounded-card-lg border border-line bg-white p-6">
       {!active ? (
-        <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80">
-          {t("notActive")}{" "}
+        <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80" data-signup-closed={configured ? "paused" : "not-configured"}>
+          {configured ? t("signupsPaused") : t("notActive")}{" "}
           <Link href="/signup?role=cleaner" className="font-bold text-forest underline">
             {t("cleanerCta")}
           </Link>

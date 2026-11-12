@@ -177,6 +177,7 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
       { key: "banned_words", value: values.bannedWords.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean) },
       { key: "homepage_video_url", value: videoUrl },
       ...(businessPricing ? [{ key: "business_pricing", value: serializeBusinessPricing(businessPricing) }] : []),
+      ...(typeof values.signupsPaused === "boolean" ? [{ key: "signups_paused", value: values.signupsPaused }] : []),
     ].map((r) => ({ ...r, updated_at: new Date().toISOString() }));
     const { error } = await supabase.from("settings").upsert(rows, { onConflict: "key" });
     if (error) return { ok: false, error: "save_failed" };

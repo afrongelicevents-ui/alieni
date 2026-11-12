@@ -307,7 +307,7 @@
     "chooseIntro": "Pick what fits you. After that you only see what matters to you.",
     "choose_household_title": "I'm looking for a cleaner for my home",
     "choose_household_text": "Search, compare, meet and agree. Free until you both confirm a deal.",
-    "choose_cleaner_title": "I'm a cleaner and I want work",
+    "choose_cleaner_title": "I'm a cleaner looking for work",
     "choose_cleaner_text": "Create your professional profile and receive requests. Always free, no commission.",
     "choose_business_title": "I'm a business that needs cleaning",
     "choose_business_text": "Airbnb, hotel, restaurant, office or school. Any price is announced before anything is charged.",
@@ -317,7 +317,8 @@
     "nameHint": "Others see this in chats and on your ad. Without a name we use a neutral label, never your e-mail address.",
     "defaultName_household": "Customer",
     "defaultName_cleaner": "Cleaner",
-    "defaultName_business": "Business"
+    "defaultName_business": "Business",
+    "signupsPaused": "Sign-ups are not open yet — we are launching soon. Already have an account? Log in. Cleaners can already prepare their ad."
   },
   "common": {
     "favourite": "Save as favourite",
@@ -807,7 +808,11 @@
     "bp_tier_add": "Add tier",
     "bp_tier_remove": "Remove",
     "bp_free": "Free for businesses",
-    "bp_invalid": "Check the business pricing: an amount or a tier is missing or invalid."
+    "bp_invalid": "Check the business pricing: an amount or a tier is missing or invalid.",
+    "signupsTitle": "Sign-ups",
+    "signupsPausedLabel": "Pre-launch mode: pause new sign-ups",
+    "signupsPausedOn": "On: the sign-up screens say “we are launching soon” and no new accounts can be created there. Logging in keeps working.",
+    "signupsPausedOff": "Off: households, cleaners and businesses can create an account."
   },
   "jobs": {
     "title": "Cleaning jobs",

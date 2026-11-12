@@ -42,3 +42,18 @@ export async function getWebsiteSettings(): Promise<WebsiteSettings> {
     return fallback;
   }
 }
+
+/**
+ * Pre-launch mode (Admin → Settings → Sign-ups): when the `signups_paused` setting is true, the sign-up screens show
+ * "we are launching soon" and create no accounts. Logging in keeps working. Missing or unreadable → sign-ups open.
+ */
+export async function getSignupsPaused(): Promise<boolean> {
+  const supabase = anon();
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "signups_paused").maybeSingle<{ value: unknown }>();
+    return !error && data?.value === true;
+  } catch {
+    return false;
+  }
+}

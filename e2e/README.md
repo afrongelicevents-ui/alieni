@@ -21,6 +21,7 @@ node e2e/flow12.cjs  # reviews, business edits, turnover release, emergency scre
 node e2e/flow13.cjs  # price-neutral copy, meeting lifecycle (propose/agree/withdraw), job report (31 checks)
 node e2e/flow14.cjs  # logged-out visitor: homepage + public pages open (phone hero), private pages → login → back (35 checks)
 node e2e/flow15.cjs  # business pricing model: per location / per job post / tiers / free — overview, type page, sign-up, homepage, About (18 checks)
+node e2e/flow16.cjs  # pre-launch mode (Admin → Settings → Sign-ups): sign-up screens closed, log-in open; cleaner sign-up eyebrow (13 checks)
 node e2e/audit.cjs   # crawls every linked page on mobile + desktop: status, console errors, overflow
 ```
 
