@@ -97,8 +97,8 @@ export function Header({ initialRole = null }: { initialRole?: NavRole | null })
       <div className="border-b border-navy bg-navy lg:border-edge lg:bg-white/95 lg:backdrop-blur">
         <div className={`mx-auto flex max-w-[1360px] items-center gap-4 px-4 transition-[padding] sm:px-6 lg:px-10 ${compact ? "py-2" : "py-2.5 lg:py-3.5"}`}>
           <Link href={homeHref} aria-label="Alieni — home" className="shrink-0">
-            <span className="lg:hidden"><AlieniLogo height={32} tone="white" /></span>
-            <span className="hidden lg:inline"><AlieniLogo height={compact ? 34 : 42} /></span>
+            <span className="flex lg:hidden"><AlieniLogo height={32} tone="white" /></span>
+            <span className="hidden lg:flex"><AlieniLogo height={compact ? 34 : 42} /></span>
           </Link>
 
           {/* Desktop navigation */}

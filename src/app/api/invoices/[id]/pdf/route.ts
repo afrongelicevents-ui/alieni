@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createClient } from "@/lib/supabase/server";
 import { companyLine } from "@/lib/company";
 import { formatEuro } from "@/lib/money";
+import { A_MARK_PATHS } from "@/components/brand/AlieniLogo";
 
 /**
  * Invoice PDF (brief v2 §4). Access is enforced by row-level security:
@@ -38,7 +39,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const draw = (text: string, x: number, y: number, size = 11, f = font, color = ink) =>
     page.drawText(text, { x, y, size, font: f, color });
 
-  draw("Alieni", 50, 780, 26, bold, forest);
+  // Logo "[A]lieni": the blue "A" mark is the first letter, at the cap height of the 26 pt wordmark, on its baseline.
+  const capH = bold.heightAtSize(26, { descender: false }) * 0.98;
+  const k = capH / 40; // the mark's glyph is 40 units tall (viewBox y 4 → 44)
+  const markX = 50 - 2.5 * k, markTop = 780 + 44 * k; // pdf-lib maps SVG y downwards from this point
+  page.drawSvgPath(A_MARK_PATHS.left, { x: markX, y: markTop, scale: k, color: rgb(0.18, 0.545, 1) });
+  page.drawSvgPath(A_MARK_PATHS.right, { x: markX, y: markTop, scale: k, color: rgb(0.086, 0.404, 0.878) });
+  page.drawSvgPath(A_MARK_PATHS.bar, { x: markX, y: markTop, scale: k, color: rgb(0.18, 0.545, 1), opacity: 0.9 });
+  draw("lieni", 50 + 43.5 * k - 0.5, 780, 26, bold, forest);
   draw("Connect · Clean · Thrive", 50, 762, 10, font, forest);
   draw(companyLine(), 50, 745, 9);
 
