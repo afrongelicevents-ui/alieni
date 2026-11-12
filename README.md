@@ -58,13 +58,8 @@ Vercel's Hobby plan allows **two** cron jobs per project, each **once a day**
 (any other `vercel.json` fails the whole deploy). So `vercel.json` schedules:
 
 - `/api/cron/business-billing` daily at 20:45 UTC (month-end direct debit)
-- `/api/cron/daily` daily at 05:17 UTC, which runs check-ins, iCal sync,
-  emergency clean-up and job housekeeping (expired jobs, next visits of regular contracts) in one go
-
-On Vercel Pro, replace the bundle with the individual routes at their intended
-frequencies: `checkins` daily, `ical-sync` `*/30 * * * *`, `emergency`
-`*/10 * * * *`, `jobs` daily. Emergency requests still expire correctly inside the app
-(`expireIfDue` runs on every read); only the clean-up is daily until then.
+- `/api/cron/daily` daily at 05:17 UTC, which runs check-ins and job housekeeping
+  (expired jobs, next visits of regular contracts) in one go
 
 ## Launch checklist (owner)
 
