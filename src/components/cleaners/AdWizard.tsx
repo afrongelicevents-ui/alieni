@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { DEFAULT_RATE_FLOOR_CENTS, dutchPostcodeSchema } from "@/lib/validation";
-import { saveCleanerAd, setAdStatus, uploadProfilePhoto, uploadVogFile, type AdActionState, type AdInput } from "@/app/[locale]/cleaners/new/actions";
+import { saveCleanerAd, setAdStatus, uploadProfilePhoto, type AdActionState, type AdInput } from "@/app/[locale]/cleaners/new/actions";
 import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type JobType, type Weekday } from "@/lib/sample-data";
 import { HOUSEHOLD_WORK_TYPES, COMMERCIAL_WORK_TYPES, type WorkType } from "@/lib/work-types";
 
@@ -18,7 +18,6 @@ export type ExistingAd = {
   adId: string;
   status: string;
   photoUrl: string | null;
-  vogStatus: string | null;
   draft: Partial<Draft>;
 };
 
@@ -33,10 +32,6 @@ type Draft = {
   workTypes: WorkType[];
   experienceYears: number | null;
   worksAs: "" | "independent" | "company";
-  vogFileName: string;
-  vogIssuedAt: string;
-  emergencyOptIn: boolean;
-  emergencyRateEuro: string;
   rateEuro: string;
   minHours: number;
   postcode: string;
@@ -55,10 +50,6 @@ const EMPTY: Draft = {
   workTypes: ["household_regular"],
   experienceYears: null,
   worksAs: "",
-  vogFileName: "",
-  vogIssuedAt: "",
-  emergencyOptIn: false,
-  emergencyRateEuro: "",
   rateEuro: "17,50",
   minHours: 2,
   postcode: "",
@@ -96,7 +87,6 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
   const [moderatedNotice, setModeratedNotice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoState, photoAction, photoBusy] = useActionState(uploadProfilePhoto, { ok: false } as AdActionState);
-  const [vogState, vogAction, vogBusy] = useActionState(uploadVogFile, { ok: false } as AdActionState);
 
   useEffect(() => {
     if (existing) return; // the database copy wins over a stale device draft
@@ -123,22 +113,15 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
     return list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
   }
 
-  const BUSINESS_ENVIRONMENTS: JobType[] = ["airbnb", "hotel", "restaurant", "office", "school"];
+  const BUSINESS_ENVIRONMENTS: JobType[] = ["airbnb", "hotel", "restaurant", "office"];
   function setScope(scope: Draft["workScope"]) {
-    const keepEmergency = draft.jobTypes.includes("emergency") ? (["emergency"] as JobType[]) : [];
     const business = draft.jobTypes.filter((j) => BUSINESS_ENVIRONMENTS.includes(j));
-    const next: JobType[] =
-      scope === "household" ? ["household", ...keepEmergency]
-      : scope === "commercial" ? [...business, ...keepEmergency]
-      : ["household", ...business, ...keepEmergency];
+    const next: JobType[] = scope === "household" ? ["household"] : scope === "commercial" ? business : ["household", ...business];
     const wt = draft.workTypes.filter((w) => (scope === "household" ? HOUSEHOLD_WORK_TYPES.includes(w) : scope === "commercial" ? COMMERCIAL_WORK_TYPES.includes(w) : true));
     persist({ ...draft, workScope: scope, jobTypes: next, workTypes: wt.length ? wt : scope === "commercial" ? ["commercial_contract"] : ["household_regular"] });
   }
   function toggleWorkType(w: WorkType) {
-    const next = toggleIn(draft.workTypes, w);
-    // the emergency opt-in and the 'emergency cover' work type are one and the same choice
-    const jobTypes = w === "emergency_cover" ? (next.includes(w) ? (draft.jobTypes.includes("emergency") ? draft.jobTypes : [...draft.jobTypes, "emergency" as JobType]) : draft.jobTypes.filter((j) => j !== "emergency")) : draft.jobTypes;
-    persist({ ...draft, workTypes: next, jobTypes });
+    persist({ ...draft, workTypes: toggleIn(draft.workTypes, w) });
   }
 
   function toggleBlock(day: Weekday, block: DayBlock) {
@@ -158,11 +141,6 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
       if (cents === null || cents < DEFAULT_RATE_FLOOR_CENTS) e.rate = t("rateError");
       if (draft.workScope !== "household" && !draft.jobTypes.some((j) => BUSINESS_ENVIRONMENTS.includes(j))) e.jobTypes = t("environmentsError");
       if (draft.workTypes.length === 0) e.workTypes = t("workTypesError");
-      if (draft.jobTypes.includes("school") && !draft.vogIssuedAt) e.vog = t("vogError");
-      if (draft.jobTypes.includes("emergency")) {
-        const em = parseRateCents(draft.emergencyRateEuro);
-        if (em === null || cents === null || em < Math.ceil(cents * 1.5)) e.emergency = t("emergencyRateError");
-      }
     }
     if (s === 2) {
       if (!dutchPostcodeSchema.safeParse(draft.postcode).success) e.postcode = t("postcodeError");
@@ -189,13 +167,11 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
       workTypes: draft.workTypes,
       experienceYears: draft.experienceYears,
       worksAs: draft.worksAs || null,
-      emergencyRateCents: parseRateCents(draft.emergencyRateEuro) ?? 0,
       rateCents: parseRateCents(draft.rateEuro) ?? 0,
       minHours: draft.minHours,
       postcode: draft.postcode,
       radiusKm: draft.radiusKm,
       availability,
-      vogIssuedAt: draft.vogIssuedAt,
       publish,
     };
   }
@@ -278,20 +254,6 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
           {!photoState.ok && photoState.error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${photoState.error}` as "error_failed")}</p> : null}
         </form>
 
-        {draft.jobTypes.includes("school") ? (
-          <form action={vogAction} className="rounded-card-lg border border-forest/30 bg-mint p-5">
-            <h3 className="font-extrabold text-ink">{t("vogLabel")}</h3>
-            <p className="mt-1 text-xs text-ink/70">{t("vogPrivacy")}</p>
-            {existing?.vogStatus ? <p className="mt-2 text-sm font-semibold text-forest">{t(`vogStatus_${existing.vogStatus}` as "vogStatus_pending")}</p> : null}
-            <input type="hidden" name="issuedAt" value={draft.vogIssuedAt} />
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <input type="file" name="file" accept="application/pdf,image/jpeg,image/png" required className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-bold file:text-forest" />
-              <button type="submit" disabled={vogBusy} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-bold text-white disabled:opacity-50">{vogBusy ? t("uploading") : t("uploadVog")}</button>
-            </div>
-            {vogState.ok ? <p className="mt-2 text-sm font-semibold text-forest">{t("vogUploaded")}</p> : null}
-            {!vogState.ok && vogState.error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${vogState.error}` as "error_failed")}</p> : null}
-          </form>
-        ) : null}
       </div>
     );
   }
@@ -425,11 +387,6 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
               </fieldset>
             ) : null}
 
-            <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 text-sm font-semibold text-ink has-[:checked]:border-forest has-[:checked]:bg-mint">
-              <input type="checkbox" checked={draft.jobTypes.includes("emergency")} onChange={() => toggleWorkType("emergency_cover")} className="h-5 w-5 accent-forest" />
-              <span>{JOB_TYPE_LABELS.emergency[locale]} <span className="block text-xs font-medium text-ink/60">{t("emergencyHint")}</span></span>
-            </label>
-
             <fieldset>
               <legend className="text-sm font-semibold text-ink/80">{t("worksAsLabel")} <span className="block text-xs font-medium text-ink/60">{t("worksAsHint")}</span></legend>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -441,31 +398,6 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
                 ))}
               </div>
             </fieldset>
-
-            {draft.jobTypes.includes("school") ? (
-              <fieldset className="rounded-xl border border-forest/30 bg-mint p-4">
-                <legend className="px-1 text-sm font-extrabold text-ink">{t("vogLabel")}</legend>
-                <p className="text-xs text-ink/70">{t("vogIntro")}</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <p className="text-xs font-semibold text-ink/80">{t("vogAfterPublish")}</p>
-                  <label className="text-xs font-semibold text-ink/80">
-                    {t("vogIssuedAt")}
-                    <input type="date" value={draft.vogIssuedAt} onChange={(e) => persist({ ...draft, vogIssuedAt: e.target.value })} className={`mt-1 ${inputCls}`} />
-                  </label>
-                </div>
-                <p className="mt-2 text-xs text-ink/70">{t("vogPrivacy")}</p>
-                {errors.vog ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.vog}</p> : null}
-              </fieldset>
-            ) : null}
-
-            {draft.jobTypes.includes("emergency") ? (
-              <label className="text-sm font-semibold text-ink/80">
-                {t("emergencyRateLabel")}
-                <input type="text" inputMode="decimal" value={draft.emergencyRateEuro} onChange={(e) => persist({ ...draft, emergencyRateEuro: e.target.value, emergencyOptIn: true })} className={`mt-1 ${inputCls}`} />
-                <p className="mt-1 text-xs font-medium text-ink/70">{t("emergencyRateHint")}</p>
-                {errors.emergency ? <p className="mt-1 text-xs font-semibold text-red-700">{errors.emergency}</p> : null}
-              </label>
-            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-semibold text-ink/80">

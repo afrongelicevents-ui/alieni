@@ -37,13 +37,12 @@ export async function GET() {
   const cleanerId = (ad as { id?: string } | null)?.id ?? null;
   const businessId = (business as { id?: string } | null)?.id ?? null;
   const mine = (...parts: (string | null)[]) => parts.filter(Boolean).join(",");
-  const [meetings, work, invoices, reviews, quotations, emergencies, feeEvents] = await Promise.all([
+  const [meetings, work, invoices, reviews, quotations, feeEvents] = await Promise.all([
     rows(supabase.from("meeting_requests").select("id, cleaner_profile_id, type, proposed_weekday, proposed_block, message, status, created_at").or(mine(`household_id.eq.${uid}`, cleanerId && `cleaner_profile_id.eq.${cleanerId}`)).limit(500)),
     rows(supabase.from("work_records").select("id, service_key, scheduled_start, scheduled_end, completed_at, outcome, notes").or(mine(`household_id.eq.${uid}`, businessId && `business_id.eq.${businessId}`, cleanerId && `cleaner_profile_id.eq.${cleanerId}`)).limit(2000)),
     rows(supabase.from("invoices").select("number, gross_cents, net_cents, btw_cents, issued_at").or(mine(`household_id.eq.${uid}`, businessId && `business_id.eq.${businessId}`)).limit(500)),
     rows(supabase.from("reviews").select("id, connection_id, subject_id, rating, body, created_at").eq("author_id", uid).limit(500)),
     cleanerId ? rows(supabase.from("job_responses").select("id, job_id, rate_cents, message, status, valid_until, created_at, decided_at").eq("cleaner_profile_id", cleanerId).limit(500)) : Promise.resolve(null),
-    rows(supabase.from("emergency_requests").select("id, requester_type, address_line, postcode, city, window_start, window_end, hours, tasks, status, accepted_by, accepted_at, fee_cents, created_at").eq("requester_id", uid).limit(500)),
     businessId ? rows(supabase.from("fee_events").select("id, service_key, event_type, reference_table, reference_id, occurred_at, model, amount_cents, btw_cents, status, created_at").eq("business_id", businessId).limit(2000)) : Promise.resolve(null),
   ]);
 
@@ -62,7 +61,6 @@ export async function GET() {
     invoices,
     reviews_written: reviews,
     quotations,
-    emergency_requests: emergencies,
     fee_events: feeEvents,
   };
   return new NextResponse(JSON.stringify(body, null, 2), {

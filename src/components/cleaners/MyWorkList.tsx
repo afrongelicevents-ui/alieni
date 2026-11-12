@@ -8,7 +8,7 @@ import { progressWork } from "@/app/[locale]/work/actions";
 
 type Row = WorkRecordRow & { company: string | null; location?: string | null };
 
-/** Cleaner's accepted turnovers / emergency jobs with start + complete buttons. */
+/** Cleaner's scheduled visits of awarded jobs, with start + complete buttons. */
 export function MyWorkList({ records }: { records: Row[] }) {
   const t = useTranslations("work");
   const tb = useTranslations("business");

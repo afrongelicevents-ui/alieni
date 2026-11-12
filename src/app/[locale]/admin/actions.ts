@@ -4,12 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { errorCode, requireUser } from "@/lib/auth";
 import { reporterUpdateEmail } from "@/lib/email";
-import { adModeratedNotice, appBaseUrl, cleanerOwnerUserId, notifyUser, vogReviewedNotice } from "@/lib/notify";
+import { adModeratedNotice, appBaseUrl, notifyUser } from "@/lib/notify";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { z } from "zod";
 import { PRICING_MODELS, SERVICE_KEYS } from "@/lib/services";
 import type { SettingsValues } from "@/lib/admin/data";
-import { MODULE_KEYS, isModuleKey, safeModuleUrl } from "@/lib/site-modules";
 import { videoEmbedUrl } from "@/lib/video";
 import { fromBusinessPricingForm, serializeBusinessPricing } from "@/lib/business-pricing";
 
@@ -90,41 +89,6 @@ export async function resolveReport(reportId: string, outcome: "hidden" | "remov
   }
 }
 
-/** Approve or reject a VOG; the database trigger deletes the file afterwards. */
-export async function reviewVog(vogId: string, status: "approved" | "rejected"): Promise<AdminActionState> {
-  try {
-    const { supabase, userId } = await requireAdmin();
-    const { data: rows, error } = await supabase.from("vog_documents").update({ status }).eq("id", vogId).select("cleaner_profile_id");
-    if (error) return { ok: false, error: "save_failed" };
-    await audit(supabase, userId, `vog_${status}`, `vog:${vogId}`);
-    // Tell the cleaner (best effort; the service role resolves the owner of the ad).
-    const profileId = rows?.[0]?.cleaner_profile_id as string | undefined;
-    const owner = profileId ? await cleanerOwnerUserId(profileId) : null;
-    if (owner) {
-      const base = await appBaseUrl();
-      await notifyUser(owner, (lang) => vogReviewedNotice(base, status === "approved", lang));
-    }
-    revalidatePath("/", "layout");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
-/** Short-lived signed URL to view a pending VOG file (admin only). */
-export async function vogSignedUrl(vogId: string): Promise<AdminActionState> {
-  try {
-    const { supabase } = await requireAdmin();
-    const { data: doc } = await supabase.from("vog_documents").select("storage_path").eq("id", vogId).maybeSingle();
-    if (!doc?.storage_path) return { ok: false, error: "no_file" };
-    const { data, error } = await supabase.storage.from("vog").createSignedUrl(doc.storage_path, 300);
-    if (error || !data) return { ok: false, error: "no_file" };
-    return { ok: true, url: data.signedUrl };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
 /** Admin takes an ad offline / puts it back. */
 export async function setAdStatusAdmin(adId: string, status: "published" | "hidden" | "removed"): Promise<AdminActionState> {
   try {
@@ -153,14 +117,8 @@ const cents = (euro: string) => {
 /** Platform settings → `settings` table (prices apply to new subscriptions). */
 export async function saveSettings(values: SettingsValues): Promise<AdminActionState> {
   const household = cents(values.householdPriceEuro);
-  const emH = cents(values.emergencyHouseholdEuro);
-  const emB = cents(values.emergencyBusinessEuro);
-  const linen = cents(values.linenPriceEuro);
   const floor = cents(values.rateFloorEuro);
-  const vogMonths = Math.round(Number(values.vogMaxAgeMonths));
-  const coverCancel = Number(values.coverCancelHours), coverStrikes = Math.round(Number(values.coverStrikeLimit)), coverDays = Math.round(Number(values.coverMaxDays));
-  if (![coverCancel, coverStrikes, coverDays].every((n) => Number.isFinite(n) && n >= 0) || coverStrikes < 1 || coverDays < 0 || coverDays > 60) return { ok: false, error: "invalid" };
-  if ([household, emH, emB, linen, floor].some((x) => x === null) || !Number.isFinite(vogMonths) || vogMonths < 1) return { ok: false, error: "invalid" };
+  if ([household, floor].some((x) => x === null)) return { ok: false, error: "invalid" };
   const videoUrl = (values.videoUrl ?? "").trim();
   if (videoUrl !== "" && !videoEmbedUrl(videoUrl)) return { ok: false, error: "invalid_video" };
   const businessPricing = values.businessPricing ? fromBusinessPricingForm(values.businessPricing) : null;
@@ -169,11 +127,7 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
     const { supabase, userId } = await requireAdmin();
     const rows = [
       { key: "household_fee_cents", value: household },
-      { key: "emergency_fee_cents", value: { household_incl_btw: emH, business_excl_btw: emB } },
-      { key: "linen_addon", value: { enabled: values.linenEnabled, price_per_unit_cents: linen } },
       { key: "rate_floor_cents", value: floor },
-      { key: "vog_max_age_months", value: vogMonths },
-      { key: "cover_rules", value: { cancel_window_hours: coverCancel, strike_limit: coverStrikes, max_days_ahead: coverDays } },
       { key: "banned_words", value: values.bannedWords.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean) },
       { key: "homepage_video_url", value: videoUrl },
       ...(businessPricing ? [{ key: "business_pricing", value: serializeBusinessPricing(businessPricing) }] : []),
@@ -308,46 +262,7 @@ export async function setUserSuspended(targetId: string, suspended: boolean): Pr
   }
 }
 
-// ========== Website: module switches, notify lists, testimonials (brief §7/§8) ==========
-
-const moduleSchema = z.object({ live: z.boolean(), url: z.string().trim().max(200) });
-
-/** Switch future modules on/off. A module can only go live with a same-site link. */
-export async function saveWebsiteModules(input: Record<string, { live: boolean; url: string }>): Promise<AdminActionState> {
-  const out: Record<string, { live: boolean; url: string }> = {};
-  for (const key of MODULE_KEYS) {
-    const parsed = moduleSchema.safeParse(input[key]);
-    if (!parsed.success) return { ok: false, error: "invalid" };
-    const url = parsed.data.url === "" ? "" : safeModuleUrl(parsed.data.url);
-    if (parsed.data.url !== "" && url === "") return { ok: false, error: "invalid_url" };
-    if (parsed.data.live && url === "") return { ok: false, error: "url_required" };
-    out[key] = { live: parsed.data.live, url };
-  }
-  try {
-    const { supabase, userId } = await requireAdmin();
-    const { error } = await supabase.from("settings").upsert({ key: "website_modules", value: out, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) return { ok: false, error: "save_failed" };
-    await audit(supabase, userId, "website_modules_saved", "settings", out);
-    revalidatePath("/", "layout");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
-/** Delete the "Notify me" list for a module (after the announcement went out). */
-export async function clearModuleInterest(moduleKey: string): Promise<AdminActionState> {
-  if (!isModuleKey(moduleKey)) return { ok: false, error: "invalid" };
-  try {
-    const { supabase, userId } = await requireAdmin();
-    const { error } = await supabase.from("module_interest").delete().eq("module", moduleKey);
-    if (error) return { ok: false, error: "save_failed" };
-    await audit(supabase, userId, "module_interest_cleared", moduleKey);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
+// ========== Website: testimonials (brief §8) ==========
 
 const testimonialSchema = z.object({
   name: z.string().trim().min(1).max(80),

@@ -13,11 +13,6 @@ export type BusinessUnitRow = {
   address_line: string;
   postcode: string;
   city: string;
-  ical_url: string | null;
-  ical_last_synced_at: string | null;
-  ical_last_error: string | null;
-  checkout_time: string;
-  checkin_time: string;
 };
 
 export type BusinessProfileRow = {
@@ -37,22 +32,6 @@ export type BusinessProfileRow = {
   billing_ended_at: string | null;
   payment_failed_at: string | null;
   created_at: string;
-};
-
-export type SlotRow = {
-  id: string;
-  unit_id: string;
-  business_id: string;
-  source: "ical" | "manual";
-  slot_date: string;
-  starts_at: string;
-  ends_at: string;
-  status: "open" | "reserved" | "done" | "cancelled";
-  reserved_by: string | null;
-  reserved_at: string | null;
-  reminder_sent_at: string | null;
-  done_at: string | null;
-  done_photo_path: string | null;
 };
 
 export type InvoiceRow = { id: string; number: string; gross_cents: number; net_cents: number; btw_cents: number; issued_at: string };
@@ -76,7 +55,6 @@ export type WorkRecordRow = {
   cleanerName?: string | null;
   job_id?: string | null;
 };
-export type EmergencyRow = { id: string; status: "searching" | "accepted" | "expired" | "cancelled"; window_start: string; window_end: string; hours: number; tasks: string; city: string; created_at: string };
 
 export type BusinessJob = {
   id: string;
@@ -96,13 +74,11 @@ export type BusinessJob = {
 export type BusinessBundle = {
   profile: BusinessProfileRow;
   units: BusinessUnitRow[];
-  slots: SlotRow[];
   invoices: InvoiceRow[];
   connectedCleaners: { cleanerId: string; name: string }[];
   jobs: BusinessJob[];
   feeEvents: FeeEventRow[]; // this calendar month
   workRecords: WorkRecordRow[];
-  emergencies: EmergencyRow[];
 };
 
 function monthStartIso(): string {
@@ -148,15 +124,13 @@ export async function getBusinessForUser(userId: string): Promise<BusinessBundle
   if (!supabase) return null;
   const { data: profile } = await supabase.from("business_profiles").select("id, user_id, company_name, kvk_number, btw_number, business_type, contact_first_name, contact_last_name, unit_count, unit_price_cents, pending_unit_count, billing_started_at, billing_paused_at, billing_ended_at, payment_failed_at, created_at").eq("user_id", userId).maybeSingle();
   if (!profile) return null;
-  const [{ data: units }, { data: slots }, { data: invoices }, { data: conns }, { data: jobs }, { data: feeEvents }, { data: work }, { data: emergencies }] = await Promise.all([
-    supabase.from("business_units").select("id, name, address_line, postcode, city, ical_url, ical_last_synced_at, ical_last_error, checkout_time, checkin_time").eq("business_id", profile.id).order("created_at"),
-    supabase.from("cleaning_slots").select("id, unit_id, business_id, source, slot_date, starts_at, ends_at, status, reserved_by, reserved_at, reminder_sent_at, done_at, done_photo_path").eq("business_id", profile.id).gte("slot_date", new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)).order("starts_at").limit(200),
+  const [{ data: units }, { data: invoices }, { data: conns }, { data: jobs }, { data: feeEvents }, { data: work }] = await Promise.all([
+    supabase.from("business_units").select("id, name, address_line, postcode, city").eq("business_id", profile.id).order("created_at"),
     supabase.from("invoices").select("id, number, gross_cents, net_cents, btw_cents, issued_at").eq("business_id", profile.id).order("issued_at", { ascending: false }).limit(24),
     supabase.from("connections").select("cleaner_id").eq("household_id", userId).eq("status", "active"),
     fetchBusinessJobs(supabase, profile.id),
     supabase.from("fee_events").select("id, service_key, event_type, occurred_at, model, amount_cents, btw_cents, status, waived_reason").eq("business_id", profile.id).gte("occurred_at", monthStartIso()).order("occurred_at", { ascending: false }).limit(200),
     fetchBusinessWork(supabase, profile.id),
-    supabase.from("emergency_requests").select("id, status, window_start, window_end, hours, tasks, city, created_at").eq("requester_id", userId).order("created_at", { ascending: false }).limit(30),
   ]);
   const workRows = (work ?? []) as WorkRecordRow[];
   const responderNames = await cleanerNames(supabase, (jobs ?? []).flatMap((j) => j.job_responses.map((r) => r.cleaner_profile_id)));
@@ -177,17 +151,15 @@ export async function getBusinessForUser(userId: string): Promise<BusinessBundle
   return {
     profile: profile as BusinessProfileRow,
     units: (units ?? []) as BusinessUnitRow[],
-    slots: (slots ?? []) as SlotRow[],
     invoices: ((invoices ?? []) as InvoiceRow[]).filter((i) => i.number),
     connectedCleaners,
     jobs: jobRows,
     feeEvents: (feeEvents ?? []) as FeeEventRow[],
     workRecords: workRows.map((w) => ({ ...w, cleanerName: w.cleaner_profile_id ? names.get(w.cleaner_profile_id) ?? null : null })),
-    emergencies: ((emergencies ?? []) as EmergencyRow[]).map((e) => ({ ...e, hours: Number(e.hours) })),
   };
 }
 
-/** A cleaner's own work records (turnovers, emergency jobs and awarded jobs they accepted), with where to go for awarded jobs. */
+/** A cleaner's own work records (awarded jobs they accepted), with where to go for them. */
 export async function getWorkForCleaner(cleanerProfileId: string): Promise<(WorkRecordRow & { company: string | null; location: string | null })[]> {
   const supabase = await createClient();
   if (!supabase) return [];
@@ -210,24 +182,3 @@ export async function getWorkForCleaner(cleanerProfileId: string): Promise<(Work
   return rows.map((w) => ({ ...w, company: w.business_id ? companyOf.get(w.business_id) ?? null : null, location: w.job_id ? locationOfJob.get(w.job_id) ?? null : null }));
 }
 
-/** Slots a cleaner may see: connected businesses' turnovers (RLS), with the unit's name and address from the connected-cleaner view. */
-export async function getSlotsForCleaner(): Promise<(SlotRow & { unitName: string; company: string })[]> {
-  const supabase = await createClient();
-  if (!supabase) return [];
-  const { data: slots } = await supabase
-    .from("cleaning_slots")
-    .select("id, unit_id, business_id, source, slot_date, starts_at, ends_at, status, reserved_by, reserved_at, reminder_sent_at, done_at, done_photo_path")
-    .gte("slot_date", new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10))
-    .neq("status", "cancelled")
-    .order("starts_at")
-    .limit(200);
-  const rows = (slots ?? []) as unknown as SlotRow[];
-  const unitIds = [...new Set(rows.map((s) => s.unit_id).filter(Boolean))];
-  const { data: units } = unitIds.length ? await supabase.from("cleaner_slot_units").select("id, name, address_line, postcode, city").in("id", unitIds) : { data: [] };
-  const unitOf = new Map(((units ?? []) as { id: string; name: string | null; address_line: string; postcode: string; city: string }[]).map((u) => [u.id, u]));
-  const companyOf = await businessNames(supabase, rows.map((s) => s.business_id));
-  return rows.map((s) => {
-    const u = unitOf.get(s.unit_id);
-    return { ...s, unitName: u ? [u.name || u.address_line, u.name ? u.address_line : "", u.postcode, u.city].filter(Boolean).join(", ") : "", company: companyOf.get(s.business_id) ?? "" };
-  });
-}

@@ -14,7 +14,7 @@ import { formatEuro } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 /** Labelled demo screen per business type (brief v2 §2). */
-function DemoScreen({ type, lang }: { type: BusinessType; lang: "nl" | "en" }) {
+function DemoScreen({ lang }: { lang: "nl" | "en" }) {
   const t = (nl: string, en: string) => (lang === "nl" ? nl : en);
   const chip = (text: string, tone: "open" | "done" | "urgent" | "ok") => (
     <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${tone === "done" || tone === "ok" ? "bg-mint text-forest" : tone === "urgent" ? "bg-red-100 text-red-800" : "bg-sun/30 text-ink"}`}>{text}</span>
@@ -23,25 +23,6 @@ function DemoScreen({ type, lang }: { type: BusinessType; lang: "nl" | "en" }) {
     <li className="flex items-center justify-between gap-3 py-2 text-sm"><span className="font-semibold text-ink">{left}</span>{right}</li>
   );
 
-  if (type === "airbnb" || type === "hotel") {
-    return (
-      <ul className="divide-y divide-line">
-        {row(t("vr 21 nov · checkout 11:00 → 15:00", "Fri 21 Nov · checkout 11:00 → 15:00"), chip(t("gereserveerd · Fernanda S.", "reserved · Fernanda S."), "done"))}
-        {row(t("ma 24 nov · checkout 11:00 → di 15:00", "Mon 24 Nov · checkout 11:00 → Tue 15:00"), chip(t("open", "open"), "open"))}
-        {row(t("do 27 nov · checkout 11:00 → 15:00", "Thu 27 Nov · checkout 11:00 → 15:00"), chip(t("binnen 48u — nog niemand", "within 48h — nobody yet"), "urgent"))}
-        {type === "hotel" ? row(t("za 29 nov · 8 kamerwissels", "Sat 29 Nov · 8 room turnovers"), chip(t("handmatig", "manual"), "open")) : null}
-      </ul>
-    );
-  }
-  if (type === "school") {
-    return (
-      <ul className="divide-y divide-line">
-        {row("Maria V. · Utrecht · € 20/uur", chip("VOG ✓", "ok"))}
-        {row("Lotte B. · Groningen · € 16/uur", chip("VOG ✓", "ok"))}
-        <li className="py-2 text-xs text-ink/70">{t("Alleen schoonmakers met een goedgekeurde, recente VOG verschijnen in jouw zoekresultaten.", "Only cleaners with an approved, recent VOG appear in your search results.")}</li>
-      </ul>
-    );
-  }
   return (
     <ul className="divide-y divide-line">
       {row(t("Klus: wekelijks, maandagochtend vóór 9:00", "Job: weekly, Monday morning before 9:00"), chip(t("3 reacties", "3 responses"), "open"))}
@@ -64,7 +45,7 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
   const { unitPrices, businessPricing } = await getPricingContext();
   const unitPrice = unitPrices[bt] ?? null; // only with an active monthly rule
   const exampleUnits = bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1;
-  const example = unitPrice ? monthlyFee(bt, exampleUnits, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, school: 0, [bt]: unitPrice }) : null;
+  const example = unitPrice ? monthlyFee(bt, exampleUnits, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, [bt]: unitPrice }) : null;
   const photo = await siteImageUrl(`business-${bt}`);
 
   return (
@@ -134,7 +115,7 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
               <span className="text-sm font-extrabold text-ink">{tp("demoHeading")}</span>
               <span className="rounded-full bg-sun/30 px-3 py-1 text-xs font-semibold text-ink/70">{t("demoBadge")}</span>
             </div>
-            <div className="mt-3"><DemoScreen type={bt} lang={lang} /></div>
+            <div className="mt-3"><DemoScreen lang={lang} /></div>
           </div>
           <div className="mt-6 rounded-card-lg bg-forest p-6 text-white">
             <h3 className="headline text-xl">{t("billingTitle")}</h3>

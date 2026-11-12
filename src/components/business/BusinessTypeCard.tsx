@@ -1,4 +1,4 @@
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/business";
 import type { BusinessQuote } from "@/lib/business-pricing";
 import { BusinessPrice } from "./BusinessPrice";
@@ -8,7 +8,6 @@ const ICONS: Record<BusinessType, React.ReactNode> = {
   hotel: <path d="M4 20V5h16v15M4 11h16M8 8h2m4 0h2M8 15h2m4 0h2M10 20v-3h4v3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   restaurant: <path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5m4-5v5M16 3c-2 0-3 2-3 5s1 4 3 4v9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   office: <path d="M4 21V4h11v17M15 9h5v12M7 8h2m-2 4h2m-2 4h2m2-8h2m-2 4h2m-2 4h2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
-  school: <path d="M3 9l9-5 9 5-9 5-9-5Zm3 3v5c2 2 4 3 6 3s4-1 6-3v-5M21 9v6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
 };
 
 export function BusinessTypeIcon({ type, className = "h-8 w-8" }: { type: BusinessType; className?: string }) {
@@ -31,7 +30,6 @@ export function BusinessTypeCard({
   selected?: boolean;
   compact?: boolean;
 }) {
-  const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const cfg = BUSINESS_TYPES[type];
 

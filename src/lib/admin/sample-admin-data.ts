@@ -112,7 +112,7 @@ export const SAMPLE_COUNTS = {
 export type AdminBusiness = {
   id: string;
   company: string;
-  type: "airbnb" | "hotel" | "restaurant" | "office" | "school";
+  type: "airbnb" | "hotel" | "restaurant" | "office";
   units: number;
   unitPriceCents: number;
   billingStartedAt: string | null;
@@ -124,30 +124,5 @@ export const SAMPLE_BUSINESSES: AdminBusiness[] = [
   { id: "b2", company: "Hotel De Linde", type: "hotel", units: 24, unitPriceCents: 300, billingStartedAt: "2026-10-18", status: "active" },
   { id: "b3", company: "Kapsalon Glans", type: "office", units: 1, unitPriceCents: 4900, billingStartedAt: "2026-11-02", status: "active" },
   { id: "b4", company: "Brasserie Zuid", type: "restaurant", units: 2, unitPriceCents: 4900, billingStartedAt: null, status: "not_started" },
-  { id: "b5", company: "Basisschool De Wissel", type: "school", units: 1, unitPriceCents: 9900, billingStartedAt: "2026-09-12", status: "paused" },
 ];
 
-export type AdminEmergency = {
-  attendance?: "unknown" | "came" | "no_show";
-  strikes?: number;
-  id: string;
-  requester: string;
-  requesterType: "household" | "business";
-  city: string;
-  window: string;
-  status: "searching" | "accepted" | "expired" | "cancelled";
-  acceptedBy: string | null;
-  feeCents: number | null;
-};
-
-export const SAMPLE_EMERGENCIES: AdminEmergency[] = [
-  { id: "e1", requester: "Familie Jansen", requesterType: "household", city: "Amsterdam", window: "vandaag 14:00–18:00", status: "accepted", acceptedBy: "Kofi A.", feeCents: 995 },
-  { id: "e2", requester: "HostPro BV", requesterType: "business", city: "Amsterdam", window: "vandaag 11:00–15:00", status: "searching", acceptedBy: null, feeCents: null },
-  { id: "e3", requester: "P. de Vries", requesterType: "household", city: "Rotterdam", window: "gisteren 16:00–20:00", status: "expired", acceptedBy: null, feeCents: null },
-];
-
-export type LinenOrder = { id: string; company: string; unit: string; date: string; kits: number };
-export const SAMPLE_LINEN_ORDERS: LinenOrder[] = [
-  { id: "l1", company: "HostPro BV", unit: "Appartement Jordaan", date: "2026-11-23", kits: 2 },
-  { id: "l2", company: "Hotel De Linde", unit: "Kamers 101–108", date: "2026-11-23", kits: 8 },
-];

@@ -1,5 +1,4 @@
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { SAMPLE_LINEN_ORDERS } from "@/lib/admin/sample-admin-data";
 import { listBusinesses } from "@/lib/admin/data";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +10,7 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const t = await getTranslations("admin");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
-  const { businesses, demo } = await listBusinesses();
+  const { businesses } = await listBusinesses();
 
   const mrrByType = Object.fromEntries(BUSINESS_TYPE_KEYS.map((k) => [k, 0])) as Record<string, number>;
   for (const b of businesses) if (b.status === "active") mrrByType[b.type] += b.units * b.unitPriceCents;
@@ -58,24 +57,6 @@ export default async function AdminBusinessPage({ params }: { params: Promise<{ 
         </table>
       </section>
 
-      {demo ? (
-      <section>
-        <h2 className="headline text-xl text-ink">{t("linenTitle")}</h2>
-        <p className="mt-1 text-sm text-ink/70">{t("linenText")}</p>
-        <div className="mt-3 overflow-x-auto rounded-card-lg border border-line bg-white">
-          <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="bg-section text-xs font-bold text-ink/70">
-              <tr><th className="px-4 py-3">{t("colCompany")}</th><th className="px-4 py-3">{t("colUnit")}</th><th className="px-4 py-3">{t("colDate")}</th><th className="px-4 py-3">{t("colKits")}</th></tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {SAMPLE_LINEN_ORDERS.map((o) => (
-                <tr key={o.id}><td className="px-4 py-3 font-semibold text-ink">{o.company}</td><td className="px-4 py-3">{o.unit}</td><td className="px-4 py-3">{o.date}</td><td className="px-4 py-3">{o.kits}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      ) : null}
     </div>
   );
 }

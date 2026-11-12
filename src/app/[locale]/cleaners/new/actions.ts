@@ -33,23 +33,19 @@ const adSchema = z.object({
   workTypes: z.array(z.enum(WORK_TYPES)).min(1).default(["household_regular"]),
   experienceYears: z.number().int().min(0).max(60).nullable().default(null),
   worksAs: z.enum(["independent", "company"]).nullable().default(null),
-  emergencyRateCents: z.number().int().min(0).max(50000),
   rateCents: z.number().int().min(DEFAULT_RATE_FLOOR_CENTS).max(50000),
   minHours: z.number().min(1).max(8),
   postcode: dutchPostcodeSchema,
   radiusKm: z.number().int().min(1).max(100),
   availability: z.array(z.object({ weekday: z.number().int().min(0).max(6), block: z.enum(["morning", "afternoon", "evening"]) })),
-  vogIssuedAt: z.string().regex(/^$|^\d{4}-\d{2}-\d{2}$/),
   publish: z.boolean(),
 });
 export type AdInput = z.input<typeof adSchema>;
 
-/** Work types stay consistent with the environments and emergency choice (same rule as the migration backfill). */
+/** Work types stay consistent with the environments (same rule as the migration backfill). */
 function deriveWorkTypes(chosen: string[], jobTypes: string[]): string[] {
   const out = new Set(chosen);
-  if (jobTypes.includes("emergency")) out.add("emergency_cover");
-  if (jobTypes.some((j) => j === "airbnb" || j === "hotel")) out.add("turnover");
-  if (jobTypes.some((j) => j === "office" || j === "restaurant" || j === "school")) out.add("commercial_contract");
+  if (jobTypes.some((j) => j === "airbnb" || j === "hotel" || j === "office" || j === "restaurant")) out.add("commercial_contract");
   return [...out];
 }
 
@@ -60,7 +56,6 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
   const ad = parsed.data;
   // an ad without availability cannot be contacted (a meeting request needs a slot): drafts may be saved without
   if (ad.publish && ad.availability.length === 0) return { ok: false, error: "no_availability" };
-  if (ad.jobTypes.includes("emergency") && ad.emergencyRateCents < Math.ceil(ad.rateCents * 1.5)) return { ok: false, error: "emergency_rate" };
   if (ad.rateCents < (await getRateFloorCents())) return { ok: false, error: "rate_floor" };
   if (findBannedWord(`${ad.name} ${ad.about}`, await getBannedWords())) return { ok: false, error: "banned_word" };
 
@@ -101,8 +96,6 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
       work_types: deriveWorkTypes(ad.workTypes, ad.jobTypes),
       experience_years: ad.experienceYears,
       works_as: ad.worksAs,
-      emergency_opt_in: ad.jobTypes.includes("emergency"),
-      emergency_rate_cents: ad.jobTypes.includes("emergency") ? ad.emergencyRateCents : null,
       updated_at: new Date().toISOString(),
     };
     const { data: saved, error } = await supabase
@@ -119,13 +112,6 @@ export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
         .from("availability_slots")
         .insert(ad.availability.map((s) => ({ cleaner_profile_id: saved.id, weekday: s.weekday, block: s.block })));
       if (slotError) return { ok: false, error: dbErrorCode(slotError), detail: detailOf(slotError, "availability_slots") };
-    }
-
-    // VOG issue date (file upload handled separately; status stays pending until admin review).
-    if (ad.jobTypes.includes("school") && ad.vogIssuedAt) {
-      await supabase
-        .from("vog_documents")
-        .upsert({ cleaner_profile_id: saved.id, issued_at: ad.vogIssuedAt }, { onConflict: "cleaner_profile_id", ignoreDuplicates: true });
     }
 
     revalidatePath("/", "layout");
@@ -158,32 +144,6 @@ export async function uploadProfilePhoto(_prev: AdActionState, formData: FormDat
     if (dbErr) return { ok: false, error: "save_failed" };
     if (ad.photo_path) await supabase.storage.from("profile-photos").remove([ad.photo_path]);
     revalidatePath("/", "layout");
-    return { ok: true, adId: ad.id };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
-/** Upload the VOG file to the private bucket (admin reviews, then the file is deleted). */
-export async function uploadVogFile(_prev: AdActionState, formData: FormData): Promise<AdActionState> {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "no_file" };
-  if (file.size > 10 * 1024 * 1024) return { ok: false, error: "too_large" };
-  if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) return { ok: false, error: "bad_type" };
-  const issued = String(formData.get("issuedAt") ?? "");
-  if (issued && !/^\d{4}-\d{2}-\d{2}$/.test(issued)) return { ok: false, error: "invalid" };
-  try {
-    const { supabase, userId } = await requireUser();
-    const { data: ad } = await supabase.from("cleaner_profiles").select("id").eq("user_id", userId).maybeSingle();
-    if (!ad) return { ok: false, error: "no_ad" };
-    const ext = file.type === "application/pdf" ? "pdf" : file.type === "image/png" ? "png" : "jpg";
-    const path = `${userId}/vog-${Date.now().toString(36)}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("vog").upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type });
-    if (upErr) return { ok: false, error: "upload_failed" };
-    const { error: dbErr } = await supabase
-      .from("vog_documents")
-      .upsert({ cleaner_profile_id: ad.id, storage_path: path, issued_at: issued || new Date().toISOString().slice(0, 10), status: "pending" }, { onConflict: "cleaner_profile_id" });
-    if (dbErr) return { ok: false, error: "save_failed" };
     return { ok: true, adId: ad.id };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

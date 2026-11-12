@@ -42,7 +42,7 @@ export function JobPostForm({ units, initialFrequency = "weekly" }: { units: Job
     if (description.trim().length < 10) next.description = t("descriptionError");
     const budgetCents = Math.round(Number(budget.replace(",", ".")) * 100);
     if (!Number.isFinite(budgetCents) || budgetCents < DEFAULT_RATE_FLOOR_CENTS) next.budget = t("rateError");
-    const scheduled = frequency !== "per_checkout";
+    const scheduled = true; // every job has a schedule now (the per-checkout turnover option was removed)
     const hours = Number(visitHours.replace(",", "."));
     const today = new Date().toISOString().slice(0, 10);
     if (scheduled && (!startDate || startDate < today)) next.startDate = t("startDateError");
@@ -149,49 +149,47 @@ export function JobPostForm({ units, initialFrequency = "weekly" }: { units: Job
         </label>
       </div>
 
-      {frequency !== "per_checkout" ? (
-        <fieldset className="flex flex-col gap-4 rounded-xl bg-section p-4">
-          <legend className="px-1 text-sm font-extrabold text-ink">{t("scheduleTitle")}</legend>
-          {frequency === "weekly" || frequency === "biweekly" || frequency === "daily" ? (
-            <div>
-              <p className="text-sm font-semibold text-ink/80">{frequency === "daily" ? t("weekdaysLabelDaily") : t("weekdaysLabel")}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {WEEKDAYS.map((d) => {
-                  const on = weekdays.includes(d.n);
-                  return (
-                    <button key={d.n} type="button" aria-pressed={on} onClick={() => setWeekdays(on ? weekdays.filter((x) => x !== d.n) : [...weekdays, d.n])} className={`min-h-11 min-w-11 rounded-full border px-3 text-sm font-bold ${on ? "border-forest bg-forest text-white" : "border-line bg-white text-forest"}`}>{d[lang]}</button>
-                  );
-                })}
-              </div>
-              {err("weekdays")}
+      <fieldset className="flex flex-col gap-4 rounded-xl bg-section p-4">
+        <legend className="px-1 text-sm font-extrabold text-ink">{t("scheduleTitle")}</legend>
+        {frequency === "weekly" || frequency === "biweekly" || frequency === "daily" ? (
+          <div>
+            <p className="text-sm font-semibold text-ink/80">{frequency === "daily" ? t("weekdaysLabelDaily") : t("weekdaysLabel")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {WEEKDAYS.map((d) => {
+                const on = weekdays.includes(d.n);
+                return (
+                  <button key={d.n} type="button" aria-pressed={on} onClick={() => setWeekdays(on ? weekdays.filter((x) => x !== d.n) : [...weekdays, d.n])} className={`min-h-11 min-w-11 rounded-full border px-3 text-sm font-bold ${on ? "border-forest bg-forest text-white" : "border-line bg-white text-forest"}`}>{d[lang]}</button>
+                );
+              })}
             </div>
-          ) : null}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <label className="text-sm font-semibold text-ink/80">
-              {isRecurring(frequency) ? t("startDateLabel") : t("dateLabel")}
-              <input type="date" value={startDate} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setStartDate(e.target.value)} className={`mt-1 ${inputCls}`} />
-              {err("startDate")}
-            </label>
-            <label className="text-sm font-semibold text-ink/80">
-              {t("visitStartLabel")}
-              <input type="time" value={visitStart} onChange={(e) => setVisitStart(e.target.value)} className={`mt-1 ${inputCls}`} />
-              {err("visitStart")}
-            </label>
-            <label className="text-sm font-semibold text-ink/80">
-              {t("visitHoursLabel")}
-              <input type="text" inputMode="decimal" value={visitHours} onChange={(e) => setVisitHours(e.target.value)} className={`mt-1 ${inputCls}`} />
-              {err("visitHours")}
-            </label>
+            {err("weekdays")}
           </div>
-          {isRecurring(frequency) ? (
-            <label className="text-sm font-semibold text-ink/80 sm:max-w-xs">
-              {t("endDateLabel")}
-              <input type="date" value={endDate} min={startDate || new Date().toISOString().slice(0, 10)} onChange={(e) => setEndDate(e.target.value)} className={`mt-1 ${inputCls}`} />
-              {err("endDate")}
-            </label>
-          ) : null}
-        </fieldset>
-      ) : null}
+        ) : null}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="text-sm font-semibold text-ink/80">
+            {isRecurring(frequency) ? t("startDateLabel") : t("dateLabel")}
+            <input type="date" value={startDate} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setStartDate(e.target.value)} className={`mt-1 ${inputCls}`} />
+            {err("startDate")}
+          </label>
+          <label className="text-sm font-semibold text-ink/80">
+            {t("visitStartLabel")}
+            <input type="time" value={visitStart} onChange={(e) => setVisitStart(e.target.value)} className={`mt-1 ${inputCls}`} />
+            {err("visitStart")}
+          </label>
+          <label className="text-sm font-semibold text-ink/80">
+            {t("visitHoursLabel")}
+            <input type="text" inputMode="decimal" value={visitHours} onChange={(e) => setVisitHours(e.target.value)} className={`mt-1 ${inputCls}`} />
+            {err("visitHours")}
+          </label>
+        </div>
+        {isRecurring(frequency) ? (
+          <label className="text-sm font-semibold text-ink/80 sm:max-w-xs">
+            {t("endDateLabel")}
+            <input type="date" value={endDate} min={startDate || new Date().toISOString().slice(0, 10)} onChange={(e) => setEndDate(e.target.value)} className={`mt-1 ${inputCls}`} />
+            {err("endDate")}
+          </label>
+        ) : null}
+      </fieldset>
 
       <label className="text-sm font-semibold text-ink/80">
         {t("scheduleLabel")}

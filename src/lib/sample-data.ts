@@ -15,9 +15,8 @@ export type SampleReview = {
   date: string;
 };
 
-export type JobType = "household" | "airbnb" | "hotel" | "restaurant" | "office" | "school" | "emergency";
+export type JobType = "household" | "airbnb" | "hotel" | "restaurant" | "office";
 
-export type SampleVog = { status: "approved" | "pending" | "rejected"; issuedAt: string };
 
 export type SampleCleaner = {
   id: string;
@@ -35,8 +34,6 @@ export type SampleCleaner = {
   jobTypes: JobType[];
   kvkNumber?: string; // legacy sample field, no longer collected
   workScope?: "household" | "commercial" | "both";
-  vog?: SampleVog;
-  emergencyRateCents?: number;
   about: { nl: string; en: string };
   availability: Partial<Record<Weekday, DayBlock[]>>;
   reviews: SampleReview[];
@@ -59,11 +56,9 @@ export const JOB_TYPE_LABELS: Record<JobType, { nl: string; en: string }> = {
   hotel: { nl: "Hotels", en: "Hotels" },
   restaurant: { nl: "Restaurants", en: "Restaurants" },
   office: { nl: "Kantoren", en: "Offices" },
-  school: { nl: "Scholen (VOG vereist)", en: "Schools (VOG required)" },
-  emergency: { nl: "Spoedklussen", en: "Emergency jobs" },
 };
 
-export const BUSINESS_JOB_TYPES: JobType[] = ["airbnb", "hotel", "restaurant", "office", "school"];
+export const BUSINESS_JOB_TYPES: JobType[] = ["airbnb", "hotel", "restaurant", "office"];
 
 export const LANGUAGE_LABELS: Record<string, { nl: string; en: string }> = {
   nl: { nl: "Nederlands", en: "Dutch" },
@@ -123,9 +118,8 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     verifiedJobs: 64,
     services: ["regular", "windows"],
     languages: ["nl", "en"],
-    jobTypes: ["household", "restaurant", "emergency"],
+    jobTypes: ["household", "restaurant"],
     kvkNumber: "76543210",
-    emergencyRateCents: 2700,
     about: {
       nl: "Specialist in ramen en regulier onderhoud. Flexibel in de avonduren en op zaterdag.",
       en: "Specialist in windows and regular maintenance. Flexible in the evenings and on Saturdays.",
@@ -149,9 +143,8 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     verifiedJobs: 58,
     services: ["deep", "move-out"],
     languages: ["nl", "es", "en"],
-    jobTypes: ["household", "school", "office"],
+    jobTypes: ["household", "office"],
     kvkNumber: "65432109",
-    vog: { status: "approved", issuedAt: "2026-06-12" },
     about: {
       nl: "Dieptereiniging en verhuisschoonmaak zijn mijn specialiteit. Opleveringsgarantie voor verhuurders.",
       en: "Deep cleaning and move-out cleans are my specialty. Handover guarantee for landlords.",
@@ -197,9 +190,8 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     verifiedJobs: 21,
     services: ["regular", "office", "windows"],
     languages: ["tr", "nl"],
-    jobTypes: ["office", "restaurant", "emergency"],
+    jobTypes: ["office", "restaurant"],
     kvkNumber: "54321098",
-    emergencyRateCents: 2600,
     about: {
       nl: "Overdag kantoren, in het weekend huishoudens. Eigen auto, dus ook buiten de stad beschikbaar.",
       en: "Offices during the day, households at the weekend. Own car, so also available outside the city.",
@@ -224,8 +216,8 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     jobTypes: ["airbnb", "hotel", "household"],
     kvkNumber: "43210987",
     about: {
-      nl: "Airbnb-specialist: wisselschoonmaak met linnenservice en voorraadcheck. Ook vast huishoudelijk werk.",
-      en: "Airbnb specialist: turnover cleaning with linen service and inventory check. Also regular housework.",
+      nl: "Airbnb-specialist: schoonmaak tussen gasten, bedden opmaken en voorraadcheck. Ook vast huishoudelijk werk.",
+      en: "Airbnb specialist: cleaning between guests, making beds and inventory check. Also regular housework.",
     },
     availability: { 0: ["morning", "afternoon"], 1: ["morning", "afternoon"], 2: ["morning", "afternoon"], 3: ["morning", "afternoon"], 4: ["morning", "afternoon"], 5: ["morning"] },
     reviews: [
@@ -246,9 +238,8 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     verifiedJobs: 14,
     services: ["regular"],
     languages: ["nl", "en"],
-    jobTypes: ["household", "school"],
+    jobTypes: ["household"],
     kvkNumber: "32109876",
-    vog: { status: "approved", issuedAt: "2025-03-01" },
     about: {
       nl: "Student verpleegkunde met oog voor detail. Beschikbaar op maandag, woensdag en vrijdag.",
       en: "Nursing student with an eye for detail. Available Monday, Wednesday and Friday.",
@@ -270,12 +261,11 @@ export const SAMPLE_CLEANERS: SampleCleaner[] = [
     verifiedJobs: 47,
     services: ["deep", "move-out", "windows"],
     languages: ["ar", "nl", "en"],
-    jobTypes: ["household", "airbnb", "emergency"],
+    jobTypes: ["household", "airbnb"],
     kvkNumber: "21098765",
-    emergencyRateCents: 2900,
     about: {
-      nl: "Grondige dieptereiniging met professionele apparatuur. Ook spoedklussen in het weekend.",
-      en: "Thorough deep cleaning with professional equipment. Weekend rush jobs possible.",
+      nl: "Grondige dieptereiniging, ook in het weekend.",
+      en: "Thorough deep cleaning, weekends too.",
     },
     availability: { 1: ["morning", "afternoon"], 3: ["morning", "afternoon"], 5: ["morning", "afternoon", "evening"], 6: ["morning"] },
     reviews: [],

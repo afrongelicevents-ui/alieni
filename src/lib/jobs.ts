@@ -7,7 +7,7 @@
  */
 
 export type SpaceType = "office" | "shop" | "airbnb" | "hospitality" | "other";
-export type Frequency = "once" | "daily" | "weekly" | "biweekly" | "monthly" | "per_checkout";
+export type Frequency = "once" | "daily" | "weekly" | "biweekly" | "monthly";
 
 export type SampleJob = {
   id: string;
@@ -37,7 +37,6 @@ export const FREQUENCY_LABELS: Record<Frequency, { nl: string; en: string }> = {
   weekly: { nl: "Wekelijks", en: "Weekly" },
   biweekly: { nl: "Om de week", en: "Every two weeks" },
   monthly: { nl: "Maandelijks", en: "Monthly" },
-  per_checkout: { nl: "Per checkout", en: "Per checkout" },
 };
 
 /** SAMPLE DATA — labelled placeholder jobs until Supabase is connected. */
@@ -50,10 +49,10 @@ export const SAMPLE_JOBS: SampleJob[] = [
     postcode: "1016 AB",
     city: "Amsterdam",
     frequency: "weekly",
-    scheduleNote: { nl: "Wisseldagen: vrijdag en maandag, 11:00–15:00", en: "Turnover days: Friday and Monday, 11:00–15:00" },
+    scheduleNote: { nl: "Vrijdag en maandag, 11:00–15:00", en: "Friday and Monday, 11:00–15:00" },
     description: {
-      nl: "Wisselschoonmaak voor twee appartementen in de Jordaan: bedden opmaken, linnen wisselen, badkamer en keuken grondig, voorraadcheck.",
-      en: "Turnover cleaning for two apartments in the Jordaan: make beds, change linen, thorough bathroom and kitchen, inventory check.",
+      nl: "Schoonmaak tussen gasten voor twee appartementen in de Jordaan: bedden opmaken, badkamer en keuken grondig, voorraadcheck.",
+      en: "Cleaning between guests for two apartments in the Jordaan: make beds, thorough bathroom and kitchen, inventory check.",
     },
     budgetCents: 2200,
     publishedAt: "2026-10-30T09:00:00Z",
@@ -92,13 +91,13 @@ export const SAMPLE_JOBS: SampleJob[] = [
   },
 ];
 
-/** Frequencies that repeat on a schedule (the 'contract' service). 'once' is the one-off service; 'per_checkout' follows the turnover calendar. */
+/** Frequencies that repeat on a schedule (the 'contract' service). 'once' is the one-off service. */
 export const RECURRING_FREQUENCIES: Frequency[] = ["daily", "weekly", "biweekly", "monthly"];
 export const isRecurring = (f: Frequency): boolean => RECURRING_FREQUENCIES.includes(f);
 
 /** Which service in the catalogue a job belongs to (mirrors job_service_key() in the database). */
-export function jobServiceKey(f: Frequency): "oneoff" | "contract" | "turnover" {
-  return f === "once" ? "oneoff" : f === "per_checkout" ? "turnover" : "contract";
+export function jobServiceKey(f: Frequency): "oneoff" | "contract" {
+  return f === "once" ? "oneoff" : "contract";
 }
 
 /** ISO weekdays: 1 = Monday … 7 = Sunday. */

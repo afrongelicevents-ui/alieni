@@ -69,7 +69,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
 
   const unitCountNum = Math.max(1, Math.min(10000, Math.round(Number(draft.unitCount) || 0)));
   const unitPrice = unitPrices[draft.businessType] ?? null; // only with an active monthly rule (Admin → Pricing)
-  const fee = unitPrice ? monthlyFee(draft.businessType, unitCountNum, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, school: 0, [draft.businessType]: unitPrice }) : null;
+  const fee = unitPrice ? monthlyFee(draft.businessType, unitCountNum, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, [draft.businessType]: unitPrice }) : null;
   const cfg = BUSINESS_TYPES[draft.businessType];
   const unitWord = unitCountNum === 1 ? cfg.unit[lang] : cfg.unitPlural[lang];
 

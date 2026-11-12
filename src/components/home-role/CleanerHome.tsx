@@ -3,7 +3,7 @@ import { Link } from "@/i18n/navigation";
 import type { SessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { profilePhotoUrl } from "@/lib/cleaners-live";
-import { getSlotsForCleaner } from "@/lib/business-data";
+import { getWorkForCleaner } from "@/lib/business-data";
 import { ButtonLink } from "@/components/ui/Button";
 
 /** Cleaner dashboard: profile state, requests, clients, today's work. */
@@ -13,10 +13,10 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
 
   const { data: ad } = await supabase
     .from("cleaner_profiles")
-    .select("id, status, photo_path, about, services, job_types, work_scope, rate_cents, availability_slots ( id ), vog_documents ( status )")
+    .select("id, status, photo_path, about, services, job_types, work_scope, rate_cents, availability_slots ( id )")
     .eq("user_id", user.id)
     .maybeSingle();
-  const adRow = ad as { id: string; status: string; photo_path: string | null; about: string | null; services: string[]; job_types: string[]; work_scope: string; rate_cents: number; availability_slots: { id: string }[] | null; vog_documents: { status: string }[] | null } | null;
+  const adRow = ad as { id: string; status: string; photo_path: string | null; about: string | null; services: string[]; job_types: string[]; work_scope: string; rate_cents: number; availability_slots: { id: string }[] | null } | null;
 
   // Completeness: what still blocks a strong profile.
   const checks = adRow
@@ -24,23 +24,22 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
         { key: "photo", done: Boolean(adRow.photo_path), href: "/profile" },
         { key: "about", done: Boolean(adRow.about && adRow.about.length >= 40), href: "/profile?step=1&edit=1" },
         { key: "availability", done: (adRow.availability_slots?.length ?? 0) > 0, href: "/profile?step=3&edit=1" },
-        { key: "vog", done: !adRow.job_types.includes("school") || adRow.vog_documents?.[0]?.status === "approved", href: "/profile?step=2&edit=1" },
       ]
     : [];
   const completeness = adRow ? Math.round((checks.filter((c) => c.done).length / checks.length) * 100) : 0;
 
-  const [requests, conns, slots, emergencies] = await Promise.all([
+  const [requests, conns, work] = await Promise.all([
     adRow ? supabase.from("meeting_requests").select("id, type, proposed_weekday, proposed_block, household_id, created_at").eq("cleaner_profile_id", adRow.id).eq("status", "requested").order("created_at", { ascending: false }).limit(5) : Promise.resolve({ data: [] }),
     supabase.from("connections").select("id, household_id, status, started_at").eq("cleaner_id", user.id).in("status", ["active", "paused", "pending"]).order("started_at", { ascending: false }),
-    getSlotsForCleaner(),
-    adRow ? supabase.from("emergency_requests").select("id, city, window_start, window_end").eq("accepted_by", adRow.id).eq("status", "accepted").gte("window_end", new Date().toISOString()).order("window_start") : Promise.resolve({ data: [] }),
+    adRow ? getWorkForCleaner(adRow.id) : Promise.resolve([]),
   ]);
   const households = [...new Set([...(requests.data ?? []).map((r: { household_id: string }) => r.household_id), ...(conns.data ?? []).map((c: { household_id: string }) => c.household_id)])];
   const { data: names } = households.length ? await supabase.from("profiles").select("id, display_name").in("id", households) : { data: [] };
   const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
   const { data: convs } = await supabase.from("conversations").select("id, household_id").eq("cleaner_id", user.id);
   const convOf = new Map(((convs ?? []) as { id: string; household_id: string }[]).map((c) => [c.household_id, c.id]));
-  const todaySlots = slots.filter((s) => s.reserved_by === adRow?.id && s.status === "reserved").slice(0, 3);
+  // upcoming visits of awarded jobs (one-off and regular schedules)
+  const upcoming = work.filter((w) => w.outcome === "scheduled" && w.scheduled_start && w.scheduled_start >= new Date().toISOString()).sort((a, b) => (a.scheduled_start ?? "").localeCompare(b.scheduled_start ?? "")).slice(0, 3);
   const fmt = (iso: string) => new Date(iso).toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   return (
@@ -130,15 +129,12 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
       {/* Today / upcoming work */}
       <section className="mt-6">
         <div className="flex items-baseline justify-between"><h2 className="headline text-xl text-ink">{t("workTitle")}</h2><Link href="/work" className="text-sm font-bold text-forest underline">{t("allWork")}</Link></div>
-        {todaySlots.length === 0 && (emergencies.data ?? []).length === 0 ? (
+        {upcoming.length === 0 ? (
           <p className="mt-2 rounded-card-lg border border-line bg-white p-4 text-sm text-ink/70">{t("noWork")}</p>
         ) : (
           <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card-lg border border-line bg-white">
-            {(emergencies.data as { id: string; city: string; window_start: string }[]).map((e) => (
-              <li key={e.id} className="flex items-center justify-between px-4 py-3"><span className="font-bold text-ink">{t("emergencyJob", { city: e.city })}</span><span className="text-sm text-ink/70">{fmt(e.window_start)}</span></li>
-            ))}
-            {todaySlots.map((s) => (
-              <li key={s.id} className="flex items-center justify-between px-4 py-3"><span className="font-bold text-ink">{s.company}{s.unitName ? ` · ${s.unitName}` : ""}</span><span className="text-sm text-ink/70">{fmt(s.starts_at)}</span></li>
+            {upcoming.map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-3 px-4 py-3"><span className="min-w-0 truncate font-bold text-ink">{[w.company, w.location].filter(Boolean).join(" · ") || "—"}</span><span className="shrink-0 text-sm text-ink/70">{fmt(w.scheduled_start as string)}</span></li>
             ))}
           </ul>
         )}

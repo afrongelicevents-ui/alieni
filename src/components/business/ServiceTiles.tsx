@@ -5,12 +5,10 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { openService } from "@/app/[locale]/business/actions";
 
-export type Tile = { key: "connect" | "cover" | "turnover" | "oneoff" | "contract"; enabled: boolean; offForType: boolean; href: string; count?: number };
+export type Tile = { key: "connect" | "oneoff" | "contract"; enabled: boolean; offForType: boolean; href: string; count?: number };
 
 const ICON: Record<Tile["key"], string> = {
   connect: "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Zm9.5 3-4.9-4.9",
-  cover: "M12 3 4 7v5c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Zm0 5v4m0 3h.01",
-  turnover: "M4 4h16v16H4V4Zm0 6h16M8 2v4m8-4v4m-6 8 2 2 4-4",
   oneoff: "M12 2l2.4 5.2L20 8l-4 3.9.9 5.6L12 14.8 7.1 17.5 8 11.9 4 8l5.6-.8L12 2Z",
   contract: "M6 3h9l4 4v14H6V3Zm9 0v4h4M9 12h6m-6 4h6",
 };

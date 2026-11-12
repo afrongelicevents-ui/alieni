@@ -4,7 +4,7 @@ import type { BusinessType } from "./business";
  * Service catalogue + pricing rules — pure types, constants and helpers that
  * are safe in client components. Database access lives in ./services.ts.
  */
-export const SERVICE_KEYS = ["connect", "cover", "turnover", "oneoff", "contract"] as const;
+export const SERVICE_KEYS = ["connect", "oneoff", "contract"] as const;
 export type ServiceKey = (typeof SERVICE_KEYS)[number];
 export const PRICING_MODELS = ["none", "monthly_per_unit", "per_event", "per_booking", "percent"] as const;
 export type PricingModel = (typeof PRICING_MODELS)[number];
@@ -43,7 +43,7 @@ export function ruleFor(rules: PricingRule[], service: ServiceKey, type: Busines
 /** Monthly per-unit price for the 'connect' service, per business type — only where an active rule says so. */
 export function monthlyUnitPrices(rules: PricingRule[]): Partial<Record<BusinessType, number>> {
   const out: Partial<Record<BusinessType, number>> = {};
-  for (const type of ["airbnb", "hotel", "restaurant", "office", "school"] as BusinessType[]) {
+  for (const type of ["airbnb", "hotel", "restaurant", "office"] as BusinessType[]) {
     const r = ruleFor(rules, "connect", type);
     if (r && r.model === "monthly_per_unit") out[type] = r.amount_cents;
   }
@@ -52,8 +52,6 @@ export function monthlyUnitPrices(rules: PricingRule[]): Partial<Record<Business
 
 export const SERVICE_LABEL: Record<ServiceKey, { nl: string; en: string }> = {
   connect: { nl: "Schoonmakers vinden & koppelen", en: "Find & connect cleaners" },
-  cover: { nl: "Spoed & vervanging", en: "Emergency & replacement cover" },
-  turnover: { nl: "Wissels (Airbnb & hotel)", en: "Property turnovers" },
   oneoff: { nl: "Eenmalige schoonmaak", en: "One-off cleaning" },
   contract: { nl: "Vast schoonmaakcontract", en: "Regular cleaning contract" },
 };

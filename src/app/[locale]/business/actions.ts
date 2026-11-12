@@ -1,12 +1,10 @@
 "use server";
 
-import { amsterdamInstant } from "@/lib/tz";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
 import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
-import { isSafeIcalUrl } from "@/lib/url-safety";
 import { dbErrorCode, detailOf } from "@/lib/db-errors";
 import { SERVICE_KEYS, assertServiceEnabled, type ServiceKey } from "@/lib/services";
 import { dutchPostcodeSchema } from "@/lib/validation";
@@ -154,7 +152,7 @@ export async function updateBusinessUnit(unitId: string, input: z.input<typeof u
   }
 }
 
-/** Remove a unit. Its open turnover slots go with it; the last unit cannot be removed. */
+/** Remove a unit; the last unit cannot be removed. */
 export async function removeBusinessUnit(unitId: string): Promise<BusinessActionState> {
   if (!/^[0-9a-f-]{36}$/i.test(unitId)) return { ok: false, error: "invalid" };
   try {
@@ -168,7 +166,6 @@ export async function removeBusinessUnit(unitId: string): Promise<BusinessAction
     if (!data?.length) return { ok: false, error: "not_found" };
     revalidatePath("/business/profile");
     revalidatePath("/business/dashboard");
-    revalidatePath("/business/calendar");
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
@@ -206,55 +203,6 @@ export async function cancelBusinessBilling(): Promise<BusinessActionState> {
   }
 }
 
-/** Link (or clear) a unit's iCal feed. The daily sync job fetches it server-side. */
-export async function saveIcalUrl(unitId: string, url: string): Promise<BusinessActionState> {
-  const trimmed = url.trim();
-  if (trimmed && !isSafeIcalUrl(trimmed)) return { ok: false, error: "unsafe_url" };
-  try {
-    const { supabase, userId } = await requireUser();
-    const { data: bp } = await supabase.from("business_profiles").select("business_type").eq("user_id", userId).maybeSingle();
-    if (trimmed && !(await assertServiceEnabled("turnover", bp?.business_type ?? null))) return { ok: false, error: "service_disabled" };
-    const { data, error } = await supabase.from("business_units").update({ ical_url: trimmed || null, ical_last_error: null }).eq("id", unitId).select("id");
-    if (error) return { ok: false, error: "save_failed" };
-    if (!data?.length) return { ok: false, error: "not_found" }; // RLS hid the unit: nothing was saved
-    revalidatePath("/business/dashboard");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
-/** Hotels: add N manual turnovers on a date (checkout → check-in window). */
-export async function addManualTurnovers(unitId: string, date: string, count: number): Promise<BusinessActionState> {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "invalid" };
-  const n = Math.min(50, Math.max(1, Math.round(count)));
-  try {
-    const { supabase, userId } = await requireUser();
-    const { data: unit } = await supabase.from("business_units").select("id, business_id, checkout_time, checkin_time, business_profiles ( user_id )").eq("id", unitId).maybeSingle();
-    if (!unit) return { ok: false, error: "no_business" };
-    const owner = (unit as unknown as { business_profiles: { user_id: string } | null }).business_profiles?.user_id;
-    if (owner && owner !== userId) return { ok: false, error: "no_business" };
-    const { data: bp } = await supabase.from("business_profiles").select("business_type").eq("id", unit.business_id).maybeSingle();
-    if (!(await assertServiceEnabled("turnover", bp?.business_type ?? null))) return { ok: false, error: "service_disabled" };
-    const rows = Array.from({ length: n }, (_, i) => ({
-      unit_id: unit.id,
-      business_id: unit.business_id,
-      source: "manual",
-      external_uid: `manual-${date}-${Date.now().toString(36)}-${i}`,
-      slot_date: date,
-      starts_at: amsterdamInstant(date, unit.checkout_time ?? "11:00"),
-      ends_at: amsterdamInstant(date, unit.checkin_time ?? "15:00"),
-      status: "open",
-    }));
-    const { error } = await supabase.from("cleaning_slots").insert(rows);
-    if (error) return { ok: false, error: "save_failed" };
-    revalidatePath("/business/dashboard");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}
-
 /** Business confirms (ok) or disputes (not ok) a work record. Ownership is checked inside the database function. */
 export async function reviewWork(recordId: string, ok: boolean, note: string): Promise<BusinessActionState> {
   if (!/^[0-9a-f-]{36}$/i.test(recordId)) return { ok: false, error: "invalid" };
@@ -285,20 +233,3 @@ export async function openService(service: string): Promise<BusinessActionState>
   }
 }
 
-/** Cancel a turnover slot, or open a reserved one again (the cleaner's scheduled work goes away). */
-export async function setSlotStatus(slotId: string, status: "cancelled" | "open"): Promise<BusinessActionState> {
-  if (!/^[0-9a-f-]{36}$/i.test(slotId) || !["cancelled", "open"].includes(status)) return { ok: false, error: "invalid" };
-  try {
-    const { supabase } = await requireUser();
-    const patch = status === "open" ? { status, reserved_by: null, reserved_at: null, reminder_sent_at: null } : { status };
-    const { data, error } = await supabase.from("cleaning_slots").update(patch).eq("id", slotId).neq("status", "done").select("id");
-    if (error) return { ok: false, error: dbErrorCode(error) };
-    if (!data?.length) return { ok: false, error: "not_found" };
-    revalidatePath("/business/calendar");
-    revalidatePath("/business/requests");
-    revalidatePath("/cleaners/slots");
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: errorCode(err) };
-  }
-}

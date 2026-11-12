@@ -20,7 +20,7 @@ type Col = { h: string; links: { href: string; label: string }[] };
 export function Footer() {
   const t = useTranslations("site.footer");
   const cols: Col[] = [
-    { h: t("customers"), links: [{ href: "/search", label: t("findCleaner") }, { href: "/about#how-it-works", label: t("howItWorks") }, { href: "/emergency", label: t("emergency") }] },
+    { h: t("customers"), links: [{ href: "/search", label: t("findCleaner") }, { href: "/about#how-it-works", label: t("howItWorks") }] },
     { h: t("professionals"), links: [{ href: "/cleaners/new", label: t("placeAd") }, { href: "/jobs", label: t("jobs") }, { href: "/signup", label: t("signup") }] },
     { h: t("businesses"), links: [{ href: "/business", label: t("forBusinesses") }, { href: "/business/signup", label: t("businessSignup") }] },
     { h: t("company"), links: [{ href: "/about", label: t("about") }, { href: "/contact", label: t("contact") }] },

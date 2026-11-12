@@ -14,7 +14,6 @@ export const SITE_MEDIA_SLOTS = [
   "business-hotel",
   "business-restaurant",
   "business-office",
-  "business-school",
 ] as const;
 export type SiteMediaSlot = (typeof SITE_MEDIA_SLOTS)[number];
 
@@ -27,7 +26,6 @@ export const SLOT_SPEC: Record<SiteMediaSlot, { maxWidth: number; aspect: "3/4" 
   "business-hotel": { maxWidth: 1600, aspect: "3/2" },
   "business-restaurant": { maxWidth: 1600, aspect: "3/2" },
   "business-office": { maxWidth: 1600, aspect: "3/2" },
-  "business-school": { maxWidth: 1600, aspect: "3/2" },
 };
 
 export function isSiteMediaSlot(value: string): value is SiteMediaSlot {

@@ -102,22 +102,6 @@ export async function cleanerOwnerUserId(cleanerProfileId: string): Promise<stri
   }
 }
 
-/** Cleaners eligible for a new emergency request (database function, max 25). Empty when unconfigured. */
-export async function emergencyAlertTargets(requestId: string): Promise<string[]> {
-  try {
-    const admin = serviceClient();
-    if (!admin) return [];
-    const { data, error } = await admin.rpc("emergency_alert_targets", { p_request_id: requestId });
-    if (error) {
-      console.warn("emergencyAlertTargets: lookup failed");
-      return [];
-    }
-    return ((data ?? []) as { user_id: string }[]).map((r) => r.user_id);
-  } catch {
-    return [];
-  }
-}
-
 export function newMessageNotice(appUrl: string, lang: Lang = "nl"): Notice {
   return {
     subject: pick(lang, "Nieuw bericht op Alieni", "New message on Alieni"),
@@ -199,38 +183,6 @@ export function meetingResponseNotice(appUrl: string, accepted: boolean, lang: L
   };
 }
 
-export function slotReservedNotice(appUrl: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, "Een schoonmaak is gereserveerd — Alieni", "A cleaning was reserved — Alieni"),
-    text: [hi(lang), "", pick(lang, "Een schoonmaker heeft een van je open schoonmaakmomenten gereserveerd. Bekijk je planning:", "A cleaner has reserved one of your open cleaning slots. View your schedule:"), `${appUrl}/business/dashboard`, "", sign(lang)].join("\n"),
-  };
-}
-
-export function slotCompletedNotice(appUrl: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, "Een schoonmaak is afgerond — Alieni", "A cleaning was completed — Alieni"),
-    text: [hi(lang), "", pick(lang, "Een schoonmaker heeft een schoonmaakmoment als afgerond gemarkeerd. Bekijk de details:", "A cleaner has marked a cleaning slot as completed. View the details:"), `${appUrl}/business/dashboard`, "", sign(lang)].join("\n"),
-  };
-}
-
-export function vogReviewedNotice(appUrl: string, approved: boolean, lang: Lang = "nl"): Notice {
-  return {
-    subject: approved
-      ? pick(lang, "Je VOG is goedgekeurd — Alieni", "Your VOG was approved — Alieni")
-      : pick(lang, "Je VOG is afgekeurd — Alieni", "Your VOG was rejected — Alieni"),
-    text: [
-      hi(lang),
-      "",
-      approved
-        ? pick(lang, "Goed nieuws: je VOG is goedgekeurd. Je profiel toont nu het VOG-label.", "Good news: your VOG was approved. Your profile now shows the VOG badge.")
-        : pick(lang, "Je VOG is helaas afgekeurd. Upload een nieuw, geldig VOG om het label op je profiel te krijgen.", "Unfortunately your VOG was rejected. Upload a new, valid VOG to get the badge on your profile."),
-      `${appUrl}/account`,
-      "",
-      sign(lang),
-    ].join("\n"),
-  };
-}
-
 export function adModeratedNotice(appUrl: string, status: "hidden" | "removed", lang: Lang = "nl"): Notice {
   return {
     subject:
@@ -268,27 +220,6 @@ export function connectionEndedNotice(name: string, appUrl: string, wasActive: b
   };
 }
 
-export function emergencyNearbyNotice(appUrl: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, "Nieuwe spoedaanvraag in de buurt — Alieni", "New urgent request nearby — Alieni"),
-    text: [hi(lang), "", pick(lang, "Er is een nieuwe spoedaanvraag bij jou in de buurt. Bekijk de details en accepteer als het past:", "There is a new urgent request near you. View the details and accept if it suits you:"), `${appUrl}/work?tab=emergency`, "", sign(lang)].join("\n"),
-  };
-}
-
-export function emergencyAcceptedNotice(appUrl: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, "Je spoedaanvraag is geaccepteerd — Alieni", "Your urgent request was accepted — Alieni"),
-    text: [hi(lang), "", pick(lang, "Een schoonmaker heeft je spoedaanvraag geaccepteerd. Log in om de details te zien:", "A cleaner has accepted your urgent request. Log in to see the details:"), `${appUrl}/emergency`, "", sign(lang)].join("\n"),
-  };
-}
-
-export function emergencyCancelledNotice(appUrl: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, "Spoedklus geannuleerd — Alieni", "Urgent job cancelled — Alieni"),
-    text: [hi(lang), "", pick(lang, "De klant heeft een door jou geaccepteerde spoedklus geannuleerd. Bekijk je klussen:", "The customer cancelled an urgent job you had accepted. View your jobs:"), `${appUrl}/work?tab=emergency`, "", sign(lang)].join("\n"),
-  };
-}
-
 export function meetingProposalNotice(appUrl: string, lang: Lang = "nl"): Notice {
   return {
     subject: pick(lang, "De schoonmaker stelt een ander moment voor — Alieni", "The cleaner proposes another time — Alieni"),
@@ -321,25 +252,3 @@ export function meetingWithdrawnNotice(appUrl: string, lang: Lang = "nl"): Notic
   };
 }
 
-export function slotReminderNotice(appUrl: string, when: string, company: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, `Schoonmaak nog niet gereserveerd — ${when}`, `Cleaning not reserved yet — ${when}`),
-    text: [
-      hi(lang), "",
-      pick(lang, `Er staat binnen 48 uur een checkout-schoonmaak gepland (${when}) bij ${company} die nog niet is gereserveerd.`, `A checkout cleaning is planned within 48 hours (${when}) at ${company} and has not been reserved yet.`),
-      pick(lang, "Reserveer hem in de app, of de klus wordt aangeboden aan andere gekoppelde schoonmakers.", "Reserve it in the app, or the job is offered to other connected cleaners."),
-      `${appUrl}/work?tab=turnovers`, "", sign(lang),
-    ].join("\n"),
-  };
-}
-
-export function slotCancelledNotice(appUrl: string, when: string, lang: Lang = "nl"): Notice {
-  return {
-    subject: pick(lang, `Een schoonmaak is vervallen — ${when}`, `A cleaning was cancelled — ${when}`),
-    text: [
-      hi(lang), "",
-      pick(lang, `De boeking is uit de agenda van het bedrijf verdwenen, daarom is de schoonmaak van ${when} vervallen. Je hoeft er niet heen.`, `The booking disappeared from the business's calendar, so the cleaning on ${when} was cancelled. You do not need to go.`),
-      `${appUrl}/work?tab=turnovers`, "", sign(lang),
-    ].join("\n"),
-  };
-}

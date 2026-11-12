@@ -7,21 +7,12 @@ import { saveSettings } from "@/app/[locale]/admin/actions";
 import { BUSINESS_PRICING_MODELS, MAX_TIERS, type BusinessPricingForm } from "@/lib/business-pricing";
 
 /**
- * Platform settings (brief §8 + business v2 §10): household price, the five
- * business unit prices, emergency fee, linen add-on, rate floor, banned
- * words. Maps onto the `settings` table; stored locally in demo mode.
+ * Platform settings: household price, business pricing model, rate floor,
+ * banned words, homepage video. Maps onto the `settings` table; stored locally in demo mode.
  */
 export type Settings = {
   householdPriceEuro: string;
-  coverCancelHours: string;
-  coverStrikeLimit: string;
-  coverMaxDays: string;
-  emergencyHouseholdEuro: string;
-  emergencyBusinessEuro: string;
-  linenEnabled: boolean;
-  linenPriceEuro: string;
   rateFloorEuro: string;
-  vogMaxAgeMonths: string;
   bannedWords: string;
   videoUrl: string;
   businessPricing: BusinessPricingForm;
@@ -30,15 +21,7 @@ export type Settings = {
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const DEFAULTS: Settings = {
   householdPriceEuro: "0,00",
-  coverCancelHours: "4",
-  coverStrikeLimit: "2",
-  coverMaxDays: "14",
-  emergencyHouseholdEuro: "0,00",
-  emergencyBusinessEuro: "0,00",
-  linenEnabled: false,
-  linenPriceEuro: "0,00",
   rateFloorEuro: "15,00",
-  vogMaxAgeMonths: "12",
   bannedWords: "",
   videoUrl: "",
   businessPricing: { model: "per_location", jobPostEuro: "", tiers: [] },
@@ -139,31 +122,10 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
           </div>
         </fieldset>
 
-        <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingEmergency")}</legend>
-          {field(t("settingEmergencyHousehold"), settings.emergencyHouseholdEuro, (v) => update({ emergencyHouseholdEuro: v }))}
-          {field(t("settingEmergencyBusiness"), settings.emergencyBusinessEuro, (v) => update({ emergencyBusinessEuro: v }))}
-          <p className="text-xs text-ink/70 sm:col-span-2">{t("settingEmergencyHint")}</p>
-        </fieldset>
 
-        <fieldset className="grid gap-3 sm:grid-cols-3">
-          <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingCover")}</legend>
-          {field(t("settingCoverCancel"), settings.coverCancelHours, (v) => update({ coverCancelHours: v }))}
-          {field(t("settingCoverStrikes"), settings.coverStrikeLimit, (v) => update({ coverStrikeLimit: v }))}
-          {field(t("settingCoverDays"), settings.coverMaxDays, (v) => update({ coverMaxDays: v }))}
-        </fieldset>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-sm font-extrabold text-ink">{t("settingLinen")}</legend>
-          <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-ink/80">
-            <input type="checkbox" checked={settings.linenEnabled} onChange={(e) => update({ linenEnabled: e.target.checked })} className="h-5 w-5 accent-forest" />
-            {t("settingLinenEnabled")}
-          </label>
-          {field(t("settingLinenPrice"), settings.linenPriceEuro, (v) => update({ linenPriceEuro: v }), t("settingLinenHint"))}
-        </fieldset>
 
         {field(t("settingRateFloor"), settings.rateFloorEuro, (v) => update({ rateFloorEuro: v }), t("settingRateFloorHint"))}
-        {field(t("settingVogMaxAge"), settings.vogMaxAgeMonths, (v) => update({ vogMaxAgeMonths: v }), t("settingVogMaxAgeHint"))}
 
         <label className="text-sm font-semibold text-ink/80">
           {t("settingBannedWords")}

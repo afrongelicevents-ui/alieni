@@ -3,7 +3,7 @@ import { ReviewForm } from "@/components/cleaners/ReviewForm";
 import { canReview } from "@/lib/reviews-data";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
-import { getCleaner, isVogValid } from "@/lib/cleaners";
+import { getCleaner } from "@/lib/cleaners";
 import { fetchLiveCleaner, fetchOwnCleaner } from "@/lib/cleaners-live";
 import { formatHourlyRate } from "@/lib/money";
 import { LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
@@ -60,9 +60,6 @@ export default async function CleanerProfilePage({
           <div className="min-w-0 pr-10">
             <h1 className="headline flex flex-wrap items-center gap-2 break-words text-3xl text-ink">
               {cleaner.name}
-              {isVogValid(cleaner.vog, new Date()) ? (
-                <span className="rounded-full bg-forest px-2.5 py-1 text-xs font-bold text-white">VOG ✓</span>
-              ) : null}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink/70">
               {cleaner.reviewCount > 0 ? (

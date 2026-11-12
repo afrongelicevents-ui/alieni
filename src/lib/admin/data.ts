@@ -1,13 +1,11 @@
 import "server-only";
 import { parseBusinessPricing, toBusinessPricingForm, type BusinessPricingForm } from "@/lib/business-pricing";
-import { DEFAULT_MODULES, isModuleKey, parseModules, type ModuleKey, type ModuleState } from "@/lib/site-modules";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "../supabase/server";
 import { computeKpis, type Kpis } from "./kpis";
-import { SAMPLE_BUSINESSES, SAMPLE_CONNECTIONS, SAMPLE_COUNTS, SAMPLE_EMERGENCIES, SAMPLE_PAYMENTS, SAMPLE_REPORTS, SAMPLE_USERS, type AdminBusiness, type AdminEmergency, type AdminPayment, type AdminReport, type AdminUser } from "./sample-admin-data";
+import { SAMPLE_BUSINESSES, SAMPLE_CONNECTIONS, SAMPLE_COUNTS, SAMPLE_PAYMENTS, SAMPLE_REPORTS, SAMPLE_USERS, type AdminBusiness, type AdminPayment, type AdminReport, type AdminUser } from "./sample-admin-data";
 import { SAMPLE_CLEANERS } from "../sample-data";
-import { BUSINESS_TYPES } from "../business";
-import { parseCoverRules } from "../cover";
+import { BUSINESS_TYPES, type BusinessType } from "../business";
 import { DEFAULT_CATALOG, getActiveRules, monthlyUnitPrices, type CatalogRow, type PricingRule } from "../services";
 
 /**
@@ -15,7 +13,7 @@ import { DEFAULT_CATALOG, getActiveRules, monthlyUnitPrices, type CatalogRow, ty
  * Without Supabase the labelled sample data is returned (demo mode).
  */
 
-export type AdminOverview = { demo: boolean; kpis: Kpis; openReports: number; meetingsThisMonth: number; newAdsThisMonth: number; pendingVog: number };
+export type AdminOverview = { demo: boolean; kpis: Kpis; openReports: number; meetingsThisMonth: number; newAdsThisMonth: number };
 
 function monthStartIso(now = new Date()) {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
@@ -57,22 +55,21 @@ export async function emailsByUserId(ids: string[]): Promise<Map<string, string>
 export async function getAdminOverview(): Promise<AdminOverview> {
   const supabase = await createClient();
   if (!supabase) {
-    return { demo: true, kpis: computeKpis(SAMPLE_PAYMENTS, SAMPLE_CONNECTIONS, new Date("2026-11-15T12:00:00Z")), openReports: SAMPLE_REPORTS.filter((r) => r.status === "open").length, meetingsThisMonth: SAMPLE_COUNTS.meetingsRequestedThisMonth, newAdsThisMonth: SAMPLE_COUNTS.newAdsThisMonth, pendingVog: 1 };
+    return { demo: true, kpis: computeKpis(SAMPLE_PAYMENTS, SAMPLE_CONNECTIONS, new Date("2026-11-15T12:00:00Z")), openReports: SAMPLE_REPORTS.filter((r) => r.status === "open").length, meetingsThisMonth: SAMPLE_COUNTS.meetingsRequestedThisMonth, newAdsThisMonth: SAMPLE_COUNTS.newAdsThisMonth };
   }
   const since = monthStartIso();
-  const [{ data: payments }, { data: connections }, { count: openReports }, { count: meetings }, { count: ads }, { count: vog }] = await Promise.all([
+  const [{ data: payments }, { data: connections }, { count: openReports }, { count: meetings }, { count: ads }] = await Promise.all([
     supabase.from("payments").select("amount_cents, status, paid_at").gte("created_at", since),
     supabase.from("connections").select("status, ended_at"),
     supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
     supabase.from("meeting_requests").select("id", { count: "exact", head: true }).gte("created_at", since),
     supabase.from("cleaner_profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
-    supabase.from("vog_documents").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
   const kpis = computeKpis(
     ((payments ?? []) as { amount_cents: number; status: string; paid_at: string | null }[]).map((p) => ({ amountCents: p.amount_cents, status: p.status as AdminPayment["status"], paidAt: p.paid_at })),
     ((connections ?? []) as { status: string; ended_at: string | null }[]).map((c) => ({ status: (c.status === "paused" ? "active" : c.status) as "active" | "ended" | "pending", endedAt: c.ended_at })),
   );
-  return { demo: false, kpis, openReports: openReports ?? 0, meetingsThisMonth: meetings ?? 0, newAdsThisMonth: ads ?? 0, pendingVog: vog ?? 0 };
+  return { demo: false, kpis, openReports: openReports ?? 0, meetingsThisMonth: meetings ?? 0, newAdsThisMonth: ads ?? 0 };
 }
 
 export async function listReports(): Promise<{ demo: boolean; reports: AdminReport[] }> {
@@ -107,19 +104,6 @@ export async function listReports(): Promise<{ demo: boolean; reports: AdminRepo
   };
 }
 
-export type VogItem = { id: string; cleaner: string; city: string; issuedAt: string; status: "pending" | "approved" | "rejected"; hasFile: boolean };
-export async function listVog(): Promise<{ demo: boolean; items: VogItem[] }> {
-  const supabase = await createClient();
-  if (!supabase) {
-    return { demo: true, items: [
-      { id: "v1", cleaner: "Lotte B.", city: "Groningen", issuedAt: "2026-10-28", status: "pending", hasFile: false },
-      { id: "v2", cleaner: "Maria V.", city: "Utrecht", issuedAt: "2026-06-12", status: "approved", hasFile: false },
-    ] };
-  }
-  const { data } = await supabase.from("vog_documents").select("id, issued_at, status, storage_path, cleaner_profiles ( profiles!cleaner_profiles_user_id_fkey ( display_name, city ) )").order("created_at", { ascending: false }).limit(200);
-  const rows = (data ?? []) as unknown as { id: string; issued_at: string; status: VogItem["status"]; storage_path: string | null; cleaner_profiles: { profiles: { display_name: string; city: string | null } | null } | null }[];
-  return { demo: false, items: rows.map((r) => ({ id: r.id, cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", city: r.cleaner_profiles?.profiles?.city ?? "", issuedAt: r.issued_at, status: r.status, hasFile: Boolean(r.storage_path) })) };
-}
 
 export async function listUsers(): Promise<{ demo: boolean; users: AdminUser[] }> {
   const supabase = await createClient();
@@ -151,7 +135,7 @@ export async function listBusinesses(): Promise<{ demo: boolean; businesses: Adm
   return {
     demo: false,
     businesses: rows.map((b) => {
-      const type = b.business_type ?? "office";
+      const type = (b.business_type && b.business_type in BUSINESS_TYPES ? b.business_type : "office") as BusinessType;
       const status: AdminBusiness["status"] = b.payment_failed_at || b.billing_paused_at ? "paused" : b.billing_started_at && !b.billing_ended_at ? "active" : "not_started";
       // Phase 1: only an active monthly rule counts; the old placeholder prices no longer apply (0 = nothing charged)
       return { id: b.id, company: b.company_name, type, units: b.unit_count, unitPriceCents: unitPrices[type] ?? 0, billingStartedAt: b.billing_started_at, status };
@@ -159,25 +143,6 @@ export async function listBusinesses(): Promise<{ demo: boolean; businesses: Adm
   };
 }
 
-export async function listEmergencies(): Promise<{ demo: boolean; items: AdminEmergency[] }> {
-  const supabase = await createClient();
-  if (!supabase) return { demo: true, items: SAMPLE_EMERGENCIES };
-  const { data } = await supabase.from("emergency_requests").select("id, requester_id, requester_type, city, window_start, window_end, status, accepted_by, fee_cents, attendance").order("created_at", { ascending: false }).limit(200);
-  const rows = (data ?? []) as { id: string; requester_id: string; requester_type: "household" | "business"; city: string; window_start: string; window_end: string; status: AdminEmergency["status"]; accepted_by: string | null; fee_cents: number | null ; attendance?: string }[];
-  const ids = [...new Set(rows.map((r) => r.requester_id))];
-  const cpIds = rows.map((r) => r.accepted_by).filter((x): x is string => Boolean(x));
-  const [{ data: names }, { data: cps }] = await Promise.all([
-    ids.length ? supabase.from("profiles").select("id, display_name").in("id", ids) : Promise.resolve({ data: [] }),
-    cpIds.length ? supabase.from("cleaner_profiles").select("id, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", cpIds) : Promise.resolve({ data: [] }),
-  ]);
-  const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
-  const cleanerOf = new Map(((cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]).map((c) => [c.id, c.profiles?.display_name ?? "—"]));
-  const fmt = (iso: string) => new Date(iso).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const { data: strikeRows } = cpIds.length ? await supabase.from("cleaner_strikes").select("cleaner_profile_id").in("cleaner_profile_id", cpIds) : { data: [] };
-  const strikesOf = new Map<string, number>();
-  for (const sr of (strikeRows ?? []) as { cleaner_profile_id: string }[]) strikesOf.set(sr.cleaner_profile_id, (strikesOf.get(sr.cleaner_profile_id) ?? 0) + 1);
-  return { demo: false, items: rows.map((r) => ({ id: r.id, requester: nameOf.get(r.requester_id) ?? "—", requesterType: r.requester_type, city: r.city, window: `${fmt(r.window_start)}–${fmt(r.window_end).slice(-5)}`, status: r.status, acceptedBy: r.accepted_by ? cleanerOf.get(r.accepted_by) ?? "—" : null, feeCents: r.fee_cents, attendance: (r.attendance ?? "unknown") as AdminEmergency["attendance"], strikes: r.accepted_by ? strikesOf.get(r.accepted_by) ?? 0 : 0 })) };
-}
 
 export async function listPayments(): Promise<{ demo: boolean; payments: AdminPayment[] }> {
   const supabase = await createClient();
@@ -202,7 +167,7 @@ export async function listPayments(): Promise<{ demo: boolean; payments: AdminPa
   return { demo: false, payments: rows.map((p) => ({ id: p.id, invoiceNumber: invoiceOf.get(p.id) ?? null, household: nameOf.get(p.household_id) ?? "—", cleaner: p.connection_id ? nameOf.get(cleanerOfConn.get(p.connection_id) ?? "") ?? "—" : "—", amountCents: p.amount_cents, status: statusMap[p.status] ?? "pending", paidAt: p.paid_at })) };
 }
 
-export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string; videoUrl: string; businessPricing: BusinessPricingForm };
+export type SettingsValues = { householdPriceEuro: string; rateFloorEuro: string; bannedWords: string; videoUrl: string; businessPricing: BusinessPricingForm };
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function getSettings(): Promise<{ demo: boolean; values: SettingsValues | null }> {
   const supabase = await createClient();
@@ -210,22 +175,11 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
   const { data } = await supabase.from("settings").select("key, value");
   const map = new Map(((data ?? []) as { key: string; value: unknown }[]).map((r) => [r.key, r.value]));
   const num = (v: unknown, d: number) => (typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
-  const em = (map.get("emergency_fee_cents") as { household_incl_btw?: number; business_excl_btw?: number } | undefined) ?? {};
-  const linen = (map.get("linen_addon") as { enabled?: boolean; price_per_unit_cents?: number } | undefined) ?? {};
-  const cover = parseCoverRules(map.get("cover_rules"));
   return {
     demo: false,
     values: {
-      coverCancelHours: String(cover.cancelWindowHours),
-      coverStrikeLimit: String(cover.strikeLimit),
-      coverMaxDays: String(cover.maxDaysAhead),
-      householdPriceEuro: euro(num(map.get("household_fee_cents"), 0)),
-      emergencyHouseholdEuro: euro(num(em.household_incl_btw, 0)),
-      emergencyBusinessEuro: euro(num(em.business_excl_btw, 0)),
-      linenEnabled: Boolean(linen.enabled),
-      linenPriceEuro: euro(num(linen.price_per_unit_cents, 400)),
+      householdPriceEuro: euro(num(map.get("household_fee_cents"), 1495)),
       rateFloorEuro: euro(num(map.get("rate_floor_cents"), 1500)),
-      vogMaxAgeMonths: String(num(map.get("vog_max_age_months"), 12)),
       bannedWords: Array.isArray(map.get("banned_words")) ? (map.get("banned_words") as string[]).join(", ") : "",
       videoUrl: typeof map.get("homepage_video_url") === "string" ? (map.get("homepage_video_url") as string) : "",
       businessPricing: toBusinessPricingForm(parseBusinessPricing(map.get("business_pricing"))),
@@ -267,18 +221,8 @@ export async function listWorkRecords(): Promise<{ demo: boolean; work: AdminWor
   return { demo: false, work: rows.map((r) => ({ id: r.id, business: r.business_profiles?.company_name ?? "—", cleaner: r.cleaner_profiles?.profiles?.display_name ?? "—", serviceKey: r.service_key, scheduledStart: r.scheduled_start, completedAt: r.completed_at, outcome: r.outcome, confirmedAt: r.business_confirmed_at, notes: r.notes })) };
 }
 
-// ========== Website: module switches + notify counts, testimonials ==========
+// ========== Website: testimonials ==========
 export type AdminTestimonial = { id: string; name: string; role: string | null; city: string | null; quote: string; published: boolean; created_at: string };
-
-export async function listWebsiteModules(): Promise<{ demo: boolean; modules: Record<ModuleKey, ModuleState>; interest: Partial<Record<ModuleKey, number>> }> {
-  const supabase = await createClient();
-  if (!supabase) return { demo: true, modules: DEFAULT_MODULES, interest: {} };
-  const { data } = await supabase.from("settings").select("value").eq("key", "website_modules").maybeSingle();
-  const interest: Partial<Record<ModuleKey, number>> = {};
-  const { data: rows } = await supabase.from("module_interest").select("module").limit(10000);
-  for (const r of (rows ?? []) as { module: string }[]) if (isModuleKey(r.module)) interest[r.module] = (interest[r.module] ?? 0) + 1;
-  return { demo: false, modules: parseModules(data?.value), interest };
-}
 
 export async function listTestimonials(): Promise<{ demo: boolean; items: AdminTestimonial[] }> {
   const supabase = await createClient();

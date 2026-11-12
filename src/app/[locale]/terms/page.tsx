@@ -20,7 +20,7 @@ const nl = {
     {
       h: "2. Geen controle door Alieni — controleer elkaar",
       p: [
-        "Voor schoolwerk beoordeelt Alieni geüploade VOG-documenten van schoonmakers; het bestand wordt na de beoordeling verwijderd en Alieni bewaart alleen de uitkomst en de afgiftedatum. Verder verifieert Alieni de identiteit, kwalificaties of verzekering van schoonmakers niet. Gebruikers zijn zelf verantwoordelijk voor het controleren van elkaars identiteit, kwalificaties en betrouwbaarheid, bijvoorbeeld tijdens de kennismaking.",
+        "Alieni verifieert de identiteit, kwalificaties of verzekering van schoonmakers niet. Gebruikers zijn zelf verantwoordelijk voor het controleren van elkaars identiteit, kwalificaties en betrouwbaarheid, bijvoorbeeld tijdens de kennismaking.",
         "Reviews op Alieni zijn afkomstig van verbindingen die beide partijen in de app hebben bevestigd.",
       ],
     },
@@ -74,7 +74,7 @@ const en = {
     {
       h: "2. No checks by Alieni — check each other",
       p: [
-        "For school work, Alieni reviews VOG documents uploaded by cleaners; the file is deleted after review and Alieni keeps only the outcome and the issue date. Otherwise Alieni does not verify cleaners' identity, qualifications or insurance. Users are responsible for checking each other's identity, qualifications and reliability, for example during the introduction meeting.",
+        "Alieni does not verify cleaners' identity, qualifications or insurance. Users are responsible for checking each other's identity, qualifications and reliability, for example during the introduction meeting.",
         "Reviews on Alieni come from connections that both parties confirmed in the app.",
       ],
     },

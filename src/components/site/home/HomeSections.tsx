@@ -2,33 +2,23 @@ import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link, getPathname } from "@/i18n/navigation";
 import { DESIGN_IMAGES, type DesignImageKey } from "@/lib/design-images";
-import { moduleHref, type ModuleKey, type ModuleState } from "@/lib/site-modules";
 import type { BusinessPricingModel } from "@/lib/business-pricing";
 import { Icon, type IconName } from "@/components/site/Icon";
-import { RoundArrow, SoonBadge } from "@/components/site/bits";
+import { RoundArrow } from "@/components/site/bits";
 
-type Modules = Record<ModuleKey, ModuleState>;
-
-/** Where a tile goes: a working flow, a live module, or the module's "Notify me" page. */
-function tile(modules: Modules, target: { href: string } | { module: ModuleKey }) {
-  if ("href" in target) return { href: target.href, soon: false };
-  const state = modules[target.module];
-  return { href: moduleHref(target.module, state), soon: !state.live };
-}
+/** The four places the homepage sends people (alieni-nl): all working flows. */
+const DESTINATIONS: { key: "find" | "become" | "business" | "how"; href: string; icon: IconName; img: DesignImageKey }[] = [
+  { key: "find", href: "/search", icon: "search", img: "catFindCleaners" },
+  { key: "become", href: "/signup?role=cleaner", icon: "person", img: "catJobs" },
+  { key: "business", href: "/business", icon: "building", img: "catCommercial" },
+  { key: "how", href: "/about#how-it-works", icon: "check", img: "aboutLiving" },
+];
 
 /* ---------------------------------------------------------------- mobile search + icon row */
 
-export async function MobileSearch({ modules }: { modules: Modules }) {
+export async function MobileSearch() {
   const tMobileSearch = await getTranslations("site");
   const locale = await getLocale();
-  const items: { icon: IconName; label: string; target: { href: string } | { module: ModuleKey } }[] = [
-    { icon: "home", label: tMobileSearch("iconRow.find"), target: { href: "/search" } },
-    { icon: "building", label: tMobileSearch("iconRow.businesses"), target: { href: "/business" } },
-    { icon: "box", label: tMobileSearch("iconRow.suppliers"), target: { module: "suppliers" } },
-    { icon: "gear", label: tMobileSearch("iconRow.equipment"), target: { module: "equipment" } },
-    { icon: "briefcase", label: tMobileSearch("iconRow.careers"), target: { module: "careers" } },
-    { icon: "grid", label: tMobileSearch("iconRow.more"), target: { href: "#explore" } },
-  ];
   return (
     <section className="relative z-10 -mt-14 px-4 sm:px-6 lg:hidden">
       <form action={getPathname({ href: "/search", locale })} method="get" role="search" aria-label={tMobileSearch("searchBar.label")} className="mx-auto flex max-w-2xl items-center gap-2 rounded-2xl bg-white p-2 pl-4 shadow-[0_16px_34px_-18px_rgba(11,31,75,0.5)]">
@@ -39,36 +29,19 @@ export async function MobileSearch({ modules }: { modules: Modules }) {
       </form>
 
       <nav aria-label={tMobileSearch("iconRow.label")} className="mx-auto mt-4 max-w-2xl rounded-2xl border border-edge bg-white">
-        <ul className="grid grid-cols-6 py-2">
-          {items.map((i, idx) => {
-            const { href, soon } = tile(modules, i.target);
-            return (
-              <li key={i.label} className={idx ? "border-l border-edge" : ""}>
-                {href.startsWith("#") ? (
-                  <a href={href} className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 px-0.5 text-center text-[11px] font-semibold leading-tight text-navy">
-                    <Icon name={i.icon} className="h-7 w-7" />
-                    {i.label}
-                  </a>
-                ) : (
-                  <Link href={href} prefetch={soon ? false : undefined} className="relative flex min-h-[68px] flex-col items-center justify-center gap-1.5 px-0.5 text-center text-[11px] font-semibold leading-tight text-navy">
-                    <Icon name={i.icon} className="h-7 w-7" />
-                    {i.label}
-                    {soon ? (
-                      <>
-                        <span className="absolute right-1.5 top-1 h-2 w-2 rounded-full bg-royal" aria-hidden="true" />
-                        <span className="sr-only">({tMobileSearch("soon")})</span>
-                      </>
-                    ) : null}
-                  </Link>
-                )}
-              </li>
-            );
-          })}
+        <ul className="grid grid-cols-4 py-2">
+          {DESTINATIONS.map((d, idx) => (
+            <li key={d.key} className={idx ? "border-l border-edge" : ""}>
+              <Link href={d.href} className="flex min-h-[68px] flex-col items-center justify-center gap-1.5 px-1 text-center text-[12px] font-semibold leading-tight text-navy">
+                <Icon name={d.icon} className="h-7 w-7" />
+                {tMobileSearch(`tiles.${d.key}.t`)}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
     </section>
   );
-
 }
 
 /* ---------------------------------------------------------------- about (mobile) */
@@ -98,16 +71,7 @@ export async function MobileAbout() {
 
 /* ---------------------------------------------------------------- explore (both) */
 
-const CARDS: { key: string; img: DesignImageKey; target: { href: string } | { module: ModuleKey } }[] = [
-  { key: "findCleaners", img: "catFindCleaners", target: { href: "/search" } },
-  { key: "companies", img: "catCompanies", target: { href: "/business" } },
-  { key: "suppliers", img: "catSuppliers", target: { module: "suppliers" } },
-  { key: "linen", img: "catLinen", target: { module: "linen" } },
-  { key: "careers", img: "catJobs", target: { module: "careers" } },
-  { key: "commercial", img: "catCommercial", target: { href: "/business" } },
-];
-
-export async function Explore({ modules }: { modules: Modules }) {
+export async function Explore() {
   const tExplore = await getTranslations("site");
   return (
     <section id="explore" className="scroll-mt-20 bg-page pb-14 pt-12 lg:pb-20 lg:pt-10">
@@ -121,24 +85,19 @@ export async function Explore({ modules }: { modules: Modules }) {
           <p className="mt-1 hidden text-lg text-body lg:block">{tExplore("explore.subtitle")}</p>
         </div>
 
-        <ul className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:mt-8 lg:gap-5 xl:grid-cols-3">
-          {CARDS.map((card) => {
-            const { href, soon } = tile(modules, card.target);
-            const img = DESIGN_IMAGES[card.img];
+        <ul className="mt-6 grid grid-cols-2 gap-3 lg:mt-8 lg:grid-cols-2 lg:gap-5 xl:grid-cols-4">
+          {DESTINATIONS.map((d) => {
+            const img = DESIGN_IMAGES[d.img];
             return (
-              <li key={card.key}>
-                {/* "Coming soon" pages are not prefetched (rarely visited; see e2e audit note). */}
-                <Link href={href} prefetch={soon ? false : undefined} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-edge bg-white transition-colors hover:border-royal lg:h-[104px] lg:flex-row lg:items-center lg:rounded-[14px]">
-                  <div className="relative aspect-[2/1] lg:aspect-auto lg:h-full lg:w-[38%] lg:shrink-0">
-                    <Image src={img.src} alt="" fill sizes="(min-width: 1024px) 200px, 45vw" className="object-cover" />
-                    {soon ? <SoonBadge label={tExplore("soon")} className="absolute left-2 top-2" /> : null}
+              <li key={d.key}>
+                <Link href={d.href} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-edge bg-white transition-colors hover:border-royal" data-tile={d.key}>
+                  <div className="relative aspect-[2/1]">
+                    <Image src={img.src} alt="" fill sizes="(min-width: 1280px) 320px, (min-width: 1024px) 45vw, 45vw" className="object-cover" />
                   </div>
-                  <div className="flex flex-1 items-end justify-between gap-2 p-3 lg:items-center lg:gap-3 lg:px-5">
+                  <div className="flex flex-1 items-end justify-between gap-2 p-3 lg:p-5">
                     <div>
-                      <h3 className="text-[14px] font-bold leading-tight text-navy lg:text-lg">{tExplore(`cards.${card.key}.t`)}</h3>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-medium text-royal lg:mt-1 lg:text-[15px]">
-                        {tExplore(`cards.${card.key}.s`)} <Icon name="arrow" className="hidden h-4 w-4 lg:block" />
-                      </p>
+                      <h3 className="text-[14px] font-bold leading-tight text-navy lg:text-lg">{tExplore(`tiles.${d.key}.t`)}</h3>
+                      <p className="mt-0.5 text-[13px] font-medium text-royal lg:mt-1 lg:text-[15px]">{tExplore(`tiles.${d.key}.s`)}</p>
                     </div>
                     <RoundArrow className="h-8 w-8 lg:h-10 lg:w-10" />
                   </div>

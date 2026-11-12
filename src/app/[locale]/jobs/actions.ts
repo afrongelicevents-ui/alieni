@@ -19,7 +19,7 @@ const jobSchema = z.object({
   unitId: z.string().uuid().nullable(),
   postcode: dutchPostcodeSchema,
   city: z.string().trim().max(80),
-  frequency: z.enum(["once", "daily", "weekly", "biweekly", "monthly", "per_checkout"]),
+  frequency: z.enum(["once", "daily", "weekly", "biweekly", "monthly"]),
   scheduleNote: z.string().trim().max(300),
   description: z.string().trim().min(10).max(2000),
   budgetCents: z.number().int().min(DEFAULT_RATE_FLOOR_CENTS).max(50000),
@@ -37,8 +37,8 @@ export async function createJob(input: JobInput): Promise<JobActionState> {
   if (!parsed.success) return { ok: false, error: "invalid" };
   const j = parsed.data;
   const recurring = ["daily", "weekly", "biweekly", "monthly"].includes(j.frequency);
-  if (j.frequency !== "per_checkout" && !j.startDate) return { ok: false, error: "start_date" };
-  if (j.frequency !== "per_checkout" && !j.visitStart) return { ok: false, error: "visit_time" };
+  if (!j.startDate) return { ok: false, error: "start_date" };
+  if (!j.visitStart) return { ok: false, error: "visit_time" };
   if (j.startDate && j.startDate < new Date(Date.now() - 864e5).toISOString().slice(0, 10)) return { ok: false, error: "start_date" };
   if (j.endDate && (!recurring || !j.startDate || j.endDate < j.startDate)) return { ok: false, error: "end_date" };
   if ((j.frequency === "weekly" || j.frequency === "biweekly") && j.weekdays.length === 0) return { ok: false, error: "weekdays" };

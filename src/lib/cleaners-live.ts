@@ -21,8 +21,6 @@ type Row = {
   verified_jobs_count: number;
   job_types: string[] | null;
   work_scope: string | null;
-  emergency_rate_cents: number | null;
-  vog_documents: { status: string; issued_at: string }[] | null;
   profiles: { display_name: string; city: string | null } | null;
   availability_slots: { weekday: number; block: string }[];
   photo_path: string | null;
@@ -36,11 +34,11 @@ export function profilePhotoUrl(path: string | null | undefined): string | null 
 }
 
 const SELECT =
-  "id, user_id, rate_cents, min_hours, services, languages, postcode_area, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, emergency_rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name, city ), availability_slots ( weekday, block ), vog_documents ( status, issued_at )";
+  "id, user_id, rate_cents, min_hours, services, languages, postcode_area, radius_km, about, photo_path, verified_jobs_count, job_types, work_scope, profiles!cleaner_profiles_user_id_fkey ( display_name, city ), availability_slots ( weekday, block )";
 
 type ReviewAgg = { rating: number; count: number; items: SampleCleaner["reviews"] };
 
-function toCleaner(row: Row, vogValid = false, agg?: ReviewAgg): SampleCleaner {
+function toCleaner(row: Row, agg?: ReviewAgg): SampleCleaner {
   const availability: Partial<Record<Weekday, DayBlock[]>> = {};
   for (const slot of row.availability_slots ?? []) {
     const day = slot.weekday as Weekday;
@@ -62,13 +60,6 @@ function toCleaner(row: Row, vogValid = false, agg?: ReviewAgg): SampleCleaner {
     languages: row.languages ?? [],
     jobTypes: (row.job_types ?? ["household"]) as SampleCleaner["jobTypes"],
     workScope: (row.work_scope ?? "household") as SampleCleaner["workScope"],
-    emergencyRateCents: row.emergency_rate_cents ?? undefined,
-    // the public cannot read vog_documents; the database says (cleaner_vog_badges) whether an approved, recent VOG exists
-    vog: vogValid
-      ? { status: "approved" as const, issuedAt: new Date().toISOString().slice(0, 10) }
-      : row.vog_documents?.[0]
-        ? { status: row.vog_documents[0].status as "approved" | "pending" | "rejected", issuedAt: row.vog_documents[0].issued_at }
-        : undefined,
     about: { nl: about, en: about },
     availability,
     reviews: agg?.items ?? [],
@@ -83,13 +74,6 @@ const OLD_SELECT = SELECT.replace("postcode_area", "postcode");
 async function selectAds(supabase: SupabaseClient, build: (cols: string) => PromiseLike<{ data: unknown; error: unknown }>): Promise<{ data: unknown; error: unknown }> {
   const first = await build(SELECT);
   return first.error ? build(OLD_SELECT) : first;
-}
-
-/** Ids of ads with a valid VOG, from the public badge view (a boolean only, never the document). */
-async function validVogIds(supabase: SupabaseClient, ids: string[]): Promise<Set<string>> {
-  if (!ids.length) return new Set();
-  const { data } = await supabase.from("cleaner_vog_badges").select("cleaner_profile_id, vog_valid").in("cleaner_profile_id", ids);
-  return new Set(((data ?? []) as { cleaner_profile_id: string; vog_valid: boolean }[]).filter((r) => r.vog_valid).map((r) => r.cleaner_profile_id));
 }
 
 /** Rating, count and latest reviews per cleaner (user id), from the public reviews table. */
@@ -113,8 +97,8 @@ export async function fetchLiveCleaners(): Promise<SampleCleaner[] | null> {
   const { data, error } = await selectAds(supabase, (cols) => supabase.from("cleaner_profiles").select(cols).eq("status", "published").limit(500));
   if (error || !data) return null;
   const rows = data as unknown as Row[];
-  const [valid, aggs] = await Promise.all([validVogIds(supabase, rows.map((r) => r.id)), reviewAggregates(supabase, rows.map((r) => r.user_id))]);
-  return rows.map((r) => toCleaner(r, valid.has(r.id), aggs.get(r.user_id)));
+  const aggs = await reviewAggregates(supabase, rows.map((r) => r.user_id));
+  return rows.map((r) => toCleaner(r, aggs.get(r.user_id)));
 }
 
 export async function fetchLiveCleaner(id: string): Promise<SampleCleaner | null> {
@@ -123,8 +107,8 @@ export async function fetchLiveCleaner(id: string): Promise<SampleCleaner | null
   const { data, error } = await selectAds(supabase, (cols) => supabase.from("cleaner_profiles").select(cols).eq("id", id).eq("status", "published").maybeSingle());
   if (error || !data) return null;
   const row = data as unknown as Row;
-  const [valid, aggs] = await Promise.all([validVogIds(supabase, [row.id]), reviewAggregates(supabase, [row.user_id])]);
-  return toCleaner(row, valid.has(row.id), aggs.get(row.user_id));
+  const aggs = await reviewAggregates(supabase, [row.user_id]);
+  return toCleaner(row, aggs.get(row.user_id));
 }
 
 /** The owner's (or an admin's) own ad in any status: for "view my ad" while it is a draft or hidden. */
@@ -135,8 +119,8 @@ export async function fetchOwnCleaner(id: string, viewer: { id: string; role: st
   if (error || !data) return null; // RLS: only the owner or an admin gets a non-published row
   const row = data as unknown as Row & { status: string; user_id: string };
   if (row.user_id !== viewer.id && viewer.role !== "admin") return null; // belt and braces on top of RLS
-  const [valid, aggs] = await Promise.all([validVogIds(supabase, [row.id]), reviewAggregates(supabase, [row.user_id])]);
-  return { ...toCleaner(row, valid.has(row.id), aggs.get(row.user_id)), status: row.status };
+  const aggs = await reviewAggregates(supabase, [row.user_id]);
+  return { ...toCleaner(row, aggs.get(row.user_id)), status: row.status };
 }
 
 /** Precise distance (km) from an origin to every published ad with a stored location (database function cleaner_distances). */

@@ -86,11 +86,9 @@ export default async function BusinessRequestsPage({ params }: { params: Promise
   const type = bundle.profile.business_type;
   const on = (s: ServiceKey) => enabledFor(catalog, s, type);
   const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  const slots = bundle.slots.filter((s) => s.status !== "cancelled").slice(0, 12);
-  const jobsOf = (service: "oneoff" | "contract" | "turnover") => bundle.jobs.filter((j) => jobServiceKey(j.frequency as Frequency) === service);
+  const jobsOf = (service: "oneoff" | "contract") => bundle.jobs.filter((j) => jobServiceKey(j.frequency as Frequency) === service);
   const oneoffJobs = jobsOf("oneoff");
   const contractJobs = jobsOf("contract");
-  const turnoverJobs = jobsOf("turnover");
 
   const labels = { count: (n: number) => t("reqCount", { count: n }), reqNew: t("reqNew"), soon: t("tileSoon"), offNote: (id: string) => (catalog.find((c) => c.service_key === id)?.enabled ? t("reqOff") : t("reqSoon")) };
 
@@ -100,32 +98,6 @@ export default async function BusinessRequestsPage({ params }: { params: Promise
       <BusinessSubnav />
       <p className="mt-4 text-sm text-ink/70">{t("requestsIntro")}</p>
       <div className="mt-5 flex flex-col gap-4">
-        <RequestBlock labels={labels} id="cover" title={t("reqCover")} enabled={on("cover")} newHref="/emergency" count={bundle.emergencies.length}>
-          {bundle.emergencies.length === 0 ? <p className="text-sm text-ink/70">{t("reqNone")}</p> : (
-            <ul className="divide-y divide-line">
-              {bundle.emergencies.slice(0, 12).map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0 truncate font-semibold text-ink">{fmt(e.window_start)} · {e.hours}h · {e.city}</span>
-                  {chip(t(`em_${e.status}`), e.status === "accepted" ? "ok" : e.status === "searching" ? "open" : "muted")}
-                </li>
-              ))}
-            </ul>
-          )}
-        </RequestBlock>
-        <RequestBlock labels={labels} id="turnover" title={t("reqTurnovers")} enabled={on("turnover")} newHref="/business/calendar" count={slots.length + turnoverJobs.length}>
-          {slots.length === 0 && turnoverJobs.length === 0 ? <p className="text-sm text-ink/70">{t("reqNone")}</p> : null}
-          {turnoverJobs.length ? <div className="mb-3"><JobList jobs={turnoverJobs} bundle={bundle} lang={lang} t={t as unknown as JobT} fmt={fmt} /></div> : null}
-          {slots.length === 0 ? null : (
-            <ul className="divide-y divide-line">
-              {slots.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0 truncate font-semibold text-ink">{fmt(s.starts_at)} → {new Date(s.ends_at).toLocaleTimeString(lang === "en" ? "en-GB" : "nl-NL", { hour: "2-digit", minute: "2-digit" })}</span>
-                  {chip(t(`slot_${s.status}`), s.status === "done" || s.status === "reserved" ? "ok" : "open")}
-                </li>
-              ))}
-            </ul>
-          )}
-        </RequestBlock>
         <RequestBlock labels={labels} id="connect" title={t("reqConnect")} enabled={on("connect")} newHref="/search" count={bundle.connectedCleaners.length}>
           {bundle.connectedCleaners.length === 0 ? <p className="text-sm text-ink/70">{t("reqConnectNone")}</p> : (
             <ul className="divide-y divide-line">

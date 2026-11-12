@@ -21,7 +21,6 @@ const nl = {
       p: [
         "Account: naam, e-mailadres, woonplaats en wachtwoord (versleuteld opgeslagen) — om je account te laten werken (uitvoering van de overeenkomst).",
         "Advertentie (schoonmakers): tarief, diensten, werkgebied (postcode + reisafstand), beschikbaarheid, profieltekst en foto — om je advertentie te tonen aan zoekende huishoudens en bedrijven.",
-        "VOG (schoonmakers, voor schoolwerk): de uitkomst van de beoordeling en de afgiftedatum van het VOG — om aan scholen te kunnen tonen dat het VOG is beoordeeld.",
         "Bedrijfsgegevens (bedrijfsaccounts): bedrijfsnaam, optioneel btw-nummer, contactpersoon en de adressen van locaties — om je bedrijfsaccount en advertenties te laten werken.",
         "Voorkeuren (huishoudens): postcodegebied, woningtype en wensen — om passende schoonmakers te tonen.",
         "Reviews, werkregistraties en favorieten: door jou geschreven reviews, vastgelegde gewerkte tijden en de advertenties die je als favoriet markeert — om reviews, een overzicht van het werk en je favorietenlijst te tonen.",
@@ -33,9 +32,9 @@ const nl = {
     {
       h: "3. Wat we bewust NIET verwerken (dataminimalisatie)",
       p: [
-        "Beperkte adresgegevens: voor gewone zoekopdrachten en huishoudens slaat Alieni geen woonadres op; waar er wordt schoongemaakt, deel je zelf rechtstreeks met de schoonmaker. Uitzonderingen: bij een spoedaanvraag slaan we het opgegeven adres op tot 7 dagen na de klus; bedrijfslocaties slaan hun adres op; van schoonmakers slaan we de postcode op en leiden we daaruit een nauwkeurige locatie af voor het zoeken op afstand — alleen het 4-cijferige postcodegebied is openbaar zichtbaar.",
+        "Beperkte adresgegevens: voor gewone zoekopdrachten en huishoudens slaat Alieni geen woonadres op; waar er wordt schoongemaakt, deel je zelf rechtstreeks met de schoonmaker. Uitzonderingen: bedrijfslocaties slaan hun adres op; van schoonmakers slaan we de postcode op en leiden we daaruit een nauwkeurige locatie af voor het zoeken op afstand — alleen het 4-cijferige postcodegebied is openbaar zichtbaar.",
         "Geen bank- of kaartgegevens: die slaan we niet op. Schoonmakers betalen nooit iets, dus van hen hebben we helemaal geen financiële gegevens.",
-        "Geen identiteitsbewijzen of KvK-documenten. Een VOG-document dat een schoonmaker uploadt voor schoolwerk wordt door Alieni beoordeeld en daarna verwijderd; alleen de uitkomst en de afgiftedatum blijven bewaard. Bedrijfsaccounts slaan bedrijfsnaam, een optioneel btw-nummer en een contactpersoon op. Schoonmakers zijn zelfstandig; de klantrelatie is van hen, niet van Alieni.",
+        "Geen identiteitsbewijzen, KvK-documenten of VOG's. Bedrijfsaccounts slaan bedrijfsnaam, een optioneel btw-nummer en een contactpersoon op. Schoonmakers zijn zelfstandig; de klantrelatie is van hen, niet van Alieni.",
         "De postcode die je in de zoekbalk typt wordt alleen gebruikt om te zoeken en nooit opgeslagen.",
       ],
     },
@@ -48,7 +47,7 @@ const nl = {
     {
       h: "5. Hoe lang we gegevens bewaren",
       p: [
-        "Accountgegevens: zolang je account bestaat. Eventuele facturen en betaalgegevens (zodra die bestaan): 7 jaar (fiscale bewaarplicht). Spoedadressen: 7 dagen na de klus. Chatberichten: tot 2 jaar na het laatste bericht of zoveel eerder als je je account verwijdert. Meldingen: 2 jaar na afhandeling.",
+        "Accountgegevens: zolang je account bestaat. Eventuele facturen en betaalgegevens (zodra die bestaan): 7 jaar (fiscale bewaarplicht). Chatberichten: tot 2 jaar na het laatste bericht of zoveel eerder als je je account verwijdert. Meldingen: 2 jaar na afhandeling.",
       ],
     },
     {
@@ -88,7 +87,6 @@ const en = {
       p: [
         "Account: name, email address, city and password (stored encrypted) — to make your account work (performance of the contract).",
         "Ad (cleaners): rate, services, working area (postcode + travel radius), availability, profile text and photo — to show your ad to searching households and businesses.",
-        "VOG (cleaners, for school work): the outcome of our review and the issue date of the VOG — to be able to show schools that the VOG was reviewed.",
         "Business data (business accounts): company name, optional VAT number, contact person and the addresses of locations — to make your business account and ads work.",
         "Preferences (households): postcode area, home type and needs — to show suitable cleaners.",
         "Reviews, work records and favourites: reviews you write, recorded work times and the ads you mark as favourite — to show reviews, an overview of the work and your favourites list.",
@@ -100,9 +98,9 @@ const en = {
     {
       h: "3. What we deliberately do NOT process (data minimisation)",
       p: [
-        "Limited address data: for ordinary searches and households Alieni stores no home address; where the cleaning happens is something you share directly with the cleaner. Exceptions: for an emergency request we store the address you give until 7 days after the job; business locations store their address; for cleaners we store the postcode and derive a precise location from it for distance search — only the 4-digit postcode area is publicly visible.",
+        "Limited address data: for ordinary searches and households Alieni stores no home address; where the cleaning happens is something you share directly with the cleaner. Exceptions: business locations store their address; for cleaners we store the postcode and derive a precise location from it for distance search — only the 4-digit postcode area is publicly visible.",
         "No bank or card details: we do not store those. Cleaners never pay anything, so we hold no financial data about them at all.",
-        "No identity documents or KvK documents. A VOG document that a cleaner uploads for school work is reviewed by Alieni and then deleted; only the outcome and the issue date are kept. Business accounts store a company name, an optional VAT number and a contact person. Cleaners are independent; the client relationship is theirs, not Alieni's.",
+        "No identity documents, KvK documents or VOG certificates. Business accounts store a company name, an optional VAT number and a contact person. Cleaners are independent; the client relationship is theirs, not Alieni's.",
         "The postcode you type into the search bar is only used to search and is never stored.",
       ],
     },
@@ -115,7 +113,7 @@ const en = {
     {
       h: "5. How long we keep data",
       p: [
-        "Account data: as long as your account exists. Any invoices and payment data (once they exist): 7 years (tax retention obligation). Emergency addresses: 7 days after the job. Chat messages: up to 2 years after the last message, or sooner if you delete your account. Reports: 2 years after handling.",
+        "Account data: as long as your account exists. Any invoices and payment data (once they exist): 7 years (tax retention obligation). Chat messages: up to 2 years after the last message, or sooner if you delete your account. Reports: 2 years after handling.",
       ],
     },
     {

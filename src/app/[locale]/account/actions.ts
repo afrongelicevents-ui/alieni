@@ -7,7 +7,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 export type AccountActionState = { ok: boolean; error?: string };
 
-const BUCKETS = ["profile-photos", "vog", "turnover-photos"] as const;
+const BUCKETS = ["profile-photos"] as const;
 
 /**
  * Erase the signed-in person's account (AVG right to erasure). The person must type their own e-mail address.
@@ -30,7 +30,7 @@ export async function deleteAccount(confirmEmail: string): Promise<AccountAction
     const { data: result, error } = await admin.rpc("erase_user_data", { p_user: userId });
     if (error) return { ok: false, error: error.code === "PGRST202" || error.code === "42883" ? "db_outdated" : "failed" };
 
-    // files: profile photo, VOG, turnover photos (folders are named after the user id)
+    // files: the profile photo (folders are named after the user id)
     for (const bucket of BUCKETS) {
       try {
         const { data: files } = await admin.storage.from(bucket).list(userId, { limit: 1000 });

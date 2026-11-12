@@ -29,13 +29,12 @@ export default async function CleanerProfilePage({
   let existing: ExistingAd | null = null;
   const { data: ad } = await supabase
     .from("cleaner_profiles")
-    .select("id, status, rate_cents, min_hours, services, languages, radius_km, about, photo_path, job_types, works_as, emergency_rate_cents, experience_years, work_scope, work_types, availability_slots ( weekday, block ), vog_documents ( status, issued_at )")
+    .select("id, status, rate_cents, min_hours, services, languages, radius_km, about, photo_path, job_types, works_as, experience_years, work_scope, work_types, availability_slots ( weekday, block )")
     .eq("user_id", user.id)
     .maybeSingle();
   if (ad) {
     const availability: Record<number, string[]> = {};
     for (const s of (ad.availability_slots as { weekday: number; block: string }[]) ?? []) (availability[s.weekday] ??= []).push(s.block);
-    const vog = (ad.vog_documents as { status: string; issued_at: string }[] | null)?.[0];
     const { data: profile } = await supabase.from("profiles").select("city").eq("id", user.id).maybeSingle();
     // Part 16 hides the full postcode behind this function; before it has been run the column is still readable
     const rpcResult = await supabase.rpc("my_cleaner_postcode");
@@ -44,7 +43,6 @@ export default async function CleanerProfilePage({
       adId: ad.id,
       status: ad.status,
       photoUrl: profilePhotoUrl(ad.photo_path),
-      vogStatus: vog?.status ?? null,
       draft: {
         name: user.displayName,
         city: profile?.city ?? "",
@@ -56,13 +54,11 @@ export default async function CleanerProfilePage({
         workTypes: ad.work_types?.length ? ad.work_types : ["household_regular"],
         experienceYears: ad.experience_years ?? null,
         worksAs: (ad.works_as ?? "") as "" | "independent" | "company",
-        emergencyRateEuro: ad.emergency_rate_cents ? euro(ad.emergency_rate_cents) : "",
         rateEuro: euro(ad.rate_cents),
         minHours: Number(ad.min_hours),
         postcode: typeof ownPostcode === "string" ? ownPostcode : "",
         radiusKm: ad.radius_km,
         availability,
-        vogIssuedAt: vog?.issued_at ?? "",
       } as ExistingAd["draft"],
     };
   }

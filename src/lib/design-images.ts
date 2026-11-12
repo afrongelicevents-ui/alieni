@@ -10,9 +10,6 @@ export const DESIGN_IMAGES = {
   aboutLiving: { src: "/img/site/about-living.webp", width: 640, height: 704 },
   dutchStreet: { src: "/img/site/dutch-street.webp", width: 1400, height: 700 },
   catFindCleaners: { src: "/img/site/cat-find-cleaners.webp", width: 720, height: 360 },
-  catCompanies: { src: "/img/site/cat-companies.webp", width: 720, height: 360 },
-  catSuppliers: { src: "/img/site/cat-suppliers.webp", width: 720, height: 360 },
-  catLinen: { src: "/img/site/cat-linen.webp", width: 720, height: 360 },
   catJobs: { src: "/img/site/cat-jobs.webp", width: 720, height: 360 },
   catCommercial: { src: "/img/site/cat-commercial.webp", width: 720, height: 360 },
 } as const;

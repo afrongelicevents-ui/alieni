@@ -14,7 +14,7 @@ export default async function AdminDashboardPage({
   setRequestLocale(locale);
   const t = await getTranslations("admin");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
-  const { kpis, openReports, meetingsThisMonth, newAdsThisMonth, pendingVog } = await getAdminOverview();
+  const { kpis, openReports, meetingsThisMonth, newAdsThisMonth } = await getAdminOverview();
 
   const cards = [
     { label: t("kpiRevenueGross"), value: formatEuro(kpis.revenueGrossCents, lang) },
@@ -25,16 +25,15 @@ export default async function AdminDashboardPage({
     { label: t("kpiNewAds"), value: String(newAdsThisMonth) },
     { label: t("kpiChurn"), value: `${kpis.churnPct}%` },
   ];
-  const needs = openReports + pendingVog;
+  const needs = openReports;
 
   return (
     <div>
-      <Link href={openReports > 0 || pendingVog === 0 ? "/admin/reports" : "/admin/vog"} className="flex items-center justify-between rounded-card-lg border-2 border-sun bg-sun/15 p-5 transition-colors hover:bg-sun/25">
+      <Link href="/admin/reports" className="flex items-center justify-between rounded-card-lg border-2 border-sun bg-sun/15 p-5 transition-colors hover:bg-sun/25">
         <div>
           <h2 className="font-extrabold text-ink">{t("needsYou")}</h2>
           <p className="text-sm text-ink/70">
             {t("needsYouText", { count: openReports })}
-            {pendingVog > 0 ? ` · ${t("pendingVogText", { count: pendingVog })}` : ""}
           </p>
         </div>
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sun text-lg font-extrabold text-white">{needs}</span>

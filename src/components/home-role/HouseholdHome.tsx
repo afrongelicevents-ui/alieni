@@ -7,7 +7,7 @@ import { SERVICE_LABELS } from "@/lib/sample-data";
 import { ButtonLink } from "@/components/ui/Button";
 import { HouseholdOnboarding } from "./HouseholdOnboarding";
 
-/** Household dashboard: "your cleaner" state card, requests, favourites, emergency. */
+/** Household dashboard: "your cleaner" state card, requests, favourites. */
 export async function HouseholdHome({ user }: { user: SessionUser }) {
   const t = await getTranslations("householdHome");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
@@ -106,7 +106,7 @@ export async function HouseholdHome({ user }: { user: SessionUser }) {
       {/* Shortcuts */}
       <ul className="mt-6 grid grid-cols-2 gap-3">
         <li><Link href="/favourites" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-line bg-white px-3 text-center hover:bg-mint"><span className="text-lg font-extrabold text-forest">{favCount ?? 0}</span><span className="text-xs font-semibold text-ink/70">{t("favourites")}</span></Link></li>
-        <li><Link href="/emergency" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-sun bg-sun/15 px-3 text-center hover:bg-sun/25"><span className="text-sm font-extrabold text-ink">{t("emergency")}</span><span className="text-xs font-semibold text-ink/70">{t("emergencySub")}</span></Link></li>
+        <li><Link href="/search" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-line bg-white px-3 text-center hover:bg-mint"><span className="text-lg font-extrabold text-forest">{t("find")}</span></Link></li>
       </ul>
 
       {profile ? (

@@ -8,7 +8,7 @@ import { addBtw } from "./money";
  * pro-rata maths.
  */
 
-export type BusinessType = "airbnb" | "hotel" | "restaurant" | "office" | "school";
+export type BusinessType = "airbnb" | "hotel" | "restaurant" | "office";
 
 export type BusinessTypeConfig = {
   defaultUnitPriceCents: number;
@@ -46,13 +46,6 @@ export const BUSINESS_TYPES: Record<BusinessType, BusinessTypeConfig> = {
     unitPlural: { nl: "locaties", en: "locations" },
     label: { nl: "Kantoren & commercieel", en: "Offices & commercial" },
     audience: { nl: "Kantoren, winkels, salons, klinieken, sportscholen", en: "Offices, shops, salons, clinics, gyms" },
-  },
-  school: {
-    defaultUnitPriceCents: 9900,
-    unit: { nl: "vestiging", en: "site" },
-    unitPlural: { nl: "vestigingen", en: "sites" },
-    label: { nl: "Scholen & kinderopvang", en: "Schools & childcare" },
-    audience: { nl: "Basis- en middelbare scholen, kinderopvang, opleidingscentra", en: "Primary/secondary schools, childcare centres, training centres" },
   },
 };
 

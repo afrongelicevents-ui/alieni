@@ -8,17 +8,16 @@ const ITEMS = [
   { href: "/business/requests", key: "navRequests" },
   { href: "/business/work", key: "navWork" },
   { href: "/business/billing", key: "navBilling" },
-  { href: "/business/calendar", key: "navCalendar" },
   { href: "/business/profile", key: "navProfile" },
 ] as const;
 
-/** The tab row itself (client side, for the active tab). The server wrapper decides whether Calendar is shown. */
-export function BusinessSubnavLinks({ showCalendar }: { showCalendar: boolean }) {
+/** The tab row itself (client side, for the active tab). */
+export function BusinessSubnavLinks() {
   const t = useTranslations("business");
   const pathname = usePathname();
   return (
     <nav aria-label={t("dashboardTitle")} className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {ITEMS.filter((i) => showCalendar || i.href !== "/business/calendar").map((i) => {
+      {ITEMS.map((i) => {
         const active = pathname === i.href;
         return (
           <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined}

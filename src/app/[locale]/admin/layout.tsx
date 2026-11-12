@@ -31,13 +31,11 @@ export default async function AdminLayout({ children, params }: { children: Reac
   const tabs = [
     { href: "/admin", key: "tabDashboard" },
     { href: "/admin/reports", key: "tabReports" },
-    { href: "/admin/vog", key: "tabVog" },
     { href: "/admin/business", key: "tabBusiness" },
     { href: "/admin/services", key: "tabServices" },
     { href: "/admin/pricing", key: "tabPricing" },
     { href: "/admin/fees", key: "tabFees" },
     { href: "/admin/work", key: "tabWork" },
-    { href: "/admin/emergency", key: "tabEmergency" },
     { href: "/admin/users", key: "tabUsers" },
     { href: "/admin/ads", key: "tabAds" },
     { href: "/admin/media", key: "tabMedia" },

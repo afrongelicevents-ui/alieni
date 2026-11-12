@@ -31,10 +31,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <div className="flex flex-col bg-page">
       <div className="order-1"><HomeHero photoUrl={uploadedHero} videoUrl={settings.videoUrl} rateFloor={formatHourlyRate(rateFloorCents, locale)} /></div>
-      <div className="order-2 lg:hidden"><MobileSearch modules={settings.modules} /></div>
+      <div className="order-2 lg:hidden"><MobileSearch /></div>
       <div className="order-3 lg:hidden"><MobileAbout /></div>
       <div className="order-4 lg:order-5"><Why householdFee={fee} /></div>
-      <div className="order-5 lg:order-4"><Explore modules={settings.modules} /></div>
+      <div className="order-5 lg:order-4"><Explore /></div>
       <div className="order-6"><BusinessAndCommunity pricingModel={businessPricing.model} /></div>
       <div className="order-7"><Testimonials items={testimonials} /></div>
       <div className="order-8"><Banner /></div>
