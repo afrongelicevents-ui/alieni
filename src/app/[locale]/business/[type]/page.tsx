@@ -36,8 +36,8 @@ function DemoScreen({ type, lang }: { type: BusinessType; lang: "nl" | "en" }) {
   if (type === "school") {
     return (
       <ul className="divide-y divide-line">
-        {row("Maria V. · Utrecht · € 20/uur", chip("VOG ✓", "ok"))}
-        {row("Lotte B. · Groningen · € 16/uur", chip("VOG ✓", "ok"))}
+        {row(`Maria V. · Utrecht · € 20${t("/uur", "/hr")}`, chip("VOG ✓", "ok"))}
+        {row(`Lotte B. · Groningen · € 16${t("/uur", "/hr")}`, chip("VOG ✓", "ok"))}
         <li className="py-2 text-xs text-ink/70">{t("Alleen schoonmakers met een goedgekeurde, recente VOG verschijnen in jouw zoekresultaten.", "Only cleaners with an approved, recent VOG appear in your search results.")}</li>
       </ul>
     );
@@ -45,9 +45,9 @@ function DemoScreen({ type, lang }: { type: BusinessType; lang: "nl" | "en" }) {
   return (
     <ul className="divide-y divide-line">
       {row(t("Klus: wekelijks, maandagochtend vóór 9:00", "Job: weekly, Monday morning before 9:00"), chip(t("3 reacties", "3 responses"), "open"))}
-      {row("Yusuf D. · € 26/uur", chip(t("reactie", "response"), "ok"))}
-      {row("Kofi A. · € 28/uur", chip(t("reactie", "response"), "ok"))}
-      {row("Hassan E. · € 30/uur", chip(t("reactie", "response"), "ok"))}
+      {row(`Yusuf D. · € 26${t("/uur", "/hr")}`, chip(t("reactie", "response"), "ok"))}
+      {row(`Kofi A. · € 28${t("/uur", "/hr")}`, chip(t("reactie", "response"), "ok"))}
+      {row(`Hassan E. · € 30${t("/uur", "/hr")}`, chip(t("reactie", "response"), "ok"))}
     </ul>
   );
 }

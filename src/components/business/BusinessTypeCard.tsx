@@ -1,4 +1,4 @@
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/business";
 import type { BusinessQuote } from "@/lib/business-pricing";
 import { BusinessPrice } from "./BusinessPrice";
@@ -31,7 +31,6 @@ export function BusinessTypeCard({
   selected?: boolean;
   compact?: boolean;
 }) {
-  const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const cfg = BUSINESS_TYPES[type];
 
