@@ -7,6 +7,7 @@ import { homeFor } from "@/lib/guard";
 import { ButtonLink } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/server";
 import { getPricingContext } from "@/lib/services";
+import { getSignupsPaused } from "@/lib/website-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export default async function BusinessSignupPage({
       <h1 className="headline text-3xl text-ink">{t("signupTitle")}</h1>
       <p className="mt-2 text-ink/70">{t("signupIntro")}</p>
       <div className="mt-6">
-        <BusinessSignup initialType={initialType} signedIn={Boolean(user)} email={user?.email} unitPrices={pricing.unitPrices} businessPricing={pricing.businessPricing} />
+        <BusinessSignup initialType={initialType} signedIn={Boolean(user)} email={user?.email} unitPrices={pricing.unitPrices} businessPricing={pricing.businessPricing} signupsPaused={user ? false : await getSignupsPaused()} />
       </div>
     </section>
   );

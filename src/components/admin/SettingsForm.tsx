@@ -7,7 +7,7 @@ import { saveSettings } from "@/app/[locale]/admin/actions";
 import { BUSINESS_PRICING_MODELS, MAX_TIERS, type BusinessPricingForm } from "@/lib/business-pricing";
 
 /**
- * Platform settings: household price, business pricing model, rate floor,
+ * Platform settings: sign-ups (pre-launch mode), household price, business pricing model, rate floor,
  * banned words, homepage video. Maps onto the `settings` table; stored locally in demo mode.
  */
 export type Settings = {
@@ -16,6 +16,8 @@ export type Settings = {
   bannedWords: string;
   videoUrl: string;
   businessPricing: BusinessPricingForm;
+  /** Pre-launch mode: sign-up screens closed, logging in still works. */
+  signupsPaused?: boolean;
 };
 
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -25,6 +27,7 @@ const DEFAULTS: Settings = {
   bannedWords: "",
   videoUrl: "",
   businessPricing: { model: "per_location", jobPostEuro: "", tiers: [] },
+  signupsPaused: false,
 };
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
@@ -74,6 +77,17 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
       <h2 className="headline text-xl text-ink">{t("tabSettings")}</h2>
 
       <div className="mt-4 flex flex-col gap-6 rounded-card-lg border border-line bg-white p-6">
+        {/* Pre-launch mode: closes the sign-up screens (household, cleaner, business). Logging in keeps working. */}
+        <fieldset className="rounded-xl bg-section p-4 text-sm text-ink/80" data-signups>
+          <legend className="sr-only">{t("signupsTitle")}</legend>
+          <p className="font-extrabold text-ink" aria-hidden="true">{t("signupsTitle")}</p>
+          <label className="mt-2 flex min-h-11 items-center gap-3 font-bold text-ink">
+            <input type="checkbox" name="signups-paused" checked={Boolean(settings.signupsPaused)} onChange={(e) => update({ signupsPaused: e.target.checked })} className="h-5 w-5 accent-forest" />
+            {t("signupsPausedLabel")}
+          </label>
+          <p className="mt-1 text-xs" data-signups-state={settings.signupsPaused ? "paused" : "open"}>{settings.signupsPaused ? t("signupsPausedOn") : t("signupsPausedOff")}</p>
+        </fieldset>
+
         {field(t("settingHouseholdPrice"), settings.householdPriceEuro, (v) => update({ householdPriceEuro: v }), t("settingHouseholdPriceHint"))}
 
         {/* Business pricing: the admin picks ONE model; website text and sign-up screens follow it. */}
@@ -121,9 +135,6 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
             ))}
           </div>
         </fieldset>
-
-
-
 
         {field(t("settingRateFloor"), settings.rateFloorEuro, (v) => update({ rateFloorEuro: v }), t("settingRateFloorHint"))}
 

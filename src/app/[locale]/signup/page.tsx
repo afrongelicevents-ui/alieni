@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { RoleChooser } from "@/components/auth/RoleChooser";
 import { redirectIfSignedIn } from "@/lib/guard";
+import { getSignupsPaused } from "@/lib/website-settings";
 
 export default async function SignupPage({
   params,
@@ -17,6 +18,7 @@ export default async function SignupPage({
   await redirectIfSignedIn(locale, next);
   const t = await getTranslations("auth");
   const chosen = role === "cleaner" || role === "household" ? role : null;
+  const paused = chosen ? await getSignupsPaused() : false;
 
   return (
     <section className="mx-auto max-w-md px-4 py-10">
@@ -26,7 +28,7 @@ export default async function SignupPage({
           <h1 className="headline mt-1 text-3xl text-ink">{t("signupTitle")}</h1>
           <p className="mt-2 text-ink/70">{chosen === "cleaner" ? t("cleanerSignupIntro") : t("householdSignupIntro")}</p>
           <div className="mt-6">
-            <AuthForm mode="signup" defaultRole={chosen} next={next ?? (chosen === "cleaner" ? "/profile" : "/home")} />
+            <AuthForm mode="signup" defaultRole={chosen} next={next ?? (chosen === "cleaner" ? "/profile" : "/home")} paused={paused} />
           </div>
           <p className="mt-4 text-center text-sm"><Link href="/signup" className="font-semibold text-forest underline">{t("chooseOther")}</Link></p>
         </>

@@ -296,7 +296,8 @@
     "nameHint": "Dit zien anderen in chats en op je advertentie. Zonder naam gebruiken we een neutrale aanduiding, nooit je e-mailadres.",
     "defaultName_household": "Klant",
     "defaultName_cleaner": "Schoonmaker",
-    "defaultName_business": "Bedrijf"
+    "defaultName_business": "Bedrijf",
+    "signupsPaused": "Aanmelden is nog niet open — we lanceren binnenkort. Heb je al een account? Log dan in. Schoonmakers kunnen hun advertentie alvast klaarzetten."
   },
   "common": {
     "favourite": "Opslaan als favoriet",
@@ -729,7 +730,11 @@
     "bp_tier_add": "Abonnement toevoegen",
     "bp_tier_remove": "Verwijderen",
     "bp_free": "Gratis voor bedrijven",
-    "bp_invalid": "Controleer het prijsmodel voor bedrijven: er ontbreekt een bedrag of abonnement, of het is ongeldig."
+    "bp_invalid": "Controleer het prijsmodel voor bedrijven: er ontbreekt een bedrag of abonnement, of het is ongeldig.",
+    "signupsTitle": "Aanmelden",
+    "signupsPausedLabel": "Pre-lanceringsmodus: nieuwe aanmeldingen pauzeren",
+    "signupsPausedOn": "Aan: de aanmeldschermen tonen “we lanceren binnenkort” en daar kunnen geen nieuwe accounts worden gemaakt. Inloggen blijft werken.",
+    "signupsPausedOff": "Uit: huishoudens, schoonmakers en bedrijven kunnen een account maken."
   },
   "jobs": {
     "title": "Schoonmaakklussen",
