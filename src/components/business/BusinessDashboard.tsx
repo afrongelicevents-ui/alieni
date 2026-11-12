@@ -1,6 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import type { BusinessQuote } from "@/lib/business-pricing";
+import { BusinessPrice } from "./BusinessPrice";
 import { Link } from "@/i18n/navigation";
 import { BUSINESS_TYPES } from "@/lib/business";
 import type { BusinessBundle } from "@/lib/business-data";
@@ -10,7 +12,7 @@ import { ServiceTiles, type Tile } from "./ServiceTiles";
 import { WorkRecords } from "./WorkRecords";
 
 /** Business dashboard: service tiles, this month's statement, what waits on you, recent work. */
-export function BusinessDashboard({ bundle, tiles, unitPriceCents }: { bundle: BusinessBundle; tiles: Tile[]; unitPriceCents: number | null }) {
+export function BusinessDashboard({ bundle, tiles, unitPriceCents, quote }: { bundle: BusinessBundle; tiles: Tile[]; unitPriceCents: number | null; quote?: BusinessQuote }) {
   const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const { profile, feeEvents, workRecords, emergencies, jobs } = bundle;
@@ -47,7 +49,10 @@ export function BusinessDashboard({ bundle, tiles, unitPriceCents }: { bundle: B
           <h3 className="text-sm font-semibold text-white/80">{t("statementTitle")}</h3>
           <p className="mt-1 text-2xl font-extrabold">{monthNet > 0 ? formatEuro(monthNet, lang) : t("statementNone")}</p>
           <p className="text-sm text-white/80">{t("statementEvents", { count: counted.length })}</p>
-          {unitPriceCents ? (
+          {quote && quote.kind !== "per_location" && quote.kind !== "tba" ? (
+            // the price follows the model chosen in Admin → Settings → Business pricing
+            <div className="mt-2"><BusinessPrice quote={quote} unit={cfg.unit[lang]} variant="dark" /></div>
+          ) : unitPriceCents ? (
             <p className="mt-2 text-sm text-white/90">{profile.unit_count} × {formatEuro(unitPriceCents, lang)} {t("perUnitMonth", { unit: cfg.unit[lang] })}</p>
           ) : (
             <p className="mt-3 rounded-xl bg-white/10 p-3 text-xs text-white/90">{t("statementModelNone")}</p>

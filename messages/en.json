@@ -792,7 +792,22 @@
     "testHide": "Hide",
     "testShow": "Show",
     "testDelete": "Delete",
-    "testDeleteConfirm": "Delete this testimonial?"
+    "testDeleteConfirm": "Delete this testimonial?",
+    "bpTitle": "Business pricing",
+    "bpIntro": "Choose ONE pricing model for businesses. Website text and sign-up screens follow automatically. Amounts excl. VAT. Payments stay off: this only changes what is shown and calculated.",
+    "bp_per_location": "Fixed monthly fee per location",
+    "bp_per_location_hint": "The amount per business type is set under Pricing.",
+    "bp_per_job_post": "Fee per job post",
+    "bp_per_job_post_amount": "Fee per job post (€, excl. VAT)",
+    "bp_tiers": "Monthly subscription tiers",
+    "bp_tiers_hint": "Up to 5 tiers. A business gets the smallest tier that fits its number of locations.",
+    "bp_tier_name": "Name",
+    "bp_tier_max": "Up to … locations",
+    "bp_tier_price": "Price per month (€, excl. VAT)",
+    "bp_tier_add": "Add tier",
+    "bp_tier_remove": "Remove",
+    "bp_free": "Free for businesses",
+    "bp_invalid": "Check the business pricing: an amount or a tier is missing or invalid."
   },
   "jobs": {
     "title": "Cleaning jobs",
@@ -1119,7 +1134,16 @@
     "error_not_allowed": "Only a business account can do this.",
     "signupWrongRole_household": "You are signed in with a household account. A business needs its own account: log out and sign up with a different e-mail address.",
     "signupWrongRole_cleaner": "You are signed in with a cleaner account. A business needs its own account: log out and sign up with a different e-mail address.",
-    "signupWrongRoleCta": "Go to my home"
+    "signupWrongRoleCta": "Go to my home",
+    "perJobPost": "{price} per job post",
+    "perJobPostNote": "No monthly fee: you only pay when you post a job.",
+    "tierPrice": "{name}: {price} / month",
+    "tierFrom": "From {price} / month",
+    "tierUpTo": "{name} plan: up to {limit} locations",
+    "tierOver": "More than {limit} locations? Price on request.",
+    "freeForBusiness": "Free for businesses",
+    "freeForBusinessNote": "Finding cleaners and posting jobs costs nothing.",
+    "tiersTitle": "Plans"
   },
   "calendar": {
     "title": "Calendar & checkout cleaning",
@@ -1661,7 +1685,8 @@
         "Emergency and replacement cover"
       ],
       "cta": "For businesses",
-      "mobileText": "For offices, hotels, Airbnb hosts, restaurants and schools. Fixed monthly fee, no commission."
+      "mobileText": "For offices, hotels, Airbnb hosts, restaurants and schools. Fixed monthly fee, no commission.",
+      "mobileAudience": "For offices, hotels, Airbnb hosts, restaurants and schools."
     },
     "community": {
       "eyebrow": "For cleaners",
@@ -1747,10 +1772,16 @@
         }
       ],
       "earnTitle": "How Alieni earns money",
-      "earn": "Households pay a monthly fee after a confirmed deal; businesses pay a fixed monthly fee per location, room or listing. We never take a percentage of a cleaner's wage.",
+      "earn": "Households pay a monthly fee after a confirmed deal; {business}. We never take a percentage of a cleaner's wage.",
       "notTitle": "What Alieni is not",
       "not": "We're not an employer or a cleaning agency. Cleaners are self-employed and make their own arrangements. Alieni doesn't check ID documents or KvK numbers; only cleaners for schools show an approved VOG.",
-      "step3Priced": "Households pay {price} a month only after both sides confirm. Cleaners never pay. The cleaner's wage goes straight to the cleaner."
+      "step3Priced": "Households pay {price} a month only after both sides confirm. Cleaners never pay. The cleaner's wage goes straight to the cleaner.",
+      "earnBusiness": {
+        "per_location": "businesses pay a fixed monthly fee per location, room or listing",
+        "per_job_post": "businesses pay a fee for each job they post",
+        "tiers": "businesses choose a monthly plan based on their number of locations",
+        "free": "Alieni is free for businesses"
+      }
     },
     "contactPage": {
       "title": "Contact",
@@ -1759,6 +1790,18 @@
       "noEmail": "Our contact address will be listed here shortly. Signed-in users can reach us from their account page.",
       "reportTitle": "Report an ad",
       "report": "See something wrong in an ad or a message? Open the ad and use the “Report this ad” button. We review every report and let you know the outcome."
+    },
+    "pricingPoint": {
+      "per_location": "Fixed monthly fee per location — no commission",
+      "per_job_post": "Pay per job you post — no commission",
+      "tiers": "Monthly plans by number of locations — no commission",
+      "free": "Free for businesses — no commission"
+    },
+    "pricingLine": {
+      "per_location": "Fixed monthly fee per location, no commission.",
+      "per_job_post": "Pay per job you post, no commission.",
+      "tiers": "Monthly plans by number of locations, no commission.",
+      "free": "Free for businesses, no commission."
     }
   }
 }

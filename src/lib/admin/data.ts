@@ -1,4 +1,5 @@
 import "server-only";
+import { parseBusinessPricing, toBusinessPricingForm, type BusinessPricingForm } from "@/lib/business-pricing";
 import { DEFAULT_MODULES, isModuleKey, parseModules, type ModuleKey, type ModuleState } from "@/lib/site-modules";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "../supabase/server";
@@ -201,7 +202,7 @@ export async function listPayments(): Promise<{ demo: boolean; payments: AdminPa
   return { demo: false, payments: rows.map((p) => ({ id: p.id, invoiceNumber: invoiceOf.get(p.id) ?? null, household: nameOf.get(p.household_id) ?? "—", cleaner: p.connection_id ? nameOf.get(cleanerOfConn.get(p.connection_id) ?? "") ?? "—" : "—", amountCents: p.amount_cents, status: statusMap[p.status] ?? "pending", paidAt: p.paid_at })) };
 }
 
-export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string; videoUrl: string };
+export type SettingsValues = { coverCancelHours: string; coverStrikeLimit: string; coverMaxDays: string; householdPriceEuro: string; emergencyHouseholdEuro: string; emergencyBusinessEuro: string; linenEnabled: boolean; linenPriceEuro: string; rateFloorEuro: string; vogMaxAgeMonths: string; bannedWords: string; videoUrl: string; businessPricing: BusinessPricingForm };
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 export async function getSettings(): Promise<{ demo: boolean; values: SettingsValues | null }> {
   const supabase = await createClient();
@@ -227,6 +228,7 @@ export async function getSettings(): Promise<{ demo: boolean; values: SettingsVa
       vogMaxAgeMonths: String(num(map.get("vog_max_age_months"), 12)),
       bannedWords: Array.isArray(map.get("banned_words")) ? (map.get("banned_words") as string[]).join(", ") : "",
       videoUrl: typeof map.get("homepage_video_url") === "string" ? (map.get("homepage_video_url") as string) : "",
+      businessPricing: toBusinessPricingForm(parseBusinessPricing(map.get("business_pricing"))),
     },
   };
 }

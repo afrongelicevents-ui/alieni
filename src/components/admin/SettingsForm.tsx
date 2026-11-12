@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { saveSettings } from "@/app/[locale]/admin/actions";
+import { BUSINESS_PRICING_MODELS, MAX_TIERS, type BusinessPricingForm } from "@/lib/business-pricing";
 
 /**
  * Platform settings (brief §8 + business v2 §10): household price, the five
@@ -23,6 +24,7 @@ export type Settings = {
   vogMaxAgeMonths: string;
   bannedWords: string;
   videoUrl: string;
+  businessPricing: BusinessPricingForm;
 };
 
 const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
@@ -39,6 +41,7 @@ const DEFAULTS: Settings = {
   vogMaxAgeMonths: "12",
   bannedWords: "",
   videoUrl: "",
+  businessPricing: { model: "per_location", jobPostEuro: "", tiers: [] },
 };
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none";
@@ -50,6 +53,11 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const bp = settings.businessPricing;
+  const setBp = (partial: Partial<BusinessPricingForm>) => update({ businessPricing: { ...settings.businessPricing, ...partial } });
+  const setTier = (i: number, partial: Partial<BusinessPricingForm["tiers"][number]>) =>
+    setBp({ tiers: settings.businessPricing.tiers.map((row, j) => (j === i ? { ...row, ...partial } : row)) });
 
   function update(partial: Partial<Settings>) {
     setSettings((prev) => ({ ...prev, ...partial }));
@@ -67,7 +75,7 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
     const r = await saveSettings(settings);
     setBusy(false);
     if (r.ok) setSaved(true);
-    else setError(r.error === "invalid" ? t("settingsInvalid") : r.error === "invalid_video" ? t("settingVideoInvalid") : t("actionFailed"));
+    else setError(r.error === "invalid" ? t("settingsInvalid") : r.error === "invalid_video" ? t("settingVideoInvalid") : r.error === "invalid_business_pricing" ? t("bp_invalid") : t("actionFailed"));
   }
 
   const field = (label: string, value: string, onChange: (v: string) => void, hint?: string) => (
@@ -85,11 +93,51 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
       <div className="mt-4 flex flex-col gap-6 rounded-card-lg border border-line bg-white p-6">
         {field(t("settingHouseholdPrice"), settings.householdPriceEuro, (v) => update({ householdPriceEuro: v }), t("settingHouseholdPriceHint"))}
 
-        <div className="rounded-xl bg-mint/60 p-4 text-sm text-ink/80">
-          <p className="font-extrabold text-ink">{t("settingBusinessPrices")}</p>
-          <p className="mt-1 text-xs">{t("settingBusinessPricesMoved")}</p>
-          <Link href="/admin/pricing" className="mt-2 inline-block text-xs font-bold text-forest underline">{t("goPricing")}</Link>
-        </div>
+        {/* Business pricing: the admin picks ONE model; website text and sign-up screens follow it. */}
+        <fieldset className="rounded-xl bg-mint/60 p-4 text-sm text-ink/80" data-business-pricing>
+          <legend className="sr-only">{t("bpTitle")}</legend>
+          <p className="font-extrabold text-ink" aria-hidden="true">{t("bpTitle")}</p>
+          <p className="mt-1 text-xs">{t("bpIntro")}</p>
+          <div className="mt-3 space-y-3">
+            {BUSINESS_PRICING_MODELS.map((m) => (
+              <div key={m} className="rounded-lg bg-white p-3">
+                <label className="flex min-h-11 items-center gap-3 font-bold text-ink">
+                  <input type="radio" name="business-pricing-model" value={m} checked={bp.model === m} onChange={() => setBp({ model: m })} className="h-5 w-5 accent-forest" />
+                  {t(`bp_${m}`)}
+                </label>
+                {m === "per_location" && bp.model === m ? (
+                  <p className="text-xs">
+                    {t("bp_per_location_hint")} <Link href="/admin/pricing" className="font-bold text-forest underline">{t("goPricing")}</Link>
+                  </p>
+                ) : null}
+                {m === "per_job_post" && bp.model === m ? (
+                  <label className="mt-1 block text-xs font-semibold">
+                    {t("bp_per_job_post_amount")}
+                    <input type="text" inputMode="decimal" value={bp.jobPostEuro} onChange={(e) => setBp({ jobPostEuro: e.target.value })} placeholder="9,95" className={`mt-1 ${inputCls}`} />
+                  </label>
+                ) : null}
+                {m === "tiers" && bp.model === m ? (
+                  <div className="mt-1">
+                    <p className="text-xs">{t("bp_tiers_hint")}</p>
+                    <ul className="mt-2 space-y-2">
+                      {bp.tiers.map((row, i) => (
+                        <li key={i} className="grid grid-cols-[1.2fr_1fr_1fr_auto] items-end gap-2" data-tier-row>
+                          <label className="text-xs font-semibold">{t("bp_tier_name")}<input type="text" value={row.name} maxLength={40} onChange={(e) => setTier(i, { name: e.target.value })} placeholder="Basic" className={`mt-1 ${inputCls}`} /></label>
+                          <label className="text-xs font-semibold">{t("bp_tier_max")}<input type="text" inputMode="numeric" value={row.max} onChange={(e) => setTier(i, { max: e.target.value })} placeholder="3" className={`mt-1 ${inputCls}`} /></label>
+                          <label className="text-xs font-semibold">{t("bp_tier_price")}<input type="text" inputMode="decimal" value={row.priceEuro} onChange={(e) => setTier(i, { priceEuro: e.target.value })} placeholder="49,00" className={`mt-1 ${inputCls}`} /></label>
+                          <button type="button" onClick={() => setBp({ tiers: bp.tiers.filter((_, j) => j !== i) })} className="min-h-11 rounded-full px-3 text-xs font-bold text-red-700 underline">{t("bp_tier_remove")}</button>
+                        </li>
+                      ))}
+                    </ul>
+                    {bp.tiers.length < MAX_TIERS ? (
+                      <button type="button" onClick={() => setBp({ tiers: [...bp.tiers, { name: "", max: "", priceEuro: "" }] })} className="mt-2 inline-flex min-h-11 items-center rounded-full border border-forest px-4 text-xs font-bold text-forest">{t("bp_tier_add")}</button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </fieldset>
 
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="mb-1 text-sm font-extrabold text-ink">{t("settingEmergency")}</legend>

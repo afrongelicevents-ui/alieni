@@ -11,6 +11,7 @@ import { PRICING_MODELS, SERVICE_KEYS } from "@/lib/services";
 import type { SettingsValues } from "@/lib/admin/data";
 import { MODULE_KEYS, isModuleKey, safeModuleUrl } from "@/lib/site-modules";
 import { videoEmbedUrl } from "@/lib/video";
+import { fromBusinessPricingForm, serializeBusinessPricing } from "@/lib/business-pricing";
 
 export type AdminActionState = { ok: boolean; error?: string; url?: string };
 
@@ -162,6 +163,8 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
   if ([household, emH, emB, linen, floor].some((x) => x === null) || !Number.isFinite(vogMonths) || vogMonths < 1) return { ok: false, error: "invalid" };
   const videoUrl = (values.videoUrl ?? "").trim();
   if (videoUrl !== "" && !videoEmbedUrl(videoUrl)) return { ok: false, error: "invalid_video" };
+  const businessPricing = values.businessPricing ? fromBusinessPricingForm(values.businessPricing) : null;
+  if (values.businessPricing && !businessPricing) return { ok: false, error: "invalid_business_pricing" };
   try {
     const { supabase, userId } = await requireAdmin();
     const rows = [
@@ -173,6 +176,7 @@ export async function saveSettings(values: SettingsValues): Promise<AdminActionS
       { key: "cover_rules", value: { cancel_window_hours: coverCancel, strike_limit: coverStrikes, max_days_ahead: coverDays } },
       { key: "banned_words", value: values.bannedWords.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean) },
       { key: "homepage_video_url", value: videoUrl },
+      ...(businessPricing ? [{ key: "business_pricing", value: serializeBusinessPricing(businessPricing) }] : []),
     ].map((r) => ({ ...r, updated_at: new Date().toISOString() }));
     const { error } = await supabase.from("settings").upsert(rows, { onConflict: "key" });
     if (error) return { ok: false, error: "save_failed" };

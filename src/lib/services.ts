@@ -4,6 +4,7 @@ import type { BusinessType } from "./business";
 import { DEFAULT_CATALOG, SERVICE_KEYS, enabledFor, monthlyUnitPrices, type CatalogRow, type PricingRule, type ServiceKey } from "./services-shared";
 
 export * from "./services-shared";
+import { DEFAULT_BUSINESS_PRICING, parseBusinessPricing, type BusinessPricing } from "./business-pricing";
 
 /**
  * Service catalogue + pricing rules (Phase 1 foundations).
@@ -40,9 +41,21 @@ export async function getActiveRules(): Promise<PricingRule[]> {
   return (data ?? []) as PricingRule[];
 }
 
+/** The business pricing model chosen in Admin → Settings (default: fixed monthly fee per location). */
+export async function getBusinessPricing(): Promise<BusinessPricing> {
+  const supabase = anon();
+  if (!supabase) return DEFAULT_BUSINESS_PRICING;
+  try {
+    const { data } = await supabase.from("settings").select("value").eq("key", "business_pricing").maybeSingle<{ value: unknown }>();
+    return parseBusinessPricing(data?.value);
+  } catch {
+    return DEFAULT_BUSINESS_PRICING;
+  }
+}
+
 export async function getPricingContext() {
-  const [catalog, rules] = await Promise.all([getCatalog(), getActiveRules()]);
-  return { catalog, rules, unitPrices: monthlyUnitPrices(rules) };
+  const [catalog, rules, businessPricing] = await Promise.all([getCatalog(), getActiveRules(), getBusinessPricing()]);
+  return { catalog, rules, unitPrices: monthlyUnitPrices(rules), businessPricing };
 }
 
 /** Server-side gate: a request for a service that is off for this business type is refused here, not just hidden. */

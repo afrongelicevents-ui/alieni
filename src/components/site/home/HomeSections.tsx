@@ -3,6 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link, getPathname } from "@/i18n/navigation";
 import { DESIGN_IMAGES, type DesignImageKey } from "@/lib/design-images";
 import { moduleHref, type ModuleKey, type ModuleState } from "@/lib/site-modules";
+import type { BusinessPricingModel } from "@/lib/business-pricing";
 import { Icon, type IconName } from "@/components/site/Icon";
 import { RoundArrow, SoonBadge } from "@/components/site/bits";
 
@@ -188,8 +189,14 @@ export async function Why({ householdFee }: { householdFee: string | null }) {
 
 /* ---------------------------------------------------------------- businesses & cleaners */
 
-export async function BusinessAndCommunity() {
+/** `pricingModel` is the business pricing model (Admin → Settings); the first business point follows it. */
+export async function BusinessAndCommunity({ pricingModel = "per_location" }: { pricingModel?: BusinessPricingModel }) {
   const tBusinessAndCommunity = await getTranslations("site");
+  const pointsFor = (k: "biz" | "community") => {
+    const points = [...(tBusinessAndCommunity.raw(`${k}.points`) as string[])];
+    if (k === "biz") points[0] = tBusinessAndCommunity(`pricingPoint.${pricingModel}`);
+    return points;
+  };
   const blocks = [
     { k: "biz" as const, dark: true, href: "/business" },
     { k: "community" as const, dark: false, href: "/cleaners/new" },
@@ -203,7 +210,7 @@ export async function BusinessAndCommunity() {
             <h2 className="headline mt-2 max-w-md text-[1.45rem] leading-tight lg:text-[2rem]">{tBusinessAndCommunity(`${k}.title`)}</h2>
             <p className={`mt-2 max-w-md text-sm leading-relaxed lg:mt-3 lg:text-base ${dark ? "text-white/80" : "text-body"}`}>{tBusinessAndCommunity(`${k}.text`)}</p>
             <ul className="mt-4 space-y-2.5 text-sm lg:mt-6 lg:space-y-3 lg:text-base">
-              {(tBusinessAndCommunity.raw(`${k}.points`) as string[]).map((p) => (
+              {pointsFor(k).map((p) => (
                 <li key={p} className="flex items-center gap-3 font-semibold">
                   <Icon name="check" className={`h-5 w-5 shrink-0 ${dark ? "text-bright" : "text-royal"}`} />
                   {p}

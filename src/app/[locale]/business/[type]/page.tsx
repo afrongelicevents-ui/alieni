@@ -6,6 +6,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { BusinessTypeIcon } from "@/components/business/BusinessTypeCard";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
 import { getPricingContext } from "@/lib/services";
+import { quoteFor } from "@/lib/business-pricing";
+import { BusinessPrice } from "@/components/business/BusinessPrice";
 import { formatEuro } from "@/lib/money";
 
 /** Prices and the service catalogue come from the database on every request (no stale prices). */
@@ -59,7 +61,7 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
   const tp = await getTranslations(`businessPages.${bt}`);
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
   const cfg = BUSINESS_TYPES[bt];
-  const { unitPrices } = await getPricingContext();
+  const { unitPrices, businessPricing } = await getPricingContext();
   const unitPrice = unitPrices[bt] ?? null; // only with an active monthly rule
   const exampleUnits = bt === "hotel" ? 20 : bt === "airbnb" ? 4 : 1;
   const example = unitPrice ? monthlyFee(bt, exampleUnits, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, school: 0, [bt]: unitPrice }) : null;
@@ -76,18 +78,26 @@ export default async function BusinessTypePage({ params }: { params: Promise<{ l
           <p className="mt-4 max-w-xl text-lg text-ink/75">{tp("heroText")}</p>
           <div className="mt-6 rounded-card-lg bg-white p-5 shadow-sm">
             <p className="text-sm text-ink/70">{t("liveTotalLabel")}</p>
-            {unitPrice && example ? (
+            {/* the price follows the model chosen in Admin → Settings → Business pricing */}
+            {businessPricing.model === "per_location" && unitPrice && example ? (
               <>
                 <p className="text-2xl font-extrabold text-forest">
                   {formatEuro(unitPrice, lang)} <span className="text-base font-semibold text-ink/70">{t("perUnitMonth", { unit: cfg.unit[lang] })} · {t("exclBtw")}</span>
                 </p>
                 <p className="mt-1 text-sm text-ink/70">{tp("example", { units: exampleUnits, fee: formatEuro(example.netCents, lang) })}</p>
               </>
+            ) : businessPricing.model === "tiers" && businessPricing.tiers.length > 0 ? (
+              <ul className="mt-1 space-y-1" data-price="tiers">
+                {businessPricing.tiers.map((tier) => (
+                  <li key={tier.name} className="text-ink">
+                    <span className="text-lg font-extrabold text-forest">{t("tierPrice", { name: tier.name, price: formatEuro(tier.priceCents, lang) })}</span>
+                    <span className="text-sm text-ink/70"> · {t("tierUpTo", { name: tier.name, limit: tier.maxLocations })}</span>
+                  </li>
+                ))}
+                <li className="text-xs text-ink/70">{t("exclBtw")}</li>
+              </ul>
             ) : (
-              <>
-                <p className="text-2xl font-extrabold text-forest">{t("priceTba")}</p>
-                <p className="mt-1 text-sm text-ink/70">{t("priceTbaNote")}</p>
-              </>
+              <BusinessPrice quote={quoteFor(businessPricing, bt, exampleUnits, unitPrices)} unit={cfg.unit[lang]} variant="hero" />
             )}
           </div>
           <div className="mt-6 flex flex-wrap gap-3">

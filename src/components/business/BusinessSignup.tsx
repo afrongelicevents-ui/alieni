@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { DEFAULT_BUSINESS_PRICING, quoteFor, startingQuote, type BusinessPricing } from "@/lib/business-pricing";
+import { BusinessPrice } from "./BusinessPrice";
 import { useLocale, useTranslations } from "next-intl";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
 import { createClient } from "@/lib/supabase/client";
@@ -30,7 +32,7 @@ type Draft = {
  * step 1 (Supabase Auth); the profile and units are saved through a server
  * action at the end. Signed-in users skip the account fields.
  */
-type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>> };
+type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>>; businessPricing?: BusinessPricing };
 
 const subscribeNothing = () => () => {};
 const readSaved = () => { try { return window.localStorage.getItem(DRAFT_KEY); } catch { return null; } };
@@ -45,7 +47,7 @@ export function BusinessSignup(props: SignupProps) {
   return <BusinessSignupForm key={restored ? "restored" : "fresh"} {...props} restored={restored} />;
 }
 
-function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPrices = {}, restored }: SignupProps & { restored?: Partial<Draft> }) {
+function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPrices = {}, businessPricing = DEFAULT_BUSINESS_PRICING, restored }: SignupProps & { restored?: Partial<Draft> }) {
   const t = useTranslations("business");
   const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
 
@@ -209,7 +211,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
                 <label key={type} className="cursor-pointer">
                   <input type="radio" name="business-type" value={type} checked={draft.businessType === type}
                     onChange={() => set({ businessType: type })} className="sr-only" />
-                  <BusinessTypeCard type={type} prices={unitPrices} selected={draft.businessType === type} compact />
+                  <BusinessTypeCard type={type} quote={startingQuote(businessPricing, type, unitPrices)} selected={draft.businessType === type} compact />
                 </label>
               ))}
             </div>
@@ -223,7 +225,10 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
                 value={draft.unitCount} onChange={(e) => set({ unitCount: e.target.value })} />{err("unitCount")}</label>
             <div className="mt-4 rounded-card-lg bg-mint p-5">
               <p className="text-sm text-ink/70">{t("liveTotalLabel")}</p>
-              {unitPrice && fee ? (
+              {businessPricing.model !== "per_location" ? (
+                // the price follows the model chosen in Admin → Settings → Business pricing
+                <div className="mt-1"><BusinessPrice quote={quoteFor(businessPricing, draft.businessType, unitCountNum, unitPrices)} unit={cfg.unit[lang]} variant="total" /></div>
+              ) : unitPrice && fee ? (
                 <>
                   <p className="mt-1 text-2xl font-extrabold text-forest">
                     {unitCountNum} {unitWord} × {formatEuro(unitPrice, lang)} = {formatEuro(fee.netCents, lang)}

@@ -48,7 +48,7 @@ export default async function BusinessSignupPage({
       <h1 className="headline text-3xl text-ink">{t("signupTitle")}</h1>
       <p className="mt-2 text-ink/70">{t("signupIntro")}</p>
       <div className="mt-6">
-        <BusinessSignup initialType={initialType} signedIn={Boolean(user)} email={user?.email} unitPrices={pricing.unitPrices} />
+        <BusinessSignup initialType={initialType} signedIn={Boolean(user)} email={user?.email} unitPrices={pricing.unitPrices} businessPricing={pricing.businessPricing} />
       </div>
     </section>
   );

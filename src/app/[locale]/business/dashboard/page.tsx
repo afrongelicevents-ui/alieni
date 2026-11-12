@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { requireRole } from "@/lib/guard";
 import { getBusinessForUser } from "@/lib/business-data";
 import { getPricingContext } from "@/lib/services";
+import { quoteFor } from "@/lib/business-pricing";
 import { tilesFor } from "@/lib/business-tiles";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export default async function BusinessDashboardPage({ params }: { params: Promis
             <ButtonLink href="/business/signup" withArrow>{t("heroCta")}</ButtonLink>
           </div>
         ) : (
-          <BusinessDashboard bundle={bundle} tiles={tilesFor(pricing.catalog, bundle)} unitPriceCents={bundle.profile.business_type ? pricing.unitPrices[bundle.profile.business_type] ?? null : null} />
+          <BusinessDashboard bundle={bundle} tiles={tilesFor(pricing.catalog, bundle)} unitPriceCents={bundle.profile.business_type ? pricing.unitPrices[bundle.profile.business_type] ?? null : null} quote={quoteFor(pricing.businessPricing, bundle.profile.business_type ?? null, bundle.profile.unit_count ?? 1, pricing.unitPrices)} />
         )}
       </div>
     </section>

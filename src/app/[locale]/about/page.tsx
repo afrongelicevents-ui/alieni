@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getPublicHouseholdFeeCents } from "@/lib/site-settings";
 import { formatEuro } from "@/lib/money";
+import { getBusinessPricing } from "@/lib/services";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -15,7 +16,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   setRequestLocale(locale);
   const t = await getTranslations("site");
   // Prices only appear while charging is active (payments on + a price set); otherwise the copy stays price-neutral.
-  const feeCents = await getPublicHouseholdFeeCents();
+  const [feeCents, businessPricing] = await Promise.all([getPublicHouseholdFeeCents(), getBusinessPricing()]);
   const steps = t.raw("aboutPage.steps") as { t: string; d: string }[];
 
   return (
@@ -38,7 +39,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
         </ol>
 
         <h2 className="headline mt-12 text-2xl text-navy">{t("aboutPage.earnTitle")}</h2>
-        <p className="mt-3 leading-relaxed text-body">{t("aboutPage.earn")}</p>
+        <p className="mt-3 leading-relaxed text-body">{t("aboutPage.earn", { business: t(`aboutPage.earnBusiness.${businessPricing.model}`) })}</p>
 
         <h2 className="headline mt-10 text-2xl text-navy">{t("aboutPage.notTitle")}</h2>
         <p className="mt-3 leading-relaxed text-body">{t("aboutPage.not")}</p>

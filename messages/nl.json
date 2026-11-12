@@ -792,7 +792,22 @@
     "testHide": "Verbergen",
     "testShow": "Tonen",
     "testDelete": "Verwijderen",
-    "testDeleteConfirm": "Deze ervaring verwijderen?"
+    "testDeleteConfirm": "Deze ervaring verwijderen?",
+    "bpTitle": "Prijsmodel bedrijven",
+    "bpIntro": "Kies ÉÉN prijsmodel voor bedrijven. Teksten op de website en de aanmeldschermen passen zich automatisch aan. Bedragen excl. btw. Betalingen blijven uit: dit bepaalt alleen wat getoond en berekend wordt.",
+    "bp_per_location": "Vast maandbedrag per locatie",
+    "bp_per_location_hint": "Het bedrag per type bedrijf stel je in onder Prijzen.",
+    "bp_per_job_post": "Bedrag per geplaatste klus",
+    "bp_per_job_post_amount": "Bedrag per klus (€, excl. btw)",
+    "bp_tiers": "Maandabonnementen (staffels)",
+    "bp_tiers_hint": "Maximaal 5 abonnementen. Een bedrijf krijgt het kleinste abonnement dat bij zijn aantal locaties past.",
+    "bp_tier_name": "Naam",
+    "bp_tier_max": "Tot … locaties",
+    "bp_tier_price": "Prijs per maand (€, excl. btw)",
+    "bp_tier_add": "Abonnement toevoegen",
+    "bp_tier_remove": "Verwijderen",
+    "bp_free": "Gratis voor bedrijven",
+    "bp_invalid": "Controleer het prijsmodel voor bedrijven: er ontbreekt een bedrag of abonnement, of het is ongeldig."
   },
   "jobs": {
     "title": "Schoonmaakklussen",
@@ -1119,7 +1134,16 @@
     "error_not_allowed": "Alleen een bedrijfsaccount kan dit doen.",
     "signupWrongRole_household": "Je bent ingelogd met een huishoudaccount. Een bedrijf heeft een eigen account nodig: log uit en meld je aan met een ander e-mailadres.",
     "signupWrongRole_cleaner": "Je bent ingelogd met een schoonmaker-account. Een bedrijf heeft een eigen account nodig: log uit en meld je aan met een ander e-mailadres.",
-    "signupWrongRoleCta": "Naar mijn startpagina"
+    "signupWrongRoleCta": "Naar mijn startpagina",
+    "perJobPost": "{price} per geplaatste klus",
+    "perJobPostNote": "Geen maandbedrag: je betaalt alleen als je een klus plaatst.",
+    "tierPrice": "{name}: {price} / maand",
+    "tierFrom": "Vanaf {price} / maand",
+    "tierUpTo": "{name}-abonnement: tot {limit} locaties",
+    "tierOver": "Meer dan {limit} locaties? Prijs op aanvraag.",
+    "freeForBusiness": "Gratis voor bedrijven",
+    "freeForBusinessNote": "Schoonmakers vinden en klussen plaatsen kost niets.",
+    "tiersTitle": "Abonnementen"
   },
   "calendar": {
     "title": "Kalender & checkout-schoonmaak",
@@ -1661,7 +1685,8 @@
         "Spoed- en vervangingsdekking"
       ],
       "cta": "Voor bedrijven",
-      "mobileText": "Voor kantoren, hotels, Airbnb-hosts, restaurants en scholen. Vast bedrag per maand, geen commissie."
+      "mobileText": "Voor kantoren, hotels, Airbnb-hosts, restaurants en scholen. Vast bedrag per maand, geen commissie.",
+      "mobileAudience": "Voor kantoren, hotels, Airbnb-hosts, restaurants en scholen."
     },
     "community": {
       "eyebrow": "Voor schoonmakers",
@@ -1747,10 +1772,16 @@
         }
       ],
       "earnTitle": "Hoe Alieni geld verdient",
-      "earn": "Huishoudens betalen een maandbedrag na een bevestigde afspraak; bedrijven betalen een vast maandbedrag per locatie, kamer of advertentie. We houden nooit een percentage in op het loon van een schoonmaker.",
+      "earn": "Huishoudens betalen een maandbedrag na een bevestigde afspraak; {business}. We houden nooit een percentage in op het loon van een schoonmaker.",
       "notTitle": "Wat Alieni niet is",
       "not": "We zijn geen werkgever of schoonmaakbureau. Schoonmakers zijn zelfstandig en maken hun eigen afspraken. Alieni controleert geen identiteitsbewijzen of KvK-nummers; alleen schoonmakers voor scholen tonen een goedgekeurde VOG.",
-      "step3Priced": "Huishoudens betalen {price} per maand, pas nadat beide kanten bevestigen. Schoonmakers betalen nooit. Het loon gaat rechtstreeks naar de schoonmaker."
+      "step3Priced": "Huishoudens betalen {price} per maand, pas nadat beide kanten bevestigen. Schoonmakers betalen nooit. Het loon gaat rechtstreeks naar de schoonmaker.",
+      "earnBusiness": {
+        "per_location": "bedrijven betalen een vast maandbedrag per locatie, kamer of advertentie",
+        "per_job_post": "bedrijven betalen per klus die ze plaatsen",
+        "tiers": "bedrijven kiezen een maandabonnement op basis van hun aantal locaties",
+        "free": "voor bedrijven is Alieni gratis"
+      }
     },
     "contactPage": {
       "title": "Contact",
@@ -1759,6 +1790,18 @@
       "noEmail": "Ons contactadres staat hier binnenkort. Ingelogde gebruikers kunnen ons bereiken via hun accountpagina.",
       "reportTitle": "Advertentie melden",
       "report": "Zie je iets wat niet klopt in een advertentie of bericht? Open de advertentie en gebruik de knop “Rapporteer deze advertentie”. We bekijken elke melding en laten je de uitkomst weten."
+    },
+    "pricingPoint": {
+      "per_location": "Vast bedrag per locatie per maand — geen commissie",
+      "per_job_post": "Betaal per geplaatste klus — geen commissie",
+      "tiers": "Maandabonnementen op basis van het aantal locaties — geen commissie",
+      "free": "Gratis voor bedrijven — geen commissie"
+    },
+    "pricingLine": {
+      "per_location": "Vast bedrag per locatie per maand, geen commissie.",
+      "per_job_post": "Betaal per geplaatste klus, geen commissie.",
+      "tiers": "Maandabonnementen op basis van het aantal locaties, geen commissie.",
+      "free": "Gratis voor bedrijven, geen commissie."
     }
   }
 }

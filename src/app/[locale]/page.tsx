@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { siteImageUrl } from "@/lib/site-media";
 import { getPublicHouseholdFeeCents, getRateFloorCents } from "@/lib/site-settings";
 import { getWebsiteSettings } from "@/lib/website-settings";
+import { getBusinessPricing } from "@/lib/services";
 import { getPublishedTestimonials } from "@/lib/testimonials";
 import { formatEuro, formatHourlyRate } from "@/lib/money";
 import { HomeHero } from "@/components/site/home/HomeHero";
@@ -17,12 +18,13 @@ import { Banner, BusinessAndCommunity, Explore, MobileAbout, MobileSearch, Testi
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const [uploadedHero, settings, testimonials, feeCents, rateFloorCents] = await Promise.all([
+  const [uploadedHero, settings, testimonials, feeCents, rateFloorCents, businessPricing] = await Promise.all([
     siteImageUrl("hero-cleaner", undefined, { uploadedOnly: true }),
     getWebsiteSettings(),
     getPublishedTestimonials(),
     getPublicHouseholdFeeCents(),
     getRateFloorCents(),
+    getBusinessPricing(),
   ]);
   const fee = feeCents ? formatEuro(feeCents, locale) : null;
 
@@ -33,7 +35,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <div className="order-3 lg:hidden"><MobileAbout /></div>
       <div className="order-4 lg:order-5"><Why householdFee={fee} /></div>
       <div className="order-5 lg:order-4"><Explore modules={settings.modules} /></div>
-      <div className="order-6"><BusinessAndCommunity /></div>
+      <div className="order-6"><BusinessAndCommunity pricingModel={businessPricing.model} /></div>
       <div className="order-7"><Testimonials items={testimonials} /></div>
       <div className="order-8"><Banner /></div>
     </div>
