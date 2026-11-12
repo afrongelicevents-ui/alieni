@@ -118,7 +118,7 @@ async function restPatch(token, table, query, body) {
     await c.screenshot({ path: `${OUT}/f5-${suffix}-cleaner-home.png`, fullPage: true });
     await c.goto(`${APP}/en/work`, { waitUntil: "networkidle" });
     ok(`[${label}] Cleaner (household only): Work shows no business jobs, explains why`, /work for households only/.test(await c.textContent("main")) && (await c.getByRole("link", { name: "Business jobs" }).count()) === 0);
-    for (const [path, dest] of [["/en/favourites", /\/en\/home$/], ["/en/business/dashboard", /\/en\/home$/], ["/en/emergency", /\/en\/home$/], ["/en/jobs", /\/en\/work/]]) {
+    for (const [path, dest] of [["/en/favourites", /\/en\/home$/], ["/en/business/dashboard", /\/en\/home$/], ["/en/jobs", /\/en\/work/]]) {
       await c.goto(`${APP}${path}`, { waitUntil: "networkidle" });
       ok(`[${label}] Cleaner: ${path} → own area`, dest.test(c.url()), c.url());
     }

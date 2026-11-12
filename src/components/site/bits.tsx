@@ -2,15 +2,6 @@ import Image from "next/image";
 import { DESIGN_IMAGES, type DesignImageKey } from "@/lib/design-images";
 import { Icon } from "./Icon";
 
-/** Small "Coming soon" pill for modules behind a feature flag (brief §7). */
-export function SoonBadge({ label, className = "" }: { label: string; className?: string }) {
-  return (
-    <span className={`inline-flex items-center rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${className}`}>
-      {label}
-    </span>
-  );
-}
-
 /** Round arrow button used on cards. */
 export function RoundArrow({ className = "h-10 w-10" }: { className?: string }) {
   return (

@@ -1,8 +1,7 @@
 /* Core marketplace fixes (audit of 3 Nov): no KvK anywhere; the owner can view
  * a draft/hidden ad while others get 404; households find published ads by
  * postcode (precise distance) and by town; customer-type preferences respected
- * (household-only cleaners hidden from businesses and the other way round);
- * emergency request end-to-end for a household; phone + desktop. */
+ * (household-only cleaners hidden from businesses and the other way round); phone + desktop. */
 const { chromium } = require("playwright");
 const fs = require("node:fs");
 const APP = "http://localhost:3100";
@@ -135,27 +134,6 @@ const AMS_C = "SRID=4326;POINT(4.8952 52.3702)", AMS_N = "SRID=4326;POINT(4.9150
     txt = await names(b);
     ok(`[${label}] Business, postcode 3511 (Utrecht): commercial-only cleaner within radius; Amsterdam "both" cleaner (10 km radius) not`, /commercial-only/.test(txt) && !/Noor/.test(txt), txt);
     await b.screenshot({ path: `${OUT}/f8-${sfx}-business-search.png`, fullPage: true });
-
-    // ---------- Household emergency end-to-end (form → database → cleaner accepts) ----------
-    await h.goto(`${APP}/en/emergency`, { waitUntil: "networkidle" });
-    await h.fill("input[autocomplete='street-address']", "Keizersgracht 10");
-    await h.fill("input[placeholder='1012 AB']", "1015 CS");
-    await h.locator("form input").nth(2).fill("Amsterdam");
-    const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const later = new Date(Date.now() + 2 * 36e5), end = new Date(Date.now() + 5 * 36e5);
-    const sameDay = (d) => d.getDate() === new Date().getDate();
-    await h.locator("input[type=time]").nth(0).fill(sameDay(later) ? hhmm(later) : hhmm(new Date(Date.now() + 2 * 60e3)));
-    await h.locator("input[type=time]").nth(1).fill(sameDay(end) ? hhmm(end) : "23:59");
-    await h.fill("textarea", "Whole flat after a party: kitchen, bathroom, floors.");
-    await h.getByRole("button", { name: /Send emergency request/ }).click();
-    await h.waitForSelector("text=Searching for a cleaner", { timeout: 15000 });
-    const er = (await tbl("emergency_requests"))[0];
-    ok(`[${label}] Household emergency request saved: searching, household fields only (no business columns sent)`, er?.status === "searching" && er.requester_type === "household" && er.address_line === "Keizersgracht 10" && !("unit_id" in er && er.unit_id) && er.report_to == null);
-    await rest(c1tok, "PATCH", `cleaner_profiles?id=eq.${ad1.id}`, { emergency_opt_in: true, emergency_rate_cents: 3000 });
-    const acc = await rest(c1tok, "POST", "rpc/accept_emergency_request", { p_request_id: er.id });
-    await h.goto(`${APP}/en/emergency`, { waitUntil: "networkidle" });
-    ok(`[${label}] Cleaner accepts → household sees "Booked" with the cleaner's name`, acc.data === true && /Booked/.test(await h.textContent("main")) && /Noor/.test(await h.textContent("main")));
-    await h.screenshot({ path: `${OUT}/f8-${sfx}-household-booked.png`, fullPage: true });
 
     await c1ctx.close(); await hctx.close(); await bctx.close(); await c2.ctx.close(); await c3.ctx.close();
   }

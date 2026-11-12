@@ -16,10 +16,10 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
 const path = (page) => { const u = new URL(page.url()); return u.pathname + u.search; };
 const onLogin = (page) => /\/login(\?|$)/.test(new URL(page.url()).pathname + "?");
 
-const PUBLIC = ["/", "/nl", "/en", "/en/about", "/en/contact", "/en/search", "/en/business", "/en/business/hotel", "/en/notify/suppliers", "/en/terms", "/en/privacy", "/en/jobs"];
+const PUBLIC = ["/", "/nl", "/en", "/en/about", "/en/contact", "/en/search", "/en/business", "/en/business/hotel", "/en/terms", "/en/privacy", "/en/jobs"];
 const PRIVATE = [
   ["/en/home", "/home"], ["/en/account", "/account"], ["/en/messages", "/messages"], ["/en/favourites", "/favourites"],
-  ["/en/business/dashboard", "/business/dashboard"], ["/en/emergency", "/emergency"], ["/en/jobs/new", "/jobs/new"], ["/en/admin", "/admin"],
+  ["/en/business/dashboard", "/business/dashboard"], ["/en/jobs/new", "/jobs/new"], ["/en/admin", "/admin"],
 ];
 
 (async () => {

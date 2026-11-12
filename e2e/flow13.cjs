@@ -52,7 +52,7 @@ async function registerBusiness(browser, viewport, track, email, company) {
     // ---------- price-neutral copy ----------
     const g = await (await browser.newContext({ viewport })).newPage(); track(g);
     const pricePat = /€\s?\d|\d[.,]\d{2}\s?(per|\/)|per month|per maand/i;
-    const pages = [["home", "/"], ["household sign-up", "/signup?role=household"], ["cleaner sign-up", "/signup?role=cleaner"], ["business landing", "/business"], ["airbnb page", "/business/airbnb"], ["emergency (signed out)", "/login"]];
+    const pages = [["home", "/"], ["household sign-up", "/signup?role=household"], ["cleaner sign-up", "/signup?role=cleaner"], ["business landing", "/business"], ["airbnb page", "/business/airbnb"], ["log-in page", "/login"]];
     for (const [name, path] of pages) {
       await g.goto(`${APP}/en${path}`, { waitUntil: "networkidle" });
       const text = await g.textContent("main");

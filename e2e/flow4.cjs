@@ -1,5 +1,5 @@
-/* Admin flow against the stand-in: a cleaner with a VOG, a household report,
- * then the owner (admin) reviews reports, VOG, ads, users and settings. */
+/* Admin flow against the stand-in: a cleaner's ad, a household report,
+ * then the owner (admin) reviews reports, ads, users and settings. */
 const { chromium } = require("playwright");
 const fs = require("node:fs");
 const APP = "http://localhost:3100";
@@ -28,7 +28,7 @@ async function signUp(page, email, role) {
     page.on("console", (m) => { if (m.type() === "error" && !/status of (400|404|422)|realtime\/v1\/websocket/.test(m.text())) errors.push(`console: ${m.text()}`); });
   };
 
-  // cleaner with school job type + VOG
+  // cleaner with an office job type
   const cleanerCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const cleaner = await cleanerCtx.newPage(); track(cleaner);
   await signUp(cleaner, "lotte@example.com", "cleaner");
@@ -38,21 +38,12 @@ async function signUp(page, email, role) {
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.getByRole("button", { name: /Regular cleaning/ }).first().click();
   await cleaner.getByText("Both", { exact: true }).click();
-  await cleaner.getByRole("button", { name: /^Schools/ }).click();
-  await cleaner.fill("input[type=date]", "2026-09-01");
+  await cleaner.getByRole("button", { name: /^Offices/ }).click();
   await cleaner.getByRole("button", { name: "Next" }).click();
   await cleaner.fill("input[placeholder='1012 AB']", "9711 AB");
   await cleaner.locator("td button").nth(0).click();
   await cleaner.getByRole("button", { name: /Save ad|Publish/ }).click();
   await cleaner.waitForSelector("text=Your ad is live", { timeout: 15000 });
-  // VOG file upload (second form on the page)
-  await cleaner.locator("form").nth(1).locator("input[type=file]").setInputFiles("public/img/hero-cleaner.webp").catch(() => {});
-  const vogForm = cleaner.locator("form", { hasText: "Upload VOG" });
-  await vogForm.locator("input[type=file]").setInputFiles({ name: "vog.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 test") });
-  await vogForm.getByRole("button", { name: "Upload VOG" }).click();
-  await cleaner.waitForSelector("text=We review it within a few days", { timeout: 15000 });
-  const vog = (await tbl("vog_documents"))[0];
-  ok("Cleaner: VOG uploaded to private bucket, status pending", vog?.status === "pending" && Boolean(vog.storage_path));
   const ad = (await tbl("cleaner_profiles"))[0];
 
   // household reports the ad
@@ -73,7 +64,7 @@ async function signUp(page, email, role) {
   await signUp(admin, "afrongelic.events@gmail.com", "household");
   await admin.goto(`${APP}/en/admin`, { waitUntil: "networkidle" });
   const dash = await admin.textContent("main");
-  ok("Admin: dashboard counts 1 open report + 1 VOG to review", /1 open report/.test(dash) && /1 VOG to review/.test(dash));
+  ok("Admin: dashboard counts 1 open report", /1 open report/.test(dash));
   await admin.screenshot({ path: `${OUT}/f4-01-admin-dashboard.png` });
 
   await admin.goto(`${APP}/en/admin/reports`, { waitUntil: "networkidle" });
@@ -86,14 +77,6 @@ async function signUp(page, email, role) {
   await admin.getByRole("button", { name: "Restore" }).click();
   await admin.waitForTimeout(2000);
   ok("Admin: restore → ad published again", (await tbl("cleaner_profiles"))[0].status === "published");
-
-  await admin.goto(`${APP}/en/admin/vog`, { waitUntil: "networkidle" });
-  ok("Admin: VOG queue lists Lotte pending with file", /Lotte B\./.test(await admin.textContent("main")));
-  await admin.getByRole("button", { name: "Approve" }).click();
-  await admin.waitForTimeout(2000);
-  ok("Admin: VOG approved and file deleted", (await tbl("vog_documents"))[0].status === "approved" && (await tbl("vog_documents"))[0].storage_path === null);
-  await hh.goto(`${APP}/en/search?q=9711AB&jobType=school`, { waitUntil: "networkidle" });
-  ok("Search: approved VOG shows the badge for schools", /VOG ✓/.test(await hh.textContent("main")));
 
   await admin.goto(`${APP}/en/admin/ads`, { waitUntil: "networkidle" });
   ok("Admin: ads list shows real ad with status online", /Lotte B\./.test(await admin.textContent("main")) && /online/.test(await admin.textContent("main")));

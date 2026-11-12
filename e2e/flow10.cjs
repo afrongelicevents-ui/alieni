@@ -54,7 +54,7 @@ async function newCleaner(browser, viewport, track, email) {
   const ctx = await browser.newContext({ viewport }); const p = await ctx.newPage(); track(p);
   await signUp(p, email, "cleaner");
   const sess = await session(ctx);
-  const cp = (await rest(sess.access_token, "POST", "cleaner_profiles", { user_id: sess.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["office"], work_scope: "commercial", work_types: ["commercial_contract"], emergency_opt_in: false, location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
+  const cp = (await rest(sess.access_token, "POST", "cleaner_profiles", { user_id: sess.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["office"], work_scope: "commercial", work_types: ["commercial_contract"], location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
   return { ctx, p, sess, cp };
 }
 

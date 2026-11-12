@@ -1,5 +1,5 @@
-/* Part 16 features: reviews after a confirmed deal, business details and unit editing, household emergency screen,
- * turnover slot release/cancel, admin suspend, banned words. Needs the app with a service key on :3101. */
+/* Part 16 features: reviews after a confirmed deal, business details and unit editing,
+ * admin suspend, banned words. Needs the app with a service key on :3101. */
 const { chromium } = require("playwright");
 const fs = require("node:fs");
 const APP = process.env.APP || "http://localhost:3101";
@@ -53,7 +53,7 @@ async function registerBusiness(browser, viewport, track, email, company) {
     const cctx = await browser.newContext({ viewport }); const c = await cctx.newPage(); track(c);
     await signUp(c, `cl-${sfx}@example.com`, "cleaner");
     const cs = await session(cctx);
-    const cp = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["household", "hotel"], work_scope: "both", work_types: ["household_regular", "turnover"], location: "SRID=4326;POINT(6.2200 52.3000)" })).data[0];
+    const cp = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["household", "hotel"], work_scope: "both", work_types: ["household_regular", "commercial_contract"], location: "SRID=4326;POINT(6.2200 52.3000)" })).data[0];
     const hctx = await browser.newContext({ viewport }); const h = await hctx.newPage(); track(h);
     await signUp(h, `hh-${sfx}@example.com`, "household");
     const hs = await session(hctx);
@@ -95,33 +95,6 @@ async function registerBusiness(browser, viewport, track, email, company) {
     await B.p.locator("[data-unit]").first().getByRole("button", { name: "Yes, remove" }).click();
     await B.p.waitForSelector("text=You cannot remove your last location.", { timeout: 15000 });
     ok(`[${label}] The last location cannot be removed`, (await tbl("business_units")).length === 1);
-
-    // ---------- turnover slots: release and cancel ----------
-    const unit = (await tbl("business_units"))[0];
-    await rest(B.sess.access_token, "POST", "connections", { household_id: B.sess.user.id, cleaner_id: cs.user.id, status: "active", household_confirmed_at: new Date().toISOString(), cleaner_confirmed_at: new Date().toISOString() });
-    const day = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
-    const slot = (await rest(B.sess.access_token, "POST", "cleaning_slots", { unit_id: unit.id, business_id: bp.id, source: "manual", external_uid: "e2e-1", slot_date: day, starts_at: `${day}T10:00:00Z`, ends_at: `${day}T14:00:00Z`, status: "reserved", reserved_by: cp.id })).data[0];
-    await c.goto(`${APP}/en/work?tab=turnovers`, { waitUntil: "networkidle" });
-    await c.locator("[data-release-slot]").first().click();
-    await c.waitForFunction(() => !document.querySelector("[data-release-slot]"), null, { timeout: 15000 });
-    ok(`[${label}] A cleaner gives a reserved turnover back before it starts`, (await tbl("cleaning_slots")).find((s) => s.id === slot.id).status === "open");
-    await B.p.goto(`${APP}/en/business/calendar`, { waitUntil: "networkidle" });
-    await B.p.getByRole("button", { name: "Cancel", exact: true }).first().click();
-    await B.p.waitForFunction(() => !/Cancel\b/.test(document.querySelector("main")?.textContent || "") || true, null, { timeout: 5000 });
-    await B.p.waitForTimeout(1200);
-    ok(`[${label}] The business cancels a turnover`, (await tbl("cleaning_slots")).find((s) => s.id === slot.id).status === "cancelled");
-
-    // ---------- household emergency screen ----------
-    const er = (await rest(hs.access_token, "POST", "emergency_requests", { requester_id: hs.user.id, requester_type: "household", address_line: "Kade 1", postcode: "7433 RB", city: "Schalkhaar", location: "SRID=4326;POINT(6.2200 52.3000)", window_start: new Date(Date.now() + 3600e3).toISOString(), window_end: new Date(Date.now() + 5 * 3600e3).toISOString(), hours: 3, tasks: "Kitchen and bathroom" })).data[0];
-    await rest(cs.access_token, "PATCH", `cleaner_profiles?id=eq.${cp.id}`, { emergency_opt_in: true });
-    const acc = await rest(cs.access_token, "POST", "rpc/accept_emergency_request", { p_request_id: er.id });
-    await h.goto(`${APP}/en/emergency`, { waitUntil: "networkidle" });
-    ok(`[${label}] After acceptance the household can message, cancel and sees the honest fee note`, acc.data === true && (await h.getByRole("button", { name: /^Message /i }).count()) === 1 && (await h.getByRole("button", { name: "Cancel emergency request" }).count()) === 1 && /No booking (fee|price)/.test(await h.textContent("main")));
-    await h.getByRole("button", { name: "Cancel emergency request" }).click();
-    ok(`[${label}] Cancelling asks for a confirmation first`, (await h.getByRole("button", { name: "Yes, cancel" }).count()) === 1);
-    await h.getByRole("button", { name: "Yes, cancel" }).click();
-    await h.waitForSelector("[data-emergency-outcome]", { timeout: 15000 });
-    ok(`[${label}] A cancelled request is explained above the new-request form`, /cancelled/.test(await h.textContent("[data-emergency-outcome]")) && (await tbl("emergency_requests")).find((r) => r.id === er.id).status === "cancelled");
 
     // ---------- banned words and admin suspend ----------
     const actx = await browser.newContext({ viewport }); const a = await actx.newPage(); track(a);

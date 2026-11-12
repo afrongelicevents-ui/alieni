@@ -34,7 +34,7 @@ const nl = {
       p: [
         "Beperkte adresgegevens: voor gewone zoekopdrachten en huishoudens slaat Alieni geen woonadres op; waar er wordt schoongemaakt, deel je zelf rechtstreeks met de schoonmaker. Uitzonderingen: bedrijfslocaties slaan hun adres op; van schoonmakers slaan we de postcode op en leiden we daaruit een nauwkeurige locatie af voor het zoeken op afstand — alleen het 4-cijferige postcodegebied is openbaar zichtbaar.",
         "Geen bank- of kaartgegevens: die slaan we niet op. Schoonmakers betalen nooit iets, dus van hen hebben we helemaal geen financiële gegevens.",
-        "Geen identiteitsbewijzen, KvK-documenten of VOG's. Bedrijfsaccounts slaan bedrijfsnaam, een optioneel btw-nummer en een contactpersoon op. Schoonmakers zijn zelfstandig; de klantrelatie is van hen, niet van Alieni.",
+        "Geen identiteitsbewijzen of KvK-documenten. Bedrijfsaccounts slaan bedrijfsnaam, een optioneel btw-nummer en een contactpersoon op. Schoonmakers zijn zelfstandig; de klantrelatie is van hen, niet van Alieni.",
         "De postcode die je in de zoekbalk typt wordt alleen gebruikt om te zoeken en nooit opgeslagen.",
       ],
     },
@@ -100,7 +100,7 @@ const en = {
       p: [
         "Limited address data: for ordinary searches and households Alieni stores no home address; where the cleaning happens is something you share directly with the cleaner. Exceptions: business locations store their address; for cleaners we store the postcode and derive a precise location from it for distance search — only the 4-digit postcode area is publicly visible.",
         "No bank or card details: we do not store those. Cleaners never pay anything, so we hold no financial data about them at all.",
-        "No identity documents, KvK documents or VOG certificates. Business accounts store a company name, an optional VAT number and a contact person. Cleaners are independent; the client relationship is theirs, not Alieni's.",
+        "No identity documents or KvK documents. Business accounts store a company name, an optional VAT number and a contact person. Cleaners are independent; the client relationship is theirs, not Alieni's.",
         "The postcode you type into the search bar is only used to search and is never stored.",
       ],
     },

@@ -51,7 +51,7 @@ function ok(name, pass, detail = "") { results.push({ name, pass, detail }); con
   await page.waitForURL(/\/en\/admin\/media$/, { timeout: 15000 }).catch(() => {});
   await page.waitForLoadState("networkidle");
   const cards = await page.locator("article").count();
-  ok("Admin → Photos: six photo cards", cards === 6, `${cards} cards`);
+  ok("Admin → Photos: five photo cards (no schools photo)", cards === 5, `${cards} cards`);
   await page.screenshot({ path: `${OUT}/02-admin-photos.png`, fullPage: true });
 
   // 5. Upload a photo for the hero slot

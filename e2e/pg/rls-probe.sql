@@ -54,70 +54,45 @@ begin
     perform 1 from business_units where id = uid2;
     insert into jobs (business_id, status, space_type, postcode, frequency, description, budget_cents, start_date, weekdays, visit_start, visit_hours)
       values (bid, 'published', 'office', '7433 RB', 'weekly', 'Weekly office cleaning, evenings.', 2000, current_date, '{2}', '18:00', 2);
-    insert into emergency_requests (requester_id, requester_type, address_line, postcode, city, window_start, window_end, hours, tasks, unit_id)
-      values (u, 'business', 'Straat 1', '7433 RB', 'Schalkhaar', now() + interval '10 hours', now() + interval '13 hours', 3, 'Cover shift offices', uid2);
     reset role;
-    insert into probe_results values ('flow', 'business', 'sign-up, unit, job, emergency request', true, null);
+    insert into probe_results values ('flow', 'business', 'sign-up, unit, job', true, null);
   exception when others then
     reset role;
-    insert into probe_results values ('flow', 'business', 'sign-up, unit, job, emergency request', false, sqlstate || ' ' || sqlerrm);
+    insert into probe_results values ('flow', 'business', 'sign-up, unit, job', false, sqlstate || ' ' || sqlerrm);
   end;
 end $$;
 
 
--- 4: cover flow on the real database: cleaner accepts, work record + fee event appear, requester cancels, strikes via attendance
+
+
+-- 4: the cleaner places an ad; a one-off job gives them a work record; a household cannot see business work
 do $$
-declare bu uuid; cu uuid; cp uuid; rid uuid; rid2 uuid; res text; n int; bid uuid; unitid uuid;
+declare bu uuid; cu uuid; cp uuid; n int; bid uuid;
 begin
   select uid into bu from probe_users where role = 'business';
   select uid into cu from probe_users where role = 'cleaner';
   select id into bid from business_profiles where user_id = bu;
-  select id into unitid from business_units where business_id = bid limit 1;
   begin
     perform set_config('request.jwt.claim.sub', cu::text, true);
     set local role authenticated;
-    insert into cleaner_profiles (user_id, status, rate_cents, postcode, job_types, work_scope, work_types, emergency_opt_in, emergency_rate_cents)
-      values (cu, 'published', 2000, '7433 RB', array['household','office','emergency'], 'both', array['household_regular','commercial_contract','emergency_cover'], true, 3000) returning id into cp;
+    insert into cleaner_profiles (user_id, status, rate_cents, postcode, job_types, work_scope, work_types)
+      values (cu, 'published', 2000, '7433 RB', array['household','office'], 'both', array['household_regular','commercial_contract']) returning id into cp;
     reset role;
     insert into probe_results values ('flow', 'cleaner', 'create published ad', true, null);
   exception when others then reset role; insert into probe_results values ('flow', 'cleaner', 'create published ad', false, sqlstate || ' ' || sqlerrm); return; end;
 
-  begin
-    perform set_config('request.jwt.claim.sub', cu::text, true);
-    set local role authenticated;
-    select id into rid from emergency_requests_open limit 1;
-    if rid is null then raise exception 'open request not visible to an eligible cleaner'; end if;
-    reset role;
-    insert into probe_results values ('flow', 'cleaner', 'sees the open business request (view)', true, null);
-  exception when others then reset role; insert into probe_results values ('flow', 'cleaner', 'sees the open business request (view)', false, sqlstate || ' ' || sqlerrm); return; end;
-
-  begin
-    perform set_config('request.jwt.claim.sub', cu::text, true);
-    set local role authenticated;
-    select accept_emergency_request(rid) into res;
-    reset role;
-    if res::boolean is not true then raise exception 'accept returned %', res; end if;
-    select count(*) into n from work_records where reference_id = rid and outcome = 'scheduled';
-    if n <> 1 then raise exception 'work record missing'; end if;
-    select count(*) into n from fee_events where reference_id = rid and amount_cents = 0 and status = 'pending';
-    if n <> 1 then raise exception 'fee event missing'; end if;
-    insert into probe_results values ('flow', 'cleaner', 'accept → work record + € 0 fee event', true, null);
-  exception when others then reset role; insert into probe_results values ('flow', 'cleaner', 'accept → work record + € 0 fee event', false, sqlstate || ' ' || sqlerrm); end;
+  perform set_config('request.jwt.claim.sub', '', true);
+  insert into work_records (business_id, cleaner_profile_id, service_key, reference_table, reference_id, scheduled_start, scheduled_end, outcome)
+    values (bid, cp, 'oneoff', 'probe', gen_random_uuid(), now() + interval '1 day', now() + interval '1 day 3 hours', 'scheduled');
 
   begin
     perform set_config('request.jwt.claim.sub', bu::text, true);
     set local role authenticated;
-    select count(*) into n from work_records;      if n <> 1 then raise exception 'business sees % work records', n; end if;
-    select count(*) into n from fee_events;        if n <> 1 then raise exception 'business sees % fee events', n; end if;
-    select cancel_emergency_request(rid, 'plans changed') into res;
+    select count(*) into n from work_records; if n <> 1 then raise exception 'business sees % work records', n; end if;
     reset role;
-    if res <> 'cancelled_free' then raise exception 'cancel returned %', res; end if;
-    select count(*) into n from fee_events where reference_id = rid and status = 'waived';
-    if n <> 1 then raise exception 'fee event not waived'; end if;
-    insert into probe_results values ('flow', 'business', 'sees own work + fee event; cancel outside window waives the event', true, null);
-  exception when others then reset role; insert into probe_results values ('flow', 'business', 'sees own work + fee event; cancel outside window waives the event', false, sqlstate || ' ' || sqlerrm); end;
+    insert into probe_results values ('flow', 'business', 'sees its own work record', true, null);
+  exception when others then reset role; insert into probe_results values ('flow', 'business', 'sees its own work record', false, sqlstate || ' ' || sqlerrm); end;
 
-  -- a household cannot read the company's work records, fee events or units
   begin
     perform set_config('request.jwt.claim.sub', (select uid::text from probe_users where role = 'household'), true);
     set local role authenticated;
@@ -147,7 +122,6 @@ begin
     with d as (delete from business_units where business_id = b1bp returning 1) select count(*) into n from d;                   if n <> 0 then raise exception 'deleted another units'; end if;
     select count(*) into n from business_units where business_id = b1bp;                                                         if n <> 0 then raise exception 'sees another units'; end if;
     select count(*) into n from fee_events;                                                                                       if n <> 0 then raise exception 'sees another fee events'; end if;
-    select count(*) into n from emergency_requests where requester_id = b1;                                                       if n <> 0 then raise exception 'sees another emergency requests'; end if;
     begin insert into business_units (business_id, name, address_line, postcode, city) values (b1bp, 'x', 'x', '1011 AB', 'x'); raise exception 'added a unit to another company';
     exception when insufficient_privilege then null; when others then if sqlstate not in ('42501') then raise; end if; end;
     reset role;
@@ -167,7 +141,7 @@ begin
     insert into business_units (business_id, name, address_line, postcode, city) values (b1bp, 'Second', 'Kade 5', '1011 AB', 'Amsterdam');
     perform id, user_id, company_name, kvk_number, btw_number, business_type, contact_first_name, contact_last_name, unit_count, unit_price_cents, pending_unit_count, billing_started_at, billing_paused_at, billing_ended_at, payment_failed_at, created_at from business_profiles where user_id = b1;
     perform 1 from profiles where id = b1;
-    perform 1 from cleaning_slots; perform 1 from invoices; perform 1 from jobs j left join job_responses r on r.job_id = j.id; perform 1 from fee_events; perform 1 from work_records; perform 1 from emergency_requests where requester_id = b1;
+    perform 1 from invoices; perform 1 from jobs j left join job_responses r on r.job_id = j.id; perform 1 from fee_events; perform 1 from work_records;
     reset role;
     insert into probe_results values ('flow', 'business', 'dashboard reads + unit count + second address', true, null);
   exception when others then reset role; insert into probe_results values ('flow', 'business', 'dashboard reads + unit count + second address', false, sqlstate || ' ' || sqlerrm); end;
@@ -239,7 +213,7 @@ update jobs set status = 'filled';
 select pg_temp.chk('no published job: household sees no company', 'authenticated', 'household', :'hh', 'select count(*) from business_public', '0');
 select pg_temp.chk('no published job: anon sees no company', 'anon', 'anon', null, 'select count(*) from business_public', '0');
 select pg_temp.chk('cleaner with a work record sees that company', 'authenticated', 'cleaner', :'cl', 'select count(*) from business_public', '1');
--- path 3: an active connection (turnover slots) shows the company name to that cleaner
+-- path 3: an active connection shows the company name to that cleaner
 select pg_temp.chk('cleaner not yet connected does not see Second BV', 'authenticated', 'cleaner', :'cl', $q$select count(*) from business_public where company_name = 'Second BV'$q$, '0');
 select set_config('request.jwt.claim.sub', '', false);
 insert into connections (household_id, cleaner_id, status) values (:'b2', :'cl', 'active');
@@ -458,92 +432,6 @@ begin
   select id into cp2 from cleaner_profiles where user_id = c2;
   select id into unitid from business_units where business_id = bid limit 1;
 
-  -- 1. the helper views cannot be written
-  begin
-    perform set_config('request.jwt.claim.sub', hh::text, true); set local role authenticated;
-    delete from cleaner_vog_badges;
-    reset role; perform pg_temp.fl('household', 'cannot delete through cleaner_vog_badges', false, 'delete worked');
-  exception when others then reset role; perform pg_temp.fl('household', 'cannot delete through cleaner_vog_badges', sqlstate = '42501', sqlstate); end;
-  begin
-    perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
-    delete from emergency_requests_open;
-    reset role; perform pg_temp.fl('cleaner', 'cannot delete through emergency_requests_open', false, 'delete worked');
-  exception when others then reset role; perform pg_temp.fl('cleaner', 'cannot delete through emergency_requests_open', sqlstate = '42501', sqlstate); end;
-
-  -- 2. VOG
-  begin
-    perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
-    begin insert into vog_documents (cleaner_profile_id, issued_at, status) values (cp1, current_date, 'approved'); raise exception 'self-approved insert worked';
-    exception when others then if sqlstate <> '42501' then raise; end if; end;
-    insert into vog_documents (cleaner_profile_id, issued_at, status) values (cp1, current_date, 'pending');
-    update vog_documents set status = 'approved' where cleaner_profile_id = cp1;
-    get diagnostics n = row_count;
-    reset role;
-    raise exception 'self-approval update was accepted (% rows)', n;
-  exception when others then reset role;
-    perform pg_temp.fl('cleaner', 'cannot approve their own VOG (insert or update)', sqlstate = '42501' or sqlerrm like 'new row violates%', sqlstate || ' ' || sqlerrm);
-  end;
-  begin
-    perform set_config('request.jwt.claim.sub', ad::text, true); set local role authenticated;
-    update vog_documents set status = 'approved' where cleaner_profile_id = cp1;
-    reset role;
-    if (select status from vog_documents where cleaner_profile_id = cp1) <> 'approved' then raise exception 'admin approval did not stick'; end if;
-    perform pg_temp.fl('admin', 'approves a VOG', true, null);
-  exception when others then reset role; perform pg_temp.fl('admin', 'approves a VOG', false, sqlstate || ' ' || sqlerrm); end;
-
-  -- 3. emergency requests
-  begin
-    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
-    insert into emergency_requests (requester_id, requester_type, address_line, postcode, city, window_start, window_end, hours, tasks, unit_id, status, accepted_by, fee_cents)
-      values (bu, 'business', 'Straat 1', '7433 RB', 'Schalkhaar', now() - interval '3 hours', now() - interval '1 hour', 2, 'forged', unitid, 'accepted', cp2, 0);
-    reset role; perform pg_temp.fl('business', 'a request starting in the past is refused', false, 'insert worked');
-  exception when others then reset role; perform pg_temp.fl('business', 'a request starting in the past is refused', sqlerrm = 'window in the past', sqlerrm); end;
-  begin
-    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
-    insert into emergency_requests (requester_id, requester_type, address_line, postcode, city, window_start, window_end, hours, tasks, unit_id, status, accepted_by, fee_cents)
-      values (bu, 'business', 'Straat 1', '7433 RB', 'Schalkhaar', now() + interval '5 hours', now() + interval '8 hours', 3, 'forged accepted', unitid, 'accepted', cp2, 0) returning id into er;
-    reset role;
-    select status, count(*) filter (where accepted_by is not null) into st, n from emergency_requests where id = er group by status;
-    if st <> 'searching' or n <> 0 then raise exception 'forged row kept status % / accepted_by', st; end if;
-    perform pg_temp.fl('business', 'a forged "accepted" request is stored as searching without a cleaner', true, null);
-  exception when others then reset role; perform pg_temp.fl('business', 'a forged "accepted" request is stored as searching without a cleaner', false, sqlstate || ' ' || sqlerrm); end;
-
-  begin
-    perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
-    res := accept_emergency_request(er)::text;
-    reset role;
-    if res <> 'true' then raise exception 'cleaner could not accept: %', res; end if;
-    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
-    update emergency_requests set window_start = now() - interval '2 hours', window_end = now() - interval '1 hour' where id = er;
-    delete from emergency_requests where id = er;
-    get diagnostics n = row_count;
-    reset role;
-    if n <> 0 then raise exception 'accepted request was deleted'; end if;
-    if (select window_start from emergency_requests where id = er) < now() then raise exception 'window of an accepted request was moved'; end if;
-    perform pg_temp.fl('business', 'an accepted request keeps its window and cannot be deleted', true, null);
-  exception when others then reset role; perform pg_temp.fl('business', 'an accepted request keeps its window and cannot be deleted', false, sqlstate || ' ' || sqlerrm); end;
-
-  begin
-    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
-    if report_emergency_attendance(er, false, 'x') then raise exception 'no-show before the window even started'; end if;
-    reset role; perform pg_temp.fl('business', 'a no-show cannot be filed before the window has started', true, null);
-  exception when others then reset role; perform pg_temp.fl('business', 'a no-show cannot be filed before the window has started', false, sqlstate || ' ' || sqlerrm); end;
-
-  -- a hidden ad cannot take emergency work
-  begin
-    perform set_config('request.jwt.claim.sub', '', true);
-    update cleaner_profiles set status = 'hidden' where id = cp1;
-    insert into emergency_requests (requester_id, requester_type, address_line, postcode, city, window_start, window_end, hours, tasks, unit_id)
-      values (bu, 'business', 'Straat 1', '7433 RB', 'Schalkhaar', now() + interval '6 hours', now() + interval '9 hours', 3, 'second', unitid) returning id into er;
-    perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
-    res := accept_emergency_request(er)::text;
-    reset role;
-    perform set_config('request.jwt.claim.sub', '', true);
-    update cleaner_profiles set status = 'published' where id = cp1;
-    if res = 'true' then raise exception 'a hidden ad accepted emergency work'; end if;
-    perform pg_temp.fl('cleaner', 'a hidden ad cannot accept emergency work', true, null);
-  exception when others then reset role; perform set_config('request.jwt.claim.sub', '', true); update cleaner_profiles set status = 'published' where id = cp1; perform pg_temp.fl('cleaner', 'a hidden ad cannot accept emergency work', false, sqlstate || ' ' || sqlerrm); end;
-
   -- 4. moderation sticks
   begin
     perform set_config('request.jwt.claim.sub', ad::text, true); set local role authenticated;
@@ -607,7 +495,7 @@ begin
     reset role;
     if n <> 0 then raise exception 'unconnected cleaner sees % units', n; end if;
     perform set_config('request.jwt.claim.sub', c2::text, true); set local role authenticated;
-    perform ical_url from cleaner_slot_units limit 1;
+    perform ical_url from business_units limit 1;
     reset role; raise exception 'calendar link readable';
   exception when others then reset role;
     perform pg_temp.fl('cleaner', 'a connected cleaner reads unit name and address; others and the calendar link are not readable', sqlstate = '42703', sqlstate || ' ' || sqlerrm);
@@ -616,7 +504,7 @@ begin
   -- 8. pricing rules
   begin
     perform set_config('request.jwt.claim.sub', '', true);
-    insert into pricing_rules (service_key, model, amount_cents, active, notes) values ('cover', 'per_event', 500, false, 'secret draft rule');
+    insert into pricing_rules (service_key, model, amount_cents, active, notes) values ('oneoff', 'per_event', 500, false, 'secret draft rule');
     perform set_config('request.jwt.claim.sub', '', true); set local role anon;
     select count(*) into n from pricing_rules where notes = 'secret draft rule';
     reset role;
@@ -673,47 +561,20 @@ begin
     perform pg_temp.fl('service', 'erasing a household removes its content and anonymises the profile', true, null);
   exception when others then reset role; perform pg_temp.fl('service', 'erasing a household removes its content and anonymises the profile', false, sqlstate || ' ' || sqlerrm); end;
 
-  -- 14. turnover slots: reserve, give back, cancel
-  declare sid uuid; begin
-    perform set_config('request.jwt.claim.sub', '', true);
-    insert into cleaning_slots (unit_id, business_id, source, slot_date, starts_at, ends_at, external_uid)
-      values (unitid, bid, 'manual', current_date + 3, now() + interval '3 days', now() + interval '3 days 4 hours', 'probe-slot-1') returning id into sid;
-    perform set_config('request.jwt.claim.sub', c2::text, true); set local role authenticated;
-    update cleaning_slots set status = 'reserved', reserved_by = cp2 where id = sid;
-    reset role;
-    if (select count(*) from work_records where reference_id = sid and outcome = 'scheduled') <> 1 then raise exception 'no scheduled work after reserving'; end if;
-    perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
-    update cleaning_slots set status = 'open', reserved_by = null where id = sid;
-    get diagnostics n = row_count;
-    reset role;
-    if n <> 0 or (select status from cleaning_slots where id = sid) <> 'reserved' then raise exception 'a cleaner who is not connected changed the slot'; end if;
-    perform set_config('request.jwt.claim.sub', c2::text, true); set local role authenticated;
-    update cleaning_slots set status = 'open', reserved_by = null where id = sid;
-    reset role;
-    if (select status from cleaning_slots where id = sid) <> 'open' then raise exception 'the cleaner could not give the slot back'; end if;
-    if (select count(*) from work_records where reference_id = sid and outcome = 'scheduled') <> 0 then raise exception 'work stayed scheduled after release'; end if;
-    perform set_config('request.jwt.claim.sub', bu::text, true); set local role authenticated;
-    update cleaning_slots set status = 'cancelled' where id = sid;
-    reset role;
-    if (select status from cleaning_slots where id = sid) <> 'cancelled' then raise exception 'the business could not cancel the slot'; end if;
-    perform pg_temp.fl('cleaner', 'reserve, give back and cancel a turnover slot; work records follow', true, null);
-  exception when others then reset role; perform pg_temp.fl('cleaner', 'reserve, give back and cancel a turnover slot; work records follow', false, sqlstate || ' ' || sqlerrm); end;
-
   -- 15. signed-in-only functions
   begin
     perform set_config('request.jwt.claim.sub', '', true); set local role anon;
-    perform accept_emergency_request(gen_random_uuid());
-    reset role; perform pg_temp.fl('anon', 'cover and work-record functions are not callable without signing in', false, 'call worked');
-  exception when others then reset role; perform pg_temp.fl('anon', 'cover and work-record functions are not callable without signing in', sqlstate = '42501', sqlstate); end;
+    perform progress_work_record(gen_random_uuid(), 'done');
+    reset role; perform pg_temp.fl('anon', 'work-record functions are not callable without signing in', false, 'call worked');
+  exception when others then reset role; perform pg_temp.fl('anon', 'work-record functions are not callable without signing in', sqlstate = '42501', sqlstate); end;
 
   -- 17. pricing inactive, search_path
   begin
     if exists (select 1 from settings where key = 'household_fee_cents' and value <> '0'::jsonb) then raise exception 'household price is not 0'; end if;
-    if exists (select 1 from settings where key = 'emergency_fee_cents' and ((value ->> 'household_incl_btw')::int <> 0 or (value ->> 'business_excl_btw')::int <> 0)) then raise exception 'emergency fee is not 0'; end if;
     if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosecdef and 'search_path=public' = any (p.proconfig)) then raise exception 'a definer function still has the plain public search_path'; end if;
     if exists (select 1 from pricing_rules where active) then raise exception 'a pricing rule is active'; end if;
-    perform pg_temp.fl('service', 'no price is set: household fee 0, emergency fees 0, no active pricing rule, definer functions use "public, pg_temp"', true, null);
-  exception when others then perform pg_temp.fl('service', 'no price is set: household fee 0, emergency fees 0, no active pricing rule, definer functions use "public, pg_temp"', false, sqlstate || ' ' || sqlerrm); end;
+    perform pg_temp.fl('service', 'no price is set: household fee 0, no active pricing rule, definer functions use "public, pg_temp"', true, null);
+  exception when others then perform pg_temp.fl('service', 'no price is set: household fee 0, no active pricing rule, definer functions use "public, pg_temp"', false, sqlstate || ' ' || sqlerrm); end;
 
   -- 18. meetings: propose another time, answer, withdraw
   declare mid uuid; begin
@@ -744,7 +605,7 @@ begin
     perform pg_temp.fl('household', 'meetings: cleaner proposes another time, household answers or withdraws, nobody rewrites the request', true, null);
   exception when others then reset role; perform pg_temp.fl('household', 'meetings: cleaner proposes another time, household answers or withdraws, nobody rewrites the request', false, sqlstate || ' ' || sqlerrm); end;
 
-  -- 19. connections, retention, reviews, school VOG, awarded address
+  -- 19. connections, retention, reviews, awarded address
   begin
     perform set_config('request.jwt.claim.sub', cu::text, true); set local role authenticated;
     insert into connections (household_id, cleaner_id, cleaner_confirmed_at) values (bu, cu, now());

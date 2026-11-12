@@ -25,10 +25,10 @@ function DemoScreen({ lang }: { lang: "nl" | "en" }) {
 
   return (
     <ul className="divide-y divide-line">
-      {row(t("Klus: wekelijks, maandagochtend vóór 9:00", "Job: weekly, Monday morning before 9:00"), chip(t("3 reacties", "3 responses"), "open"))}
-      {row("Yusuf D. · € 26/uur", chip(t("reactie", "response"), "ok"))}
-      {row("Kofi A. · € 28/uur", chip(t("reactie", "response"), "ok"))}
-      {row("Hassan E. · € 30/uur", chip(t("reactie", "response"), "ok"))}
+      {row(t("Klus: wekelijks, maandagochtend vóór 9:00", "Job: weekly, Monday morning before 9:00"), chip(t("3 offertes", "3 quotations"), "open"))}
+      {row(t("Yusuf D. · 8 jaar ervaring", "Yusuf D. · 8 years' experience"), chip(t("offerte", "quotation"), "ok"))}
+      {row(t("Kofi A. · 5 jaar ervaring", "Kofi A. · 5 years' experience"), chip(t("offerte", "quotation"), "ok"))}
+      {row(t("Hassan E. · 3 jaar ervaring", "Hassan E. · 3 years' experience"), chip(t("offerte", "quotation"), "ok"))}
     </ul>
   );
 }

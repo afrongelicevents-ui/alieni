@@ -17,7 +17,6 @@ const PK = { profiles: "id", site_media: "slot", favourites: ["user_id", "cleane
 const FK = {
   cleaner_profiles: { user_id: "profiles" },
   availability_slots: { cleaner_profile_id: "cleaner_profiles" },
-  vog_documents: { cleaner_profile_id: "cleaner_profiles" },
   favourites: { user_id: "profiles", cleaner_profile_id: "cleaner_profiles" },
   meeting_requests: { household_id: "profiles", cleaner_profile_id: "cleaner_profiles" },
   conversations: { household_id: "profiles", cleaner_id: "profiles" },
@@ -28,20 +27,16 @@ const FK = {
   business_units: { business_id: "business_profiles" },
   jobs: { business_id: "business_profiles" },
   job_responses: { job_id: "jobs", cleaner_profile_id: "cleaner_profiles" },
-  emergency_requests: { requester_id: "profiles" },
   household_profiles: { user_id: "profiles" },
-  cleaning_slots: { unit_id: "business_units", business_id: "business_profiles" },
   // Phase 1 (migration 0020)
   pricing_rules: { service_key: "service_catalog" },
   fee_events: { business_id: "business_profiles", rule_id: "pricing_rules" },
   work_records: { business_id: "business_profiles", cleaner_profile_id: "cleaner_profiles", household_id: "profiles", job_id: "jobs" },
-  cleaner_strikes: { cleaner_profile_id: "cleaner_profiles" },
 };
 const UNIQUE = {
   cleaner_profiles: [["user_id"]],
   conversations: [["household_id", "cleaner_id"]],
   connections: [["household_id", "cleaner_id"]],
-  vog_documents: [["cleaner_profile_id"]],
   business_profiles: [["user_id"]],
   job_responses: [["job_id", "cleaner_profile_id"]],
   availability_slots: [["cleaner_profile_id", "weekday", "block"]],
@@ -50,9 +45,8 @@ const UNIQUE = {
 };
 // ---- Phase 1: catalogue seed, pricing lookup, fee events, work records (mirrors migration 0020) ----
 function seedCatalog() {
-  if (!table("settings").some((r) => r.key === "cover_rules")) table("settings").push({ key: "cover_rules", value: { cancel_window_hours: 4, strike_limit: 2, max_days_ahead: 14 }, updated_at: new Date().toISOString() });
   if (table("service_catalog").length) return;
-  [["connect", true, 0], ["cover", true, 1], ["turnover", true, 2], ["oneoff", true, 3], ["contract", true, 4]].forEach(([k, enabled, sort_order]) =>
+  [["connect", true, 0], ["oneoff", true, 1], ["contract", true, 2]].forEach(([k, enabled, sort_order]) =>
     table("service_catalog").push({ service_key: k, enabled, business_types: [], sort_order, updated_at: new Date().toISOString() }));
 }
 seedCatalog();
@@ -79,7 +73,7 @@ function upsertWork(ref, row) {
 }
 
 // ---- Part 15 helpers ----
-function jobService(freq) { return freq === "once" ? "oneoff" : freq === "per_checkout" ? "turnover" : "contract"; }
+function jobService(freq) { return freq === "once" ? "oneoff" : "contract"; }
 function generateVisits(j) {
   const r = table("job_responses").find((x) => x.id === j.awarded_response_id);
   if (!r || !j.start_date || !["daily", "weekly", "biweekly", "monthly"].includes(j.frequency)) return;
@@ -104,26 +98,6 @@ function generateVisits(j) {
 }
 function pointOf(v) { const m = /POINT\(([-\d.]+) ([-\d.]+)\)/.exec(String(v || "")); return m ? { lng: Number(m[1]), lat: Number(m[2]) } : null; }
 function kmBetween(a, b) { const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180; const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
-function eligible(cp, r) {
-  if (!cp || !cp.emergency_opt_in) return false;
-  if (r.requester_type !== "household" && (cp.work_scope ?? "household") === "household") return false;
-  const a = pointOf(r.location), b = pointOf(cp.location);
-  if (a && b && kmBetween(a, b) > (cp.radius_km ?? 10)) return false;
-  return true;
-}
-function coverRules() { return table("settings").find((r) => r.key === "cover_rules")?.value ?? { cancel_window_hours: 4, strike_limit: 2, max_days_ahead: 14 }; }
-function slotWorkTrigger(old, next) {
-  if (next.status === "reserved" && old.status !== "reserved") upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, outcome: "scheduled" });
-  else if (next.status === "done" && old.status !== "done") { upsertWork({ table: "cleaning_slots", id: next.id }, { business_id: next.business_id, cleaner_profile_id: next.reserved_by, service_key: "turnover", scheduled_start: next.starts_at, scheduled_end: next.ends_at, completed_at: next.done_at ?? new Date().toISOString(), outcome: "done" }); recordFeeEvent(next.business_id, "turnover", "turnover_completed", "cleaning_slots", next.id); }
-  else if (next.status === "cancelled" && old.status !== "cancelled") { const w = table("work_records").find((x) => x.reference_table === "cleaning_slots" && x.reference_id === next.id); if (w) w.outcome = "cancelled"; }
-}
-function emergencyWorkTrigger(old, next) {
-  if (next.status === "accepted" && old.status !== "accepted") {
-    const bp = table("business_profiles").find((b) => b.user_id === next.requester_id);
-    upsertWork({ table: "emergency_requests", id: next.id }, { business_id: bp?.id ?? null, household_id: bp ? null : next.requester_id, cleaner_profile_id: next.accepted_by, service_key: "cover", scheduled_start: next.window_start, scheduled_end: next.window_end, outcome: "scheduled" });
-    if (bp) recordFeeEvent(bp.id, "cover", "cover_accepted", "emergency_requests", next.id);
-  } else if (["cancelled", "expired"].includes(next.status) && old.status !== next.status) { const w = table("work_records").find((x) => x.reference_table === "emergency_requests" && x.reference_id === next.id); if (w) w.outcome = "cancelled"; }
-}
 function connectionFeeTrigger(old, next) {
   if (next.status === "active" && old.status !== "active") { const bp = table("business_profiles").find((b) => b.user_id === next.household_id); if (bp) recordFeeEvent(bp.id, "connect", "connection_activated", "connections", next.id); }
 }
@@ -133,9 +107,7 @@ const log = [];
 
 table("settings").push(
   { key: "rate_floor_cents", value: 1500 }, { key: "household_fee_cents", value: 1495 }, { key: "banned_words", value: [] },
-  { key: "business_unit_prices_cents", value: { airbnb: 1500, hotel: 300, restaurant: 4900, office: 4900, school: 9900 } },
-  { key: "emergency_fee_cents", value: { household_incl_btw: 995, business_excl_btw: 1495 } },
-  { key: "linen_addon", value: { enabled: false, price_per_unit_cents: 400 } }, { key: "vog_max_age_months", value: 12 },
+  { key: "business_unit_prices_cents", value: { airbnb: 1500, hotel: 300, restaurant: 4900, office: 4900 } },
 );
 
 // Sessions ended on the auth server (logout elsewhere, password change, clean-up). Like real Supabase, Auth then
@@ -287,11 +259,6 @@ function beforeInsert(tname, row, user) {
   if (tname === "business_profiles" && role !== "business" && role !== "admin") throw new Error("only business accounts can create a business profile");
   if ((tname === "meeting_requests" || tname === "favourites" || tname === "conversations") && !["household", "business", "admin"].includes(role)) throw new Error("new row violates row-level security policy");
   if (tname === "household_profiles" && role !== "household") throw new Error("new row violates row-level security policy");
-  if (tname === "emergency_requests") {
-    if (row.unit_id) { const u = table("business_units").find((x) => x.id === row.unit_id); const bp = u && table("business_profiles").find((b) => b.id === u.business_id); if (!bp || bp.user_id !== row.requester_id) throw new Error("unit does not belong to the requester"); }
-    if (new Date(row.window_start) > new Date(Date.now() + (coverRules().max_days_ahead + 1) * 864e5)) throw new Error("too far ahead");
-  }
-  if (tname === "cleaner_strikes") throw new Error("new row violates row-level security policy for table \"cleaner_strikes\"");
   if ((tname === "fee_events" || tname === "work_records") ) throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
   if ((tname === "pricing_rules" || tname === "service_catalog") && role !== "admin") throw new Error("new row violates row-level security policy for table \"" + tname + "\"");
 }
@@ -299,12 +266,6 @@ function beforeUpdate(tname, row, patch, user) {
   const role = user ? roleOf(user.id) : null;
   if (["pricing_rules", "service_catalog", "fee_events"].includes(tname) && role !== "admin") throw new Error("permission denied for table " + tname);
   if (tname === "work_records") throw new Error("permission denied for table work_records");
-  if (tname === "cleaning_slots") slotWorkTrigger(row, { ...row, ...patch });
-  if (tname === "emergency_requests") emergencyWorkTrigger(row, { ...row, ...patch });
-  if (tname === "vog_documents" && patch.status && patch.status !== "pending" && row.status === "pending") {
-    if (row.storage_path) objects.delete(`vog/${row.storage_path}`);
-    patch.storage_path = null; patch.reviewed_at = new Date().toISOString();
-  }
   if (tname === "connections") {
     const next = { ...row, ...patch };
     if (next.household_confirmed_at && next.cleaner_confirmed_at && next.status === "pending") {
@@ -322,66 +283,20 @@ function beforeUpdate(tname, row, patch, user) {
   if (tname === "profiles" && patch.role !== undefined && patch.role !== row.role) throw new Error("role cannot be changed after sign-up");
 }
 const DEFAULTS = {
-  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], work_scope: "household", works_as: null, experience_years: null, emergency_opt_in: false, min_hours: 2, radius_km: 10 }),
+  cleaner_profiles: () => ({ status: "draft", verified_jobs_count: 0, job_types: ["household"], work_scope: "household", works_as: null, experience_years: null, min_hours: 2, radius_km: 10 }),
   meeting_requests: () => ({ status: "requested" }),
   connections: () => ({ status: "pending" }),
   messages: () => ({ masked: true }),
   reports: () => ({ status: "open" }),
   conversations: () => ({ last_message_at: new Date().toISOString() }),
-  vog_documents: () => ({ status: "pending" }),
   jobs: () => ({ status: "draft", weekdays: [], visit_start: null, visit_hours: null, start_date: null, end_date: null, awarded_response_id: null, awarded_at: null, ended_at: null, ended_by: null }),
   job_responses: () => ({ status: "sent", valid_until: null, decided_at: null }),
   business_profiles: () => ({ unit_count: 1 }),
-  emergency_requests: () => ({ status: "searching", attendance: "unknown", unit_id: null, report_to: null, cancelled_at: null, cancel_reason: null, accepted_by: null, fee_cents: null }),
   pricing_rules: () => ({ model: "none", amount_cents: 0, percent: null, unit: null, business_type: null, valid_from: new Date().toISOString().slice(0, 10), valid_to: null, active: false, notes: null }),
 };
 
 function rest(req, res, url, raw) {
   let tname = url.pathname.slice("/rest/v1/".length).replace(/\/$/, "");
-  // RPC: accept_emergency_request (first to accept wins)
-  if (tname === "rpc/accept_emergency_request") {
-    const user = userFromAuth(req);
-    const { p_request_id } = JSON.parse(raw.toString() || "{}");
-    const cp = user && table("cleaner_profiles").find((c) => c.user_id === user.id && c.emergency_opt_in);
-    const r = table("emergency_requests").find((x) => x.id === p_request_id);
-    if (!cp || !r || !eligible(cp, r) || r.status !== "searching" || new Date(r.window_start) <= new Date()) return send(res, 200, false);
-    const old = { ...r };
-    r.status = "accepted"; r.accepted_by = cp.id; r.accepted_at = new Date().toISOString();
-    r.fee_cents = r.requester_type === "household" ? 995 : null;
-    emergencyWorkTrigger(old, r);
-    return send(res, 200, true);
-  }
-  // RPC: cancel_emergency_request (requester; late = inside the cancel window → fee event stays)
-  if (tname === "rpc/cancel_emergency_request") {
-    const user = userFromAuth(req);
-    const { p_request_id, p_reason } = JSON.parse(raw.toString() || "{}");
-    const r = table("emergency_requests").find((x) => x.id === p_request_id && user && x.requester_id === user.id);
-    if (!r || !["searching", "accepted"].includes(r.status)) return send(res, 200, "not_allowed");
-    const late = r.status === "accepted" && Date.now() > new Date(r.window_start).getTime() - coverRules().cancel_window_hours * 3600e3;
-    const old = { ...r };
-    r.status = "cancelled"; r.cancelled_at = new Date().toISOString(); r.cancel_reason = p_reason || null;
-    emergencyWorkTrigger(old, r);
-    if (!late) for (const e of table("fee_events")) if (e.reference_table === "emergency_requests" && e.reference_id === r.id && e.status === "pending") { e.status = "waived"; e.waived_reason = "cancelled outside the window"; }
-    return send(res, 200, late ? "cancelled_late" : "cancelled_free");
-  }
-  // RPC: report_emergency_attendance (requester; no-show → fee waived + strike; limit → opt-in off)
-  if (tname === "rpc/report_emergency_attendance") {
-    const user = userFromAuth(req);
-    const { p_request_id, p_came, p_note } = JSON.parse(raw.toString() || "{}");
-    const r = table("emergency_requests").find((x) => x.id === p_request_id && user && x.requester_id === user.id);
-    if (!r || r.status !== "accepted" || !r.accepted_by || Date.now() < new Date(r.window_start).getTime() || r.attendance !== "unknown") return send(res, 200, false);
-    r.attendance = p_came ? "came" : "no_show"; r.attendance_at = new Date().toISOString(); r.attendance_note = p_note || null;
-    const w = table("work_records").find((x) => x.reference_table === "emergency_requests" && x.reference_id === r.id);
-    if (p_came) { if (w) { w.outcome = "done"; w.completed_at = w.completed_at ?? new Date().toISOString(); w.business_confirmed_at = new Date().toISOString(); } }
-    else {
-      if (w) { w.outcome = "no_show"; w.business_confirmed_at = new Date().toISOString(); if (p_note) w.notes = p_note; }
-      for (const e of table("fee_events")) if (e.reference_table === "emergency_requests" && e.reference_id === r.id && e.status === "pending") { e.status = "waived"; e.waived_reason = "no-show"; }
-      if (!table("cleaner_strikes").some((k) => k.request_id === r.id)) table("cleaner_strikes").push({ id: crypto.randomUUID(), cleaner_profile_id: r.accepted_by, request_id: r.id, reason: "no_show", created_at: new Date().toISOString() });
-      const n = table("cleaner_strikes").filter((k) => k.cleaner_profile_id === r.accepted_by).length;
-      if (n >= coverRules().strike_limit) { const cp = table("cleaner_profiles").find((c) => c.id === r.accepted_by); if (cp) cp.emergency_opt_in = false; }
-    }
-    return send(res, 200, true);
-  }
   // RPC: cleaner_distances (precise km from an origin to every published ad with a location)
   if (tname === "rpc/cleaner_distances") {
     const { p_lng, p_lat } = JSON.parse(raw.toString() || "{}");
@@ -485,7 +400,7 @@ function rest(req, res, url, raw) {
   }
   if (tname === "rpc/erase_user_data") {
     const { p_user } = JSON.parse(raw.toString() || "{}");
-    for (const [name, col] of [["favourites", "user_id"], ["meeting_requests", "household_id"], ["conversations", "household_id"], ["conversations", "cleaner_id"], ["connections", "household_id"], ["connections", "cleaner_id"], ["emergency_requests", "requester_id"], ["household_profiles", "user_id"], ["cleaner_profiles", "user_id"]]) {
+    for (const [name, col] of [["favourites", "user_id"], ["meeting_requests", "household_id"], ["conversations", "household_id"], ["conversations", "cleaner_id"], ["connections", "household_id"], ["connections", "cleaner_id"], ["household_profiles", "user_id"], ["cleaner_profiles", "user_id"]]) {
       tables[name] = table(name).filter((r) => r[col] !== p_user);
     }
     const bp = table("business_profiles").find((b) => b.user_id === p_user);
@@ -508,25 +423,15 @@ function rest(req, res, url, raw) {
     return send(res, 200, { result: "withdrawn", cleaner_user_id: cleanerUser });
   }
   if (tname.startsWith("rpc/")) return send(res, 404, { message: `unknown rpc ${tname}` });
-  // view: open emergency requests without the street address
   ctxUser = userFromAuth(req);
   let viewRows = null;
   if (tname === "business_public") {
     tname = "business_profiles";
     viewRows = businessPublic(ctxUser);
   }
-  if (tname === "cleaner_vog_badges") {
-    const cutoff = new Date(); cutoff.setUTCMonth(cutoff.getUTCMonth() - 12);
-    viewRows = table("cleaner_profiles").filter((c) => c.status === "published").map((c) => ({ cleaner_profile_id: c.id, vog_valid: table("vog_documents").some((v) => v.cleaner_profile_id === c.id && v.status === "approved" && new Date(v.issued_at) >= cutoff) }));
-  }
   if (tname === "cleaner_slot_units") {
     const me = userFromAuth(req);
     viewRows = !me ? [] : table("business_units").filter((u) => { const bp = table("business_profiles").find((b) => b.id === u.business_id); return bp && table("connections").some((c) => c.household_id === bp.user_id && c.cleaner_id === me.id && c.status === "active"); }).map((u) => ({ id: u.id, business_id: u.business_id, name: u.name, address_line: u.address_line, postcode: u.postcode, city: u.city }));
-  }
-  if (tname === "emergency_requests_open") {
-    tname = "emergency_requests";
-    const me = userFromAuth(req); const cpMe = me && table("cleaner_profiles").find((c) => c.user_id === me.id);
-    viewRows = table("emergency_requests").filter((r) => r.status === "searching" && new Date(r.window_start) > new Date() && eligible(cpMe, r)).map(({ address_line: _a, location: _l, ...rest }) => ({ ...rest, postcode: String(rest.postcode).slice(0, 4) }));
   }
   const params = url.searchParams;
   const prefer = req.headers.prefer || "";

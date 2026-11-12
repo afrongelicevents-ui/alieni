@@ -45,7 +45,7 @@ async function registerBusiness(browser, viewport, email, company) {
     const biz = await registerBusiness(browser, viewport, `biz-${label}@example.com`, "Kantoor Noord");
     const cctx = await browser.newContext({ viewport }); const c = await cctx.newPage(); await signUp(c, `schoonmaker-${label}@example.com`, "cleaner");
     const cs = await session(cctx);
-    const cp = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular", "deep"], languages: ["nl", "en"], postcode: "7433 RB", radius_km: 15, job_types: ["household", "office"], work_scope: "both", work_types: ["household_regular", "commercial_contract"], about: "Zorgvuldig en betrouwbaar, 8 jaar ervaring in kantoren en huishoudens.", emergency_opt_in: false, location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
+    const cp = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular", "deep"], languages: ["nl", "en"], postcode: "7433 RB", radius_km: 15, job_types: ["household", "office"], work_scope: "both", work_types: ["household_regular", "commercial_contract"], about: "Zorgvuldig en betrouwbaar, 8 jaar ervaring in kantoren en huishoudens.", location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
     const hctx = await browser.newContext({ viewport }); const h = await hctx.newPage(); await signUp(h, `klant-${label}@example.com`, "household");
     const actx = await browser.newContext({ viewport }); const a = await actx.newPage(); await signUp(a, "afrongelic.events@gmail.com", "household");
     // a job with a quotation so the business pages have content
@@ -55,9 +55,9 @@ async function registerBusiness(browser, viewport, email, company) {
     await rest(cs.access_token, "POST", "rpc/submit_job_quote", { p_job_id: job.id, p_rate_cents: 2100, p_message: "Happy to take this on.", p_valid_until: null });
     for (const [name, page, path] of [
       ["home-guest", guest, ""], ["search", guest, "/search"], ["ad", guest, `/cleaners/${cp.id}`], ["jobs-guest", guest, "/jobs"], ["business-landing", guest, "/business"], ["login", guest, "/login"],
-      ["household-home", h, "/home"], ["household-account", h, "/account"], ["household-emergency", h, "/emergency"], ["household-messages", h, "/messages"],
+      ["household-home", h, "/home"], ["household-account", h, "/account"], ["household-messages", h, "/messages"],
       ["cleaner-home", c, "/home"], ["cleaner-work", c, "/work?tab=jobs"], ["cleaner-mine", c, "/work?tab=mine"], ["cleaner-profile", c, "/profile"],
-      ["business-dashboard", biz.p, "/business/dashboard"], ["business-requests", biz.p, "/business/requests"], ["business-calendar", biz.p, "/business/calendar"], ["business-work", biz.p, "/business/work"], ["business-profile", biz.p, "/business/profile"], ["business-newjob", biz.p, "/jobs/new?kind=contract"],
+      ["business-dashboard", biz.p, "/business/dashboard"], ["business-requests", biz.p, "/business/requests"], ["business-work", biz.p, "/business/work"], ["business-profile", biz.p, "/business/profile"], ["business-newjob", biz.p, "/jobs/new?kind=contract"],
       ["admin-home", a, "/admin"], ["admin-users", a, "/admin/users"], ["admin-services", a, "/admin/services"],
     ]) await shot(page, name, path);
     await browser.contexts().forEach(async () => {});

@@ -118,15 +118,17 @@ async function registerBusiness(browser, viewport, track, { email, company, stre
     const cctx = await browser.newContext({ viewport }); const c = await cctx.newPage(); track(c);
     await signUp(c, `cl-${sfx}@example.com`, "cleaner");
     const cs = await session(cctx);
-    const cpRow = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["office", "emergency"], work_scope: "commercial", work_types: ["commercial_contract", "emergency_cover"], emergency_opt_in: true, emergency_rate_cents: 3500, location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
+    const cpRow = (await rest(cs.access_token, "POST", "cleaner_profiles", { user_id: cs.user.id, status: "published", rate_cents: 2200, min_hours: 2, services: ["regular"], languages: ["nl"], postcode: "7433 RB", radius_km: 15, job_types: ["office"], work_scope: "commercial", work_types: ["commercial_contract"], location: "SRID=4326;POINT(6.2200 52.3000)" })).data?.[0];
     await c.goto(`${APP}/en/work?tab=jobs`, { waitUntil: "networkidle" });
     ok(`[${label}] Cleaner sees A's job in Work → Business jobs with the company name`, new RegExp(`Kantoor A ${sfx.toUpperCase()}`).test(await c.textContent("main")));
     ok(`[${label}] Cleaner reads no business_profiles rows either`, (await rest(cs.access_token, "GET", "business_profiles?select=company_name")).data?.length === 0);
-    // emergency cover for A, accepted by the cleaner → My jobs shows the company via the view
-    const er = (await rest(A.sess.access_token, "POST", "emergency_requests", { requester_id: A.sess.user.id, requester_type: "business", address_line: "3 friswijkerweg", postcode: "7433 RB", city: "Schalkhaar", location: "SRID=4326;POINT(6.2200 52.3000)", window_start: inMs(5 * 3600e3), window_end: inMs(8 * 3600e3), hours: 3, tasks: "Cover for the evening shift, offices.", unit_id: unitA.id })).data?.[0];
-    const acc = await rest(cs.access_token, "POST", "rpc/accept_emergency_request", { p_request_id: er.id });
+    // the cleaner quotes on A's job and A accepts → My jobs shows the company via the view
+    const aJob = (await tbl("jobs")).find((j) => j.status === "published");
+    const quote = await rest(cs.access_token, "POST", "rpc/submit_job_quote", { p_job_id: aJob.id, p_rate_cents: 2600, p_message: "Available." });
+    const respId = (await tbl("job_responses")).find((r) => r.job_id === aJob.id)?.id;
+    const acc = await rest(A.sess.access_token, "POST", "rpc/accept_job_response", { p_response_id: respId });
     await c.goto(`${APP}/en/work?tab=mine`, { waitUntil: "networkidle" });
-    ok(`[${label}] Cleaner accepts A's cover request; My jobs shows A's company name`, acc.data === true && new RegExp(`Kantoor A ${sfx.toUpperCase()}`).test(await c.textContent("[data-my-work]")));
+    ok(`[${label}] A accepts the cleaner's quotation; My jobs shows A's company name`, quote.data?.result === "sent" && acc.data?.result === "accepted" && new RegExp(`Kantoor A ${sfx.toUpperCase()}`).test(await c.textContent("[data-my-work]")), JSON.stringify([quote.data, acc.data]));
     await c.screenshot({ path: `${OUT}/f9-${sfx}-cleaner-myjobs.png`, fullPage: true });
 
     // ---------- admin still reads the full business list ----------
