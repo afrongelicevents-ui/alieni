@@ -1,8 +1,28 @@
-# Alieni on Cloudflare — decisions (branch `alieni-cloudflare`)
+# Decisions
 
-Each decision in one or two lines: what was chosen and why. Newest at the bottom of each section.
+Recorded so a new person understands why things are the way they are.
 
-## Hosting and build
+| Topic | Decision |
+|---|---|
+| Role of the platform | Alieni connects people with cleaners ("connect · clean · thrive"). The business-side model options are in `briefs/business-platform-plan.md`; the build keeps pricing configurable and inactive until a model is chosen. |
+| Payments | Off. Charging needs a Mollie key, `PAYMENTS_ACTIVE=true` and a price in Admin. Seeded prices are 0; the admin form defaults to 0,00; public text is price-neutral. |
+| Services | Five service types (connect, cover, turnover, one-off, contract) in `service_catalog`, switched per business type in Admin. |
+| Quotations | A cleaner answers a job with a quotation; the business accepts (two-step) and the job is awarded; regular jobs generate visits four weeks ahead. |
+| Chat privacy | Contact details are masked until both sides confirm a deal. Admins cannot read chats; a report copies only the reported message. |
+| Cleaner privacy | Only the postcode area is public; school work needs a recent VOG. |
+| Reviews | Written after a confirmed connection; no author name shown; a reported review is hidden until an admin decides. |
+| Languages | Dutch default, English available; e-mails are sent in each user's language. |
+| Tests | Real-Postgres checks for the access rules (fresh and upgrade) plus browser flows against a stand-in. Neither touches the live project. |
+| Environments (Supabase branches) | Production and any test use **separate** Supabase projects. A preview build must never use the live project's keys for anything that writes data. |
+| Deployment safety | Work happens on a non-production branch (`alieni-dev`); only the production branch deploys to production. |
+
+The table above describes the Supabase versions (`alieni-dev`, `alieni-nl`). On `alieni-cloudflare` the same product rules apply; the technical choices are below.
+
+## Cloudflare rebuild (branch `alieni-cloudflare`)
+
+The same website without Supabase, on Cloudflare's free plan. Each decision in one or two lines: what was chosen and why.
+
+### Hosting and build
 1. **Next.js on Cloudflare Workers via OpenNext** (`@opennextjs/cloudflare`). The UI, pages and texts stay exactly as on
    `alieni-nl`; only the backend changes. Rebuilding the UI in another framework would change the look and take longer.
 2. **Next.js 16.4.6** (from 16.4.3): OpenNext needs ≥ 16.4.5.
@@ -15,7 +35,7 @@ Each decision in one or two lines: what was chosen and why. Newest at the bottom
 6. **Deploys run in GitHub Actions**, not from the development container (it cannot reach Cloudflare). The workflow
    creates D1 and R2 if needed, applies migrations, seeds test data and deploys to `*.workers.dev`.
 
-## Database (D1)
+### Database (D1)
 7. **Fresh SQLite schema** (`db/migrations/0001_init.sql`) with only what alieni-nl uses. Same table and column names as
    before where possible, so the pages keep working; ids are random UUID text, times ISO text, lists JSON text.
 8. **Dropped with payments OFF:** invoices, payments, billing periods, Mollie columns and webhook, invoice PDFs, the
@@ -27,7 +47,7 @@ Each decision in one or two lines: what was chosen and why. Newest at the bottom
 10. **Exact locations stay private:** cleaners' and units' exact points are stored but only used server-side; search
     measures to a ~1 km grid point, as before.
 
-## Logins (Better Auth on D1)
+### Logins (Better Auth on D1)
 11. **Better Auth 1.7 with the Kysely D1 dialect**, e-mail + password, sessions in D1 (no cookie cache, so a deleted or
     suspended account is signed out on the next request).
 12. **Passwords hashed with PBKDF2-SHA256 (100 000 rounds, Web Crypto)** instead of Better Auth's default scrypt:
@@ -41,7 +61,7 @@ Each decision in one or two lines: what was chosen and why. Newest at the bottom
 16. **Rate limits in D1** (Worker memory is not shared): Better Auth's own limits on sign-in / sign-up / 2FA / reset,
     plus a small `rate_limits` table for messages, reports and uploads.
 
-## Files (R2)
+### Files (R2)
 17. **One private R2 bucket.** Nothing is public; pages get **signed links valid for one hour**
     (`/api/files/…?e=…&s=…`, HMAC-SHA256). Whoever creates a link has checked the viewer may see the file.
 18. **Photos are resized and re-encoded to WebP in the browser** (canvas; this drops EXIF/GPS), and the **server strips
