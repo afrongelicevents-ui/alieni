@@ -38,3 +38,7 @@ yarn-error.log*
 e2e/out/
 test-setup/
 backups/
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+.dev.vars

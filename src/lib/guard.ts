@@ -20,12 +20,14 @@ export function homeFor(role: Role): string {
  * Server-side route guard. Signed out → login with a return path.
  * Wrong role → that role's own home. Admin may open everything unless the page
  * is role-specific (`{ adminAllowed: false }`): admin then goes to /admin.
- * The database policies are the real boundary; this keeps the experience clean.
+ * Every server action checks permissions again on its own; this keeps the experience clean.
+ * Admin pages also need two-step login (TOTP): an admin without it is sent to set it up first.
  */
 export async function requireRole(locale: string, allowed: Role[], next: string, opts: { adminAllowed?: boolean } = {}): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) redirect(`/${locale}/login?next=${encodeURIComponent(next)}`);
   if (user.role === "admin" ? opts.adminAllowed === false && !allowed.includes("admin") : !allowed.includes(user.role)) redirect(`/${locale}${homeFor(user.role)}`);
+  if (user.role === "admin" && allowed.includes("admin") && !user.twoFactorEnabled) redirect(`/${locale}/account/two-factor?next=${encodeURIComponent(next)}`);
   return user;
 }
 

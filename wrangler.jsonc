@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "alieni",
+  // Custom entry: the OpenNext worker plus the daily cron (see worker.ts).
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "alieni", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "db/migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "alieni-files" }
+  ],
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "alieni" }],
+  // Free plan: up to 5 cron triggers. One daily run does check-ins and job housekeeping.
+  "triggers": { "crons": ["17 5 * * *"] },
+  "vars": {
+    "PAYMENTS_ACTIVE": "false"
+  },
+  "observability": { "enabled": true }
+}
