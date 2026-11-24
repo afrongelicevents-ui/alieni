@@ -63,7 +63,7 @@ async function codeStep(p, secret) {
     const report = q1("SELECT * FROM reports WHERE subject_type = 'cleaner_profile' AND status = 'open' ORDER BY created_at LIMIT 1");
     if (report) {
       await a.goto(`${APP}/en/admin/reports`, { waitUntil: "networkidle" });
-      await a.getByRole("button", { name: "Hide" }).first().click();
+      await a.locator(`[data-report="${report.id}"]`).getByRole("button", { name: "Hide" }).click();
       await a.waitForTimeout(2000);
       ok(tag("Hide from the report queue: ad hidden + moderated, report resolved, audit row"),
         q1("SELECT status, moderated FROM cleaner_profiles WHERE id = ?", report.subject_id).status === "hidden" && q1("SELECT moderated FROM cleaner_profiles WHERE id = ?", report.subject_id).moderated === 1 && q1("SELECT status FROM reports WHERE id = ?", report.id).status !== "open" && q1("SELECT count(*) n FROM admin_audit_log").n >= 1);

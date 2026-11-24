@@ -35,7 +35,7 @@ export function ReportQueue({ reports: initial, demo }: { reports: AdminReport[]
 
   function card(report: AdminReport) {
     return (
-      <li key={report.id} className="rounded-card-lg border border-line bg-white p-4">
+      <li key={report.id} className="rounded-card-lg border border-line bg-white p-4" data-report={report.id}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="font-extrabold text-ink">{report.subject}</h3>

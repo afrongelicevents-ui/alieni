@@ -46,7 +46,10 @@ function suite(name) {
   let browser;
   async function page(viewport) {
     browser = browser || (await chromium.launch());
-    const ctx = await browser.newContext(viewport);
+    // Each browser context looks like a different visitor (Cloudflare sets cf-connecting-ip; it cannot be forged
+    // there). Without this, every test account comes from one address and hits the real sign-up rate limit.
+    const ip = `198.51.100.${1 + Math.floor(Math.random() * 250)}`;
+    const ctx = await browser.newContext({ ...viewport, extraHTTPHeaders: { "cf-connecting-ip": ip } });
     const p = await ctx.newPage(); track(p);
     return p;
   }

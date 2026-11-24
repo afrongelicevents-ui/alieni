@@ -107,7 +107,7 @@ const { APP, OUT, VIEWPORTS, PW, q, q1, suite, text, signUp, PHOTO_WITH_EXIF } =
       await h.waitForTimeout(1500);
     }
     ok(tag("Review stored for the connection"), q1("SELECT count(*) n FROM reviews WHERE connection_id = ?", conn.id).n === 1);
-    await h.getByRole("button", { name: /Report/ }).first().click();
+    await h.getByRole("button", { name: "Report this ad" }).click();
     await h.locator("input[value=fake]").check();
     await h.fill("form textarea >> nth=-1", "Test report from the e2e flow.");
     await h.getByRole("button", { name: /Send report|Submit/ }).click();
