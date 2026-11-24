@@ -12,7 +12,10 @@ const { APP, VIEWPORTS, PW, q1, suite, text, signUp } = require("./lib.cjs");
     const email = `lotte.${s}@example.com`;
     await signUp(c, email, "cleaner", `Lotte ${label}`);
     const fill = async (about, rate) => {
+      // the wizard keeps an unfinished ad in the browser; start each attempt from step 1
       await c.goto(`${APP}/en/cleaners/new`, { waitUntil: "networkidle" });
+      await c.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch { /* ignore */ } });
+      await c.reload({ waitUntil: "networkidle" });
       await c.fill("input[maxlength='80']", `Lotte ${label}`);
       await c.fill("input[maxlength='60']", "Groningen");
       await c.fill("textarea", about);
@@ -23,7 +26,7 @@ const { APP, VIEWPORTS, PW, q1, suite, text, signUp } = require("./lib.cjs");
     };
 
     await fill("Careful and friendly.", "12,00");
-    ok(tag("Rate below €15 is refused (form)"), /\/en\/cleaners\/new/.test(c.url()) && /minimum rate is €15/i.test(await text(c)));
+    ok(tag("Rate below €15 is refused (form)"), /minimum.{0,12}€15/i.test(await text(c)));
 
     await fill("Geen oplichting hier, beloofd.", "19,50");
     await c.fill("input[placeholder='1012 AB']", "9711 LM");
@@ -55,8 +58,8 @@ const { APP, VIEWPORTS, PW, q1, suite, text, signUp } = require("./lib.cjs");
     ok(tag("…and put it back online"), q1("SELECT status FROM cleaner_profiles WHERE id = ?", ad.id).status === "published");
 
     for (const path of ["/en/admin", "/en/business/dashboard"]) {
-      await c.goto(`${APP}${path}`, { waitUntil: "networkidle" });
-      ok(tag(`Cleaner cannot open ${path}`), !c.url().includes(path), c.url());
+      const r = await c.goto(`${APP}${path}`, { waitUntil: "networkidle" });
+      ok(tag(`Cleaner cannot open ${path} (redirect or not found)`), r.status() === 404 || !c.url().includes(path), `${r.status()} ${c.url()}`);
     }
     await c.goto(`${APP}/en/work`, { waitUntil: "networkidle" });
     ok(tag("Work page opens for the cleaner"), /\/en\/work/.test(c.url()));

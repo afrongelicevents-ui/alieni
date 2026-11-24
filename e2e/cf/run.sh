@@ -13,7 +13,7 @@ pkill -f "wrangler dev" >/dev/null 2>&1; pkill -f "bin/workerd" >/dev/null 2>&1;
 rm -rf .wrangler/state/v3/d1 .wrangler/state/v3/r2
 printf 'BETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=http://127.0.0.1:%s\nCRON_SECRET=e2e-cron-secret\n' "$(openssl rand -hex 32)" "$PORT" > .dev.vars
 npx wrangler d1 migrations apply alieni --local >/dev/null 2>&1 || { echo "migrations failed"; exit 1; }
-node scripts/seed.mjs --out "$OUT/seed.sql" 2>/dev/null && npx wrangler d1 execute alieni --local --file "$OUT/seed.sql" >/dev/null 2>&1 || { echo "seed failed"; exit 1; }
+node scripts/seed.mjs --local --out "$OUT/seed.sql" 2>/dev/null && npx wrangler d1 execute alieni --local --file "$OUT/seed.sql" >/dev/null 2>&1 || { echo "seed failed"; exit 1; }
 if [ -z "${SKIP_BUILD:-}" ]; then npx opennextjs-cloudflare build > "$OUT/build.log" 2>&1 || { echo "build failed (see $OUT/build.log)"; tail -30 "$OUT/build.log"; exit 1; }; fi
 (npx wrangler dev --port "$PORT" --ip 127.0.0.1 > "$OUT/wrangler.log" 2>&1 &)
 for i in $(seq 1 90); do curl -s -o /dev/null "http://127.0.0.1:$PORT/api/me" && break; sleep 1; done

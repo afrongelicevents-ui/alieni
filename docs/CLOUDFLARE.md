@@ -19,9 +19,11 @@ repository secrets. Everything else (database, photo storage, secret keys, test 
    **New repository secret**:
    - Name `CLOUDFLARE_API_TOKEN`, value: the token from step 2.
    - Name `CLOUDFLARE_ACCOUNT_ID`, value: the ID from step 3.
+   - Name `SEED_ADMIN_PASSWORD`, value: a password **you choose** (at least 12 characters) for the test admin
+     `admin@alieni.test`. It is never printed anywhere (this repository is public). Without it, no admin is created.
 5. **Deploy** — GitHub → **Actions** → **Deploy to Cloudflare (alieni-cloudflare)** → **Run workflow** → branch
    `alieni-cloudflare` → **Run workflow**. After ~5 minutes the run's summary shows the live link
-   (`https://alieni.<your-subdomain>.workers.dev`) and the admin password.
+   (`https://alieni.<your-subdomain>.workers.dev`).
 
 Optional, for e-mail (account confirmation, password reset, notifications):
 6. resend.com → free account → **API Keys** → **Create API Key** → copy → GitHub secret `RESEND_API_KEY`.
@@ -37,11 +39,12 @@ Optional, for e-mail (account confirmation, password reset, notifications):
 | Household | household@alieni.test | Test-Household-2026 |
 | Cleaner | cleaner@alieni.test | Test-Cleaner-2026 |
 | Business | business@alieni.test | Test-Business-2026 |
-| Admin | admin@alieni.test | shown in the first deploy run's summary (GitHub → Actions → the run) |
+| Admin | admin@alieni.test | the `SEED_ADMIN_PASSWORD` you chose (step 4) |
 
 The admin must set up two-step login on first sign-in (any authenticator app: Google Authenticator, Microsoft
 Authenticator, 1Password…). More demo accounts (other cleaners, a hotel, a second household) use `Test-Other-2026`.
-Change or delete these accounts before real people use the site (Admin → Users).
+This repository is public, so the household/cleaner/business test passwords above are public too: anyone can sign in
+with them. They have no special rights, but suspend or delete them (Admin → Users) before real people use the site.
 
 ## What runs where (all free)
 

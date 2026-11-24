@@ -114,23 +114,20 @@ jobs:
 
       - name: Test data (only into an empty database)
         if: steps.keys.outputs.ready == 'true'
+        env:
+          # Chosen by the owner and stored as a GitHub secret; it is never printed. Without it, no admin is created.
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
         run: |
           USERS=$(npx wrangler d1 execute alieni --remote --json --command 'SELECT count(*) AS n FROM "user"' | jq -r '.[0].results[0].n')
           if [ "$USERS" = "0" ]; then
-            export SEED_ADMIN_PASSWORD="Admin-$(openssl rand -hex 6)"
-            export SEED_OTHER_PASSWORD="Test-Other-2026"
             node scripts/seed.mjs --out seed.sql
             npx wrangler d1 execute alieni --remote --file seed.sql
-            {
-              echo "### Test logins (also in docs/CLOUDFLARE.md)"
-              echo "| Role | E-mail | Password |"
-              echo "|---|---|---|"
-              echo "| household | household@alieni.test | Test-Household-2026 |"
-              echo "| cleaner | cleaner@alieni.test | Test-Cleaner-2026 |"
-              echo "| business | business@alieni.test | Test-Business-2026 |"
-              echo "| admin | admin@alieni.test | \`$SEED_ADMIN_PASSWORD\` (set up 2-step login on first sign-in) |"
-            } >> "$GITHUB_STEP_SUMMARY"
             rm seed.sql
+            {
+              echo "### Test data added"
+              echo "Test logins: see docs/CLOUDFLARE.md."
+              if [ -n "$SEED_ADMIN_PASSWORD" ]; then echo "Admin: admin@alieni.test with the SEED_ADMIN_PASSWORD you chose."; else echo "No admin account created: add the SEED_ADMIN_PASSWORD secret before the first deploy (docs/CLOUDFLARE.md)."; fi
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Database already has $USERS users: test data not added again."
           fi

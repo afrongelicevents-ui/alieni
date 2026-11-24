@@ -88,3 +88,10 @@ The same website without Supabase, on Cloudflare's free plan. Each decision in o
     `business_public` rule); a job's street address only to the cleaner it was awarded to.
 25. **Pre-launch mode** (Admin → Settings → Sign-ups) also closes sign-up **on the server** (Better Auth hook), not
     only on the sign-up screens; allow-listed admins can still sign up.
+
+### Security review (/security-review)
+26. **The live admin password is never generated or printed by the deploy.** The repository is public, so anything in a
+    workflow summary is public. The owner chooses it as the GitHub secret `SEED_ADMIN_PASSWORD`; without that secret
+    no admin account and no allow-list entry are created (otherwise anyone could sign up as that address first).
+27. **Test accounts on the live site have public passwords** (they are in this public repository). They have no special
+    rights; suspend or delete them before real people use the site.
