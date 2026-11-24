@@ -38,3 +38,8 @@ yarn-error.log*
 e2e/out/
 test-setup/
 backups/
+
+# Cloudflare local dev (alieni-cloudflare branch) — never commit
+.open-next/
+.wrangler/
+.dev.vars
