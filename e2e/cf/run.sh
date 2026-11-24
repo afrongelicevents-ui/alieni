@@ -8,9 +8,10 @@ OUT=${E2E_OUT:-e2e/out}; mkdir -p "$OUT"
 PORT=${PORT:-8787}
 FLOWS=${*:-flow-guest flow-auth flow-household flow-cleaner flow-business flow-admin flow-account flow-security}
 
-fuser -k "$PORT/tcp" >/dev/null 2>&1; sleep 1
+# stop any earlier local Worker (wrangler restarts workerd if only the port is killed)
+pkill -f "wrangler dev" >/dev/null 2>&1; pkill -f "bin/workerd" >/dev/null 2>&1; fuser -k "$PORT/tcp" >/dev/null 2>&1; sleep 2
 rm -rf .wrangler/state/v3/d1 .wrangler/state/v3/r2
-printf 'BETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=http://localhost:%s\nCRON_SECRET=e2e-cron-secret\n' "$(openssl rand -hex 32)" "$PORT" > .dev.vars
+printf 'BETTER_AUTH_SECRET=%s\nBETTER_AUTH_URL=http://127.0.0.1:%s\nCRON_SECRET=e2e-cron-secret\n' "$(openssl rand -hex 32)" "$PORT" > .dev.vars
 npx wrangler d1 migrations apply alieni --local >/dev/null 2>&1 || { echo "migrations failed"; exit 1; }
 node scripts/seed.mjs --out "$OUT/seed.sql" 2>/dev/null && npx wrangler d1 execute alieni --local --file "$OUT/seed.sql" >/dev/null 2>&1 || { echo "seed failed"; exit 1; }
 if [ -z "${SKIP_BUILD:-}" ]; then npx opennextjs-cloudflare build > "$OUT/build.log" 2>&1 || { echo "build failed (see $OUT/build.log)"; tail -30 "$OUT/build.log"; exit 1; }; fi
@@ -24,5 +25,5 @@ for f in $FLOWS; do
   echo "$r" | grep -E "^FAIL|Error|Timeout" | head -15 | cut -c1-300
   echo "$r" | grep -qE "^FAIL|Error:" && fail=1
 done
-[ -n "${KEEP_SERVER:-}" ] || fuser -k "$PORT/tcp" >/dev/null 2>&1
+[ -n "${KEEP_SERVER:-}" ] || { pkill -f "wrangler dev" >/dev/null 2>&1; pkill -f "bin/workerd" >/dev/null 2>&1; }
 exit $fail

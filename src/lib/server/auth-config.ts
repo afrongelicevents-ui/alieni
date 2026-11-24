@@ -30,11 +30,14 @@ function emailText(kind: "verify" | "reset", url: string, lang: Lang) {
 const langOfUrl = (url: string): Lang => (/%2Fen%2F|\/en\/|callbackURL=%2Fen/.test(url) ? "en" : "nl");
 
 function build(e: Env) {
-  const emailOn = Boolean(e.RESEND_API_KEY);
+  const emailOn = Boolean(e.RESEND_API_KEY ?? process.env.RESEND_API_KEY);
+  // The Worker's own address (workers.dev or a custom domain). Sign-in/up requests must come from this origin.
+  const baseURL = e.BETTER_AUTH_URL ?? process.env.BETTER_AUTH_URL;
   return betterAuth({
     appName: "Alieni",
-    secret: e.BETTER_AUTH_SECRET,
-    baseURL: e.BETTER_AUTH_URL,
+    secret: e.BETTER_AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET,
+    baseURL,
+    trustedOrigins: baseURL ? [new URL(baseURL).origin] : [],
     database: { dialect: new D1Dialect({ database: e.DB }), type: "sqlite" },
     emailAndPassword: {
       enabled: true,
@@ -86,7 +89,7 @@ function build(e: Env) {
     },
     advanced: {
       cookiePrefix: "alieni",
-      useSecureCookies: (e.BETTER_AUTH_URL ?? "").startsWith("https://"),
+      useSecureCookies: (baseURL ?? "").startsWith("https://"),
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
     },
     databaseHooks: {

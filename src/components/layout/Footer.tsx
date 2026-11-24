@@ -5,7 +5,7 @@ import { Icon } from "@/components/site/Icon";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { COMPANY } from "@/lib/company";
 
-const BUILD = (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_ID ?? "dev").slice(0, 7);
+const BUILD = (process.env.NEXT_PUBLIC_BUILD_ID ?? "dev").slice(0, 7);
 
 /** Social profiles: only shown once a URL is configured. */
 const SOCIAL = [

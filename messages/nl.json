@@ -260,7 +260,7 @@
     "timeout": "Geen antwoord van de server na 20 seconden. Probeer het opnieuw.",
     "networkError": "Verbinding mislukt. Controleer je internet en probeer het opnieuw.",
     "goToAccount": "Naar mijn account →",
-    "checkEmailSteps": "1) Open de e-mail van Alieni/Supabase. 2) Tik op de link (de pagina die opent mag er raar uitzien, dat geeft niet). 3) Kom terug naar de site en tik op Inloggen met hetzelfde e-mailadres en wachtwoord.",
+    "checkEmailSteps": "1) Open de e-mail van Alieni. 2) Tik op de bevestigingslink. 3) Je bent ingelogd en kunt verder op de site.",
     "errNotConfirmed": "Je e-mailadres is nog niet bevestigd. Open de e-mail die je kreeg en tik op de link. Daarna lukt inloggen.",
     "errBadLogin": "E-mailadres of wachtwoord klopt niet.",
     "errRateLimit": "Er zijn even te veel e-mails verstuurd. Wacht een uur en probeer het dan opnieuw, of gebruik de link uit de e-mail die je al hebt.",
@@ -589,7 +589,7 @@
     "media": {
       "title": "Foto's van de site",
       "intro": "Upload hier zelf de foto's voor de homepage en de zakelijke pagina's. Ze worden automatisch verkleind en als WebP opgeslagen. Na het opslaan staat de nieuwe foto meteen live.",
-      "notConfigured": "Uploaden werkt pas zodra de Supabase-sleutels zijn ingesteld (op Vercel staan ze al). In deze demo zie je alleen de meegeleverde foto's.",
+      "notConfigured": "Uploaden is nu niet beschikbaar. Tot die tijd zie je de meegeleverde foto's.",
       "slot_hero-cleaner": "Hero-foto (homepage)",
       "slot_business-airbnb": "Airbnb & vakantieverhuur",
       "slot_business-hotel": "Hotels & guesthouses",

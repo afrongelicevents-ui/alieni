@@ -29,7 +29,7 @@ type Draft = {
 
 /**
  * 4-step business sign-up. Signed-out visitors create their account in
- * step 1 (Supabase Auth); the profile and units are saved through a server
+ * step 1 (Better Auth); the profile and units are saved through a server
  * action at the end. Signed-in users skip the account fields.
  */
 type SignupProps = { initialType?: BusinessType; signedIn: boolean; email?: string; unitPrices?: Partial<Record<BusinessType, number>>; businessPricing?: BusinessPricing; signupsPaused?: boolean };

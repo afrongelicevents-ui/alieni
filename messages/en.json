@@ -260,7 +260,7 @@
     "timeout": "No answer from the server after 20 seconds. Please try again.",
     "networkError": "Connection failed. Check your internet and try again.",
     "goToAccount": "Go to my account →",
-    "checkEmailSteps": "1) Open the email from Alieni/Supabase. 2) Tap the link (the page that opens may look odd, that is fine). 3) Come back to the site and tap Log in with the same email and password.",
+    "checkEmailSteps": "1) Open the e-mail from Alieni. 2) Tap the confirmation link. 3) You are signed in and can continue on the site.",
     "errNotConfirmed": "Your email address is not confirmed yet. Open the email you received and tap the link. Then logging in works.",
     "errBadLogin": "Email address or password is incorrect.",
     "errRateLimit": "Too many emails were sent just now. Wait an hour and try again, or use the link in the email you already have.",
@@ -589,7 +589,7 @@
     "media": {
       "title": "Site photos",
       "intro": "Upload the photos for the homepage and the business pages yourself. They are resized and stored as WebP automatically. After saving, the new photo is live right away.",
-      "notConfigured": "Uploads work once the Supabase keys are set (they already are on Vercel). In this demo you only see the bundled photos.",
+      "notConfigured": "Uploads are not available right now. The bundled photos are shown until then.",
       "slot_hero-cleaner": "Hero photo (homepage)",
       "slot_business-airbnb": "Airbnb & holiday rentals",
       "slot_business-hotel": "Hotels & guesthouses",

@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 
-/** Constant-time check of the Vercel Cron bearer secret. */
+/** Constant-time check of the cron bearer secret (Cloudflare cron trigger → /api/cron/*). */
 export function isAuthorizedCron(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
   const header = request.headers.get("authorization") ?? "";
