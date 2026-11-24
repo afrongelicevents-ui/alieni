@@ -1,0 +1,40 @@
+name: Cloudflare probe
+# Reports which Cloudflare/Resend secrets exist (never their values) and what the token can reach.
+on:
+  workflow_dispatch:
+  push:
+    branches: [alieni-cloudflare]
+    paths: [".github/workflows/cf-probe.yml"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Which secrets are set
+        env:
+          A: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          B: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          C: ${{ secrets.CF_API_TOKEN }}
+          D: ${{ secrets.CF_ACCOUNT_ID }}
+          E: ${{ secrets.CLOUDFLARE_TOKEN }}
+          F: ${{ secrets.RESEND_API_KEY }}
+          G: ${{ secrets.CLOUDFLARE_API_KEY }}
+          H: ${{ secrets.CLOUDFLARE_EMAIL }}
+        run: |
+          for n in A:CLOUDFLARE_API_TOKEN B:CLOUDFLARE_ACCOUNT_ID C:CF_API_TOKEN D:CF_ACCOUNT_ID E:CLOUDFLARE_TOKEN F:RESEND_API_KEY G:CLOUDFLARE_API_KEY H:CLOUDFLARE_EMAIL; do
+            v=${n%%:*}; if [ -n "${!v}" ]; then echo "${n#*:}: set"; else echo "${n#*:}: missing"; fi
+          done
+      - name: What the token can do
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CF_API_TOKEN || secrets.CLOUDFLARE_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || secrets.CF_ACCOUNT_ID }}
+        run: |
+          [ -z "$TOKEN" ] && { echo "no token"; exit 0; }
+          curl -s -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify | jq -c '{success, status: .result.status, errors}'
+          curl -s -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -c '{success, accounts: [.result[]? | {id_tail: (.id[-6:]), name}], errors}'
+          A="${ACCOUNT:-$(curl -s -H "Authorization: Bearer $TOKEN" https://api.cloudflare.com/client/v4/accounts | jq -r '.result[0].id')}"
+          echo "account set: $([ -n "$A" ] && echo yes)"
+          for path in workers/scripts d1/database r2/buckets workers/subdomain; do
+            echo "== $path"; curl -s -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/accounts/$A/$path" | jq -c '{success, errors, n: ((.result|type)=="array" and (.result|length)), names: ([.result[]?.name // .result[]?.id] // .result) }' | cut -c1-400
+          done
