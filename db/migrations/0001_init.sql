@@ -114,7 +114,7 @@ CREATE INDEX cleaner_profiles_status_idx ON cleaner_profiles(status);
 CREATE TABLE availability_slots (
   id TEXT PRIMARY KEY,
   cleaner_profile_id TEXT NOT NULL REFERENCES cleaner_profiles(id) ON DELETE CASCADE,
-  weekday INTEGER NOT NULL CHECK (weekday BETWEEN 1 AND 7),
+  weekday INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),   -- 0 = Monday
   block TEXT NOT NULL CHECK (block IN ('morning','afternoon','evening')),
   UNIQUE (cleaner_profile_id, weekday, block)
 );
@@ -158,7 +158,7 @@ CREATE TABLE meeting_requests (
   cleaner_profile_id TEXT NOT NULL REFERENCES cleaner_profiles(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('in_person','video')),
   status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','accepted','rescheduled','declined','met')),
-  proposed_weekday INTEGER NOT NULL CHECK (proposed_weekday BETWEEN 1 AND 7),
+  proposed_weekday INTEGER NOT NULL CHECK (proposed_weekday BETWEEN 0 AND 6),   -- 0 = Monday
   proposed_block TEXT NOT NULL CHECK (proposed_block IN ('morning','afternoon','evening')),
   message TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
