@@ -250,7 +250,6 @@
     "roleHousehold": "Household — looking for a cleaner",
     "roleCleaner": "Cleaner — looking for jobs",
     "roleBusiness": "Business — looking for cleaning",
-    "notActive": "Accounts are not active yet — we are launching soon. Cleaners can already prepare their ad.",
     "cleanerCta": "Prepare your ad now",
     "noAccount": "No account yet?",
     "haveAccount": "Already have an account?",
@@ -297,7 +296,11 @@
     "defaultName_household": "Customer",
     "defaultName_cleaner": "Cleaner",
     "defaultName_business": "Business",
-    "signupsPaused": "Sign-ups are not open yet — we are launching soon. Already have an account? Log in. Cleaners can already prepare their ad."
+    "signupsPaused": "Sign-ups are not open yet — we are launching soon. Already have an account? Log in. Cleaners can already prepare their ad.",
+    "codeIntro": "Two-step login is on for this account. Enter the 6-digit code from your authenticator app.",
+    "codeLabel": "6-digit code",
+    "codeSubmit": "Log in",
+    "errBadCode": "That code is not right. Check the time on your phone and try the newest code."
   },
   "common": {
     "favourite": "Save as favourite",
@@ -455,7 +458,9 @@
     "error_not_configured": "Deleting is not available at the moment.",
     "error_db_outdated": "Deleting is temporarily unavailable. Please try again later.",
     "error_rate_limit": "Too many attempts. Try again later.",
-    "error_failed": "Deleting did not work. Please try again."
+    "error_failed": "Deleting did not work. Please try again.",
+    "twoFactorOn": "Two-step login: on",
+    "twoFactorSetUp": "Set up two-step login"
   },
   "deal": {
     "question": "Do you have a deal?",
@@ -492,12 +497,10 @@
   },
   "admin": {
     "title": "Alieni Admin",
-    "demoBadge": "Demo mode — sample data",
     "tabDashboard": "Dashboard",
     "tabReports": "Reports",
     "tabUsers": "Users",
     "tabAds": "Ads",
-    "tabPayments": "Payments",
     "tabSettings": "Settings",
     "needsYou": "Needs your attention",
     "needsYouText": "{count, plural, =0 {No open reports} one {# open report} other {# open reports}}",
@@ -630,8 +633,6 @@
     "ad_removed": "removed",
     "role_admin": "administrator",
     "tabServices": "Services",
-    "tabPricing": "Pricing",
-    "tabFees": "Recorded fees",
     "tabWork": "Work done",
     "svcTitle": "Services on/off",
     "svcIntro": "Switch each service on for the sectors it is available to. Off = the tile shows ‘Coming soon’ and requests are refused.",
@@ -674,7 +675,6 @@
     "colOutcome": "Outcome",
     "colConfirmed": "Confirmed",
     "settingBusinessPricesMoved": "Business unit prices are now managed under Pricing. While no active rule exists there, nothing is charged.",
-    "goPricing": "Go to Pricing",
     "model_none": "None",
     "model_monthly_per_unit": "Per unit per month",
     "model_per_event": "Per event",
@@ -719,7 +719,7 @@
     "bpTitle": "Business pricing",
     "bpIntro": "Choose ONE pricing model for businesses. Website text and sign-up screens follow automatically. Amounts excl. VAT. Payments stay off: this only changes what is shown and calculated.",
     "bp_per_location": "Fixed monthly fee per location",
-    "bp_per_location_hint": "The amount per business type is set under Pricing.",
+    "bp_per_location_hint": "Payments are off, so no amount per location is set: businesses see “price to be announced”.",
     "bp_per_job_post": "Fee per job post",
     "bp_per_job_post_amount": "Fee per job post (€, excl. VAT)",
     "bp_tiers": "Monthly subscription tiers",
@@ -1494,5 +1494,25 @@
         "s": "Search, meet, agree"
       }
     }
+  },
+  "twoFactor": {
+    "title": "Two-step login",
+    "intro": "Protect your account with a 6-digit code from an authenticator app (for example Google Authenticator, Microsoft Authenticator or 1Password), on top of your password.",
+    "introAdmin": "Admin accounts must use two-step login. Set it up once; after that you enter a 6-digit code from your authenticator app each time you log in.",
+    "passwordLabel": "Your password",
+    "start": "Continue",
+    "scan": "Scan this QR code with your authenticator app. Then type the 6-digit code it shows.",
+    "qrLabel": "QR code for your authenticator app",
+    "manual": "Can't scan? Enter this key in the app:",
+    "codeLabel": "6-digit code",
+    "turnOn": "Switch on two-step login",
+    "done": "Two-step login is on.",
+    "backupTitle": "Backup codes",
+    "backupText": "Keep these somewhere safe. Each code works once if you lose your phone. They are shown only now.",
+    "continue": "Continue",
+    "alreadyOn": "Two-step login is already on for your account.",
+    "errorPassword": "That password is not right.",
+    "errorCode": "That code is not right. Try the newest code from the app.",
+    "errorRate": "Too many attempts. Wait a minute and try again."
   }
 }

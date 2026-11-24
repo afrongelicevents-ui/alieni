@@ -1,21 +1,20 @@
 import "server-only";
-import { createClient } from "./supabase/server";
+import { first } from "./server/db";
+
+/** The connection a customer may review a cleaner on: both sides confirmed the deal (as on alieni-nl). */
+export async function reviewableConnection(userId: string, cleanerProfileId: string): Promise<{ connectionId: string; cleanerUserId: string } | null> {
+  const cp = await first<{ user_id: string }>("SELECT user_id FROM cleaner_profiles WHERE id = ?", cleanerProfileId);
+  if (!cp || cp.user_id === userId) return null;
+  const conn = await first<{ id: string }>(
+    `SELECT id FROM connections WHERE household_id = ? AND cleaner_id = ?
+        AND household_confirmed_at IS NOT NULL AND cleaner_confirmed_at IS NOT NULL`, userId, cp.user_id);
+  return conn ? { connectionId: conn.id, cleanerUserId: cp.user_id } : null;
+}
 
 /** True when this person has a confirmed deal with the cleaner and has not reviewed it yet. */
 export async function canReview(userId: string, cleanerProfileId: string): Promise<boolean> {
-  const supabase = await createClient();
-  if (!supabase) return false;
-  const { data: cp } = await supabase.from("cleaner_profiles").select("user_id").eq("id", cleanerProfileId).maybeSingle();
-  if (!cp || cp.user_id === userId) return false;
-  const { data: conn } = await supabase
-    .from("connections")
-    .select("id")
-    .eq("household_id", userId)
-    .eq("cleaner_id", cp.user_id)
-    .not("household_confirmed_at", "is", null)
-    .not("cleaner_confirmed_at", "is", null)
-    .maybeSingle();
-  if (!conn) return false;
-  const { count } = await supabase.from("reviews").select("id", { count: "exact", head: true }).eq("connection_id", conn.id).eq("author_id", userId);
-  return (count ?? 0) === 0;
+  const c = await reviewableConnection(userId, cleanerProfileId);
+  if (!c) return false;
+  const done = await first("SELECT 1 AS x FROM reviews WHERE connection_id = ? AND author_id = ?", c.connectionId, userId);
+  return !done;
 }

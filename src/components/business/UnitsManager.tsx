@@ -46,7 +46,7 @@ export function UnitsManager({ bundle }: { bundle: BusinessBundle }) {
   }
 
   async function saveCount() {
-    const n = Math.max(1, Math.min(10000, Math.round(Number(count) || 1)));
+    const n = Math.max(1, Math.min(1000, Math.round(Number(count) || 1)));
     setBusy(true); setCountError(null);
     const r = await updateUnitCount(n);
     setBusy(false);
@@ -67,7 +67,7 @@ export function UnitsManager({ bundle }: { bundle: BusinessBundle }) {
       <div className="flex flex-wrap items-end gap-2 rounded-card-lg border border-line bg-white p-4">
         <label className="block text-xs font-semibold text-ink/80">
           {t("changeUnits", { units: cfg.unitPlural[lang] })}
-          <input id="unit-count" type="number" min={1} max={10000} value={count} onChange={(e) => setCount(e.target.value)} className="mt-1 block w-32 rounded-xl border border-line bg-white px-3 py-2 text-base font-extrabold text-ink" />
+          <input id="unit-count" type="number" min={1} max={1000} value={count} onChange={(e) => setCount(e.target.value)} className="mt-1 block w-32 rounded-xl border border-line bg-white px-3 py-2 text-base font-extrabold text-ink" />
         </label>
         <button type="button" onClick={saveCount} disabled={busy} className="inline-flex min-h-10 items-center rounded-full bg-forest px-4 text-xs font-bold text-white disabled:opacity-50">{t("save")}</button>
         {profile.billing_started_at ? <span className="text-xs text-ink/70">{t("unitChangeNote")}</span> : null}

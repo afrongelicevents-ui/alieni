@@ -7,7 +7,6 @@ const ITEMS = [
   { href: "/business/dashboard", key: "dashboardTitle" },
   { href: "/business/requests", key: "navRequests" },
   { href: "/business/work", key: "navWork" },
-  { href: "/business/billing", key: "navBilling" },
   { href: "/business/profile", key: "navProfile" },
 ] as const;
 

@@ -7,14 +7,14 @@ import { maskContacts } from "@/lib/masking";
 import { formatHourlyRate } from "@/lib/money";
 import type { ConversationDetail } from "@/lib/chat-data";
 import { ReportButton } from "@/components/cleaners/ReportButton";
-import { answerMeetingProposal, proposeMeetingTime, respondMeeting, sendMessage, withdrawMeeting } from "@/app/[locale]/messages/actions";
-import { createClient } from "@/lib/supabase/client";
+import { answerMeetingProposal, fetchNewMessages, proposeMeetingTime, respondMeeting, sendMessage, withdrawMeeting } from "@/app/[locale]/messages/actions";
+import type { ChatMessage } from "@/lib/chat-data";
 import { DealPanelLive } from "./DealPanelLive";
 
-const POLL_MS = 8000; // fallback while realtime is not connected
-const POLL_REALTIME_MS = 60000; // slow safety net once it is
+const POLL_MS = 4000; // new messages while the tab is visible
+const REFRESH_MS = 60000; // meeting / deal status changes: full refresh now and then
 
-/** Live chat thread: server data in, server actions out; new messages arrive through realtime, with polling as the fallback. */
+/** Live chat thread: server data in, server actions out; new messages arrive by polling a permission-checked server action. */
 export function ChatThreadLive({ conversation }: { conversation: ConversationDetail }) {
   const t = useTranslations("chat");
   const tMeeting = useTranslations("meeting");
@@ -27,38 +27,50 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
   const [busy, setBusy] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // New messages arrive through Supabase realtime; polling stays as the fallback (fast until realtime connects, slow after).
-  const [live, setLive] = useState(false);
+  // New messages: poll a server action (members only) for messages newer than the last one shown.
+  const [extra, setExtra] = useState<ChatMessage[]>([]);
+  const serverIds = new Set(conversation.messages.map((m) => m.id));
+  const messages = [...conversation.messages, ...extra.filter((m) => !serverIds.has(m.id))];
+  const lastAt = messages.length ? messages[messages.length - 1].at : "";
+  const lastAtRef = useRef(lastAt);
   useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-    const channel = supabase
-      .channel(`chat-${conversation.id}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversation.id}` }, () => router.refresh())
-      .subscribe((status) => setLive(status === "SUBSCRIBED"));
+    lastAtRef.current = lastAt;
+  }, [lastAt]);
+  useEffect(() => {
+    let stopped = false;
+    const tick = async () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      const r = await fetchNewMessages(conversation.id, lastAtRef.current).catch(() => null);
+      if (stopped || !r || r.length === 0) return;
+      setExtra((prev) => {
+        const known = new Set(prev.map((m) => m.id));
+        return [...prev, ...r.filter((m) => !known.has(m.id))];
+      });
+      // a message from the other side may come with a new meeting or deal state
+      if (r.some((m) => !m.mine)) router.refresh();
+    };
+    const poll = setInterval(tick, POLL_MS);
+    const refresh = setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, REFRESH_MS);
     return () => {
-      void supabase.removeChannel(channel);
+      stopped = true;
+      clearInterval(poll);
+      clearInterval(refresh);
     };
   }, [conversation.id, router]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
-    }, live ? POLL_REALTIME_MS : POLL_MS);
-    return () => clearInterval(id);
-  }, [router, live]);
 
   // Drop optimistic messages once the server copy arrives.
   useEffect(() => {
     if (pending.length === 0) return;
-    const bodies = new Set(conversation.messages.filter((m) => m.mine).map((m) => m.body));
+    const bodies = new Set(messages.filter((m) => m.mine).map((m) => m.body));
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reconcile optimistic list with server data
     setPending((p) => p.filter((x) => !bodies.has(x.body) && !bodies.has(maskContacts(x.body).text)));
-  }, [conversation.messages, pending.length]);
+  }, [messages.length, pending.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [conversation.messages.length, pending.length]);
+  }, [messages.length, pending.length]);
 
   const connectionActive = conversation.connection?.status === "active";
   const draftPreview = maskContacts(draft);
@@ -216,7 +228,7 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
 
       {/* messages */}
       <ol className="mt-4 flex flex-col gap-2">
-        {conversation.messages.map((message) => (
+        {messages.map((message) => (
           <li key={message.id} className={`flex flex-col ${message.mine ? "items-end" : "items-start"}`}>
             <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${message.mine ? "rounded-br-md bg-forest text-white" : "rounded-bl-md bg-section text-ink"}`}>
               <p className="whitespace-pre-wrap break-words">{message.body}</p>
@@ -234,7 +246,7 @@ export function ChatThreadLive({ conversation }: { conversation: ConversationDet
             </div>
           </li>
         ))}
-        {conversation.messages.length === 0 && pending.length === 0 ? (
+        {messages.length === 0 && pending.length === 0 ? (
           <li className="py-6 text-center text-sm text-ink/60">{t("noMessagesYet")}</li>
         ) : null}
         <div ref={bottomRef} />

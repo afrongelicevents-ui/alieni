@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { removeSiteImage, uploadSiteImage, type MediaActionState } from "@/app/[locale]/admin/media/actions";
+import { resizeToWebp } from "@/lib/image-resize";
 
 export type MediaSlotView = {
   slot: string;
@@ -17,7 +18,8 @@ const INITIAL: MediaActionState = { ok: false };
 
 /**
  * Admin → Foto's: one card per photo slot. Pick a file → preview → upload.
- * Files are re-encoded to WebP on the server and stored in Supabase Storage.
+ * Files are resized and re-encoded to WebP in the browser (drops EXIF/GPS), checked and stripped again on the server,
+ * and stored in the private R2 bucket.
  */
 export function MediaManager({ slots, configured }: { slots: MediaSlotView[]; configured: boolean }) {
   return (
@@ -37,7 +39,27 @@ function SlotCard({ view, configured }: { view: MediaSlotView; configured: boole
   const [uploadState, uploadAction, uploading] = useActionState(uploadSiteImage, INITIAL);
   const [removeState, removeAction, removing] = useActionState(removeSiteImage, INITIAL);
   const [preview, setPreview] = useState<string | null>(null);
+  const [prepError, setPrepError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /** Upload: resize in the browser first. The Remove button (formAction) is left to the form as before. */
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (submitter?.dataset.action === "remove") return;
+    e.preventDefault();
+    setPrepError(null);
+    const file = fileRef.current?.files?.[0];
+    if (!file) { setPrepError("no_file"); return; }
+    try {
+      const small = await resizeToWebp(file, { max: view.maxWidth });
+      const fd = new FormData();
+      fd.set("slot", view.slot);
+      fd.set("file", small);
+      startTransition(() => uploadAction(fd));
+    } catch {
+      setPrepError("bad_image");
+    }
+  }
 
   // Clear the local preview once the upload succeeded (server image takes over).
   useEffect(() => {
@@ -58,7 +80,7 @@ function SlotCard({ view, configured }: { view: MediaSlotView; configured: boole
   const shown = preview ?? view.currentUrl;
   const busy = uploading || removing;
   const state = uploading || uploadState.slot === view.slot ? uploadState : removeState;
-  const errorKey = !state.ok && state.error ? `error_${state.error}` : null;
+  const errorKey = prepError ? `error_${prepError}` : !state.ok && state.error ? `error_${state.error}` : null;
   const aspectCls = view.aspect === "3/4" ? "aspect-[3/4] max-w-[240px]" : "aspect-[3/2]";
 
   return (
@@ -82,7 +104,7 @@ function SlotCard({ view, configured }: { view: MediaSlotView; configured: boole
         )}
       </div>
 
-      <form action={uploadAction} className="mt-4 flex flex-col gap-3">
+      <form action={uploadAction} onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
         <input type="hidden" name="slot" value={view.slot} />
         <label className="text-sm font-semibold text-ink/80">
           {t("chooseFile")}
@@ -109,6 +131,7 @@ function SlotCard({ view, configured }: { view: MediaSlotView; configured: boole
           {view.source === "uploaded" ? (
             <button
               type="submit"
+              data-action="remove"
               formAction={removeAction}
               disabled={!configured || busy}
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-white px-5 text-sm font-bold text-ink/80 hover:bg-section disabled:opacity-50"
@@ -120,7 +143,7 @@ function SlotCard({ view, configured }: { view: MediaSlotView; configured: boole
         {state.slot === view.slot && state.ok ? (
           <p className="text-sm font-semibold text-forest">{t("saved")}</p>
         ) : null}
-        {state.slot === view.slot && errorKey ? (
+        {(prepError || state.slot === view.slot) && errorKey ? (
           <p className="text-sm font-semibold text-red-700">{t(errorKey)}</p>
         ) : null}
       </form>

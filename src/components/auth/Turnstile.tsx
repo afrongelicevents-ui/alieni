@@ -5,8 +5,8 @@ import { useEffect, useRef } from "react";
 /**
  * Cloudflare Turnstile widget (brief §7: bot protection on sign-up).
  * Renders nothing until NEXT_PUBLIC_TURNSTILE_SITE_KEY is configured.
- * The secret key is configured in Supabase (Auth → Bot protection), which
- * verifies the token server-side on every sign-up/sign-in.
+ * The token is sent to /api/auth in the `x-captcha-response` header; it is only checked when the
+ * server has a Turnstile secret configured (Better Auth captcha plugin).
  */
 
 declare global {

@@ -67,3 +67,24 @@ The same website without Supabase, on Cloudflare's free plan. Each decision in o
 18. **Photos are resized and re-encoded to WebP in the browser** (canvas; this drops EXIF/GPS), and the **server strips
     any remaining metadata** (EXIF/XMP chunks in WebP, APP1–APP15/COM in JPEG, text/eXIf chunks in PNG), checks the
     real file type from its bytes and caps the size at 2 MB. No server-side resizing: that would need paid Images.
+19. **Homepage and business-page photos (Admin → Photos) are served by `/api/site-media/<slot>`**, not by one-hour links:
+    they are public marketing photos on cached pages, so expiring links would break them. The bucket stays private; the
+    route only serves the object currently registered for that slot.
+
+### Behaviour kept from alieni-nl, now enforced in code
+20. **Chat:** only the two members can read or write a conversation (admins cannot read chats). Phone numbers, e-mail
+    addresses and links are masked **before saving** until both sides confirm the deal; banned words are refused;
+    sending is rate-limited. **Live updates by polling** (every 4 s while the chat is open): Durable Objects are not
+    needed, and polling keeps everything on the free plan.
+21. **Deals, meetings, reviews, reports:** the rules that used to be Postgres triggers and functions (each side
+    confirms only for itself; active when both confirm; one review per author per deal; a reported message copies only
+    that message) are now in the server actions, using D1 batches where several rows must change together.
+22. **Quotations and schedules:** the old database functions (submit, accept, decline, cancel, visit generation four
+    weeks ahead, expiry) are TypeScript on D1. Accepting runs as one batch that only succeeds while the job is open, so
+    a double click or two businesses racing cannot award twice. Times are planned in Amsterdam time.
+23. **€15 minimum** = the higher of €15 and the admin's "rate floor" setting, checked on the server for ads and
+    quotations (and as a database CHECK on ads).
+24. **Company names** are shown only while the business has a published job, or to cleaners who work with it (the old
+    `business_public` rule); a job's street address only to the cleaner it was awarded to.
+25. **Pre-launch mode** (Admin → Settings → Sign-ups) also closes sign-up **on the server** (Better Auth hook), not
+    only on the sign-up screens; allow-listed admins can still sign up.

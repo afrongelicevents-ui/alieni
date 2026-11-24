@@ -41,7 +41,7 @@ const nl = {
     {
       h: "4. Waar je gegevens staan",
       p: [
-        "Gegevens worden opgeslagen binnen de Europese Unie (database en opslag bij Supabase in de EU); de website wordt gehost bij Vercel.",
+        "De website, de database en de opslag van foto's draaien bij Cloudflare (Workers, D1 en R2), met voorkeur voor opslag in de Europese Unie. Foto's zijn niet openbaar opgeslagen: ze worden alleen via tijdelijke, ondertekende links getoond.",
       ],
     },
     {
@@ -53,7 +53,7 @@ const nl = {
     {
       h: "6. Met wie we gegevens delen",
       p: [
-        "Alleen met verwerkers die nodig zijn om het platform te laten werken: Supabase (database/opslag), Vercel (hosting), Resend (transactionele e-mail), Cloudflare Turnstile (bescherming tegen bots, alleen als dit is ingeschakeld), PDOK (de Nederlandse overheidsdienst voor geocodering; die ontvangt postcodes en plaatsnamen die je in de zoekbalk typt) en, zodra er betaalde functies komen, een betaalprovider zoals Mollie. Waar nodig zijn verwerkersovereenkomsten gesloten. We verkopen nooit gegevens.",
+        "Alleen met verwerkers die nodig zijn om het platform te laten werken: Cloudflare (hosting, database en opslag van foto's), Resend (transactionele e-mail), Cloudflare Turnstile (bescherming tegen bots, alleen als dit is ingeschakeld), PDOK (de Nederlandse overheidsdienst voor geocodering; die ontvangt postcodes en plaatsnamen die je in de zoekbalk typt) en, zodra er betaalde functies komen, een betaalprovider zoals Mollie. Waar nodig zijn verwerkersovereenkomsten gesloten. We verkopen nooit gegevens.",
       ],
     },
     {
@@ -107,7 +107,7 @@ const en = {
     {
       h: "4. Where your data lives",
       p: [
-        "Data is stored within the European Union (database and storage at Supabase in the EU); the website is hosted on Vercel.",
+        "The website, the database and photo storage run at Cloudflare (Workers, D1 and R2), with storage in the European Union preferred. Photos are not stored publicly: they are only shown through temporary, signed links.",
       ],
     },
     {
@@ -119,7 +119,7 @@ const en = {
     {
       h: "6. Who we share data with",
       p: [
-        "Only with processors needed to run the platform: Supabase (database/storage), Vercel (hosting), Resend (transactional email), Cloudflare Turnstile (bot protection, only if enabled), PDOK (the Dutch government geocoding service; it receives postcodes and towns you type into search) and, once paid features exist, a payment provider such as Mollie. Data processing agreements are in place where required. We never sell data.",
+        "Only with processors needed to run the platform: Cloudflare (hosting, database and photo storage), Resend (transactional email), Cloudflare Turnstile (bot protection, only if enabled), PDOK (the Dutch government geocoding service; it receives postcodes and towns you type into search) and, once paid features exist, a payment provider such as Mollie. Data processing agreements are in place where required. We never sell data.",
       ],
     },
     {

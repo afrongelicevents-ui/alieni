@@ -5,7 +5,7 @@ import { DEFAULT_BUSINESS_PRICING, quoteFor, startingQuote, type BusinessPricing
 import { BusinessPrice } from "./BusinessPrice";
 import { useLocale, useTranslations } from "next-intl";
 import { BUSINESS_TYPES, BUSINESS_TYPE_KEYS, monthlyFee, type BusinessType } from "@/lib/business";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { formatEuro } from "@/lib/money";
 import { dutchPostcodeSchema, emailSchema } from "@/lib/validation";
 import { saveBusinessProfile } from "@/app/[locale]/business/actions";
@@ -68,7 +68,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
   const [notice, setNotice] = useState<string | null>(null);
 
 
-  const unitCountNum = Math.max(1, Math.min(10000, Math.round(Number(draft.unitCount) || 0)));
+  const unitCountNum = Math.max(1, Math.min(1000, Math.round(Number(draft.unitCount) || 0)));
   const unitPrice = unitPrices[draft.businessType] ?? null; // only with an active monthly rule (Admin → Pricing)
   const fee = unitPrice ? monthlyFee(draft.businessType, unitCountNum, { airbnb: 0, hotel: 0, restaurant: 0, office: 0, [draft.businessType]: unitPrice }) : null;
   const cfg = BUSINESS_TYPES[draft.businessType];
@@ -106,21 +106,19 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
           setErrors({ submit: tAuth("signupsPaused") });
           return;
         }
-        const supabase = createClient();
-        if (!supabase) {
-          setErrors({ submit: t("error_not_configured") });
-          return;
-        }
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await authClient.signUp.email({
           email: draft.email.trim().toLowerCase(),
           password: draft.password,
-          options: { data: { role: "business", display_name: draft.companyName.trim() }, emailRedirectTo: `${window.location.origin}/${lang}/login?confirmed=1&next=${encodeURIComponent("/business/signup")}` },
-        });
+          name: draft.companyName.trim(),
+          role: "business",
+          callbackURL: `/${lang}/login?confirmed=1&next=${encodeURIComponent("/business/signup")}`,
+        } as Parameters<typeof authClient.signUp.email>[0]);
         if (error) {
-          setErrors({ submit: /already/i.test(error.message) ? t("error_exists") : error.message });
+          const code = String(error.code ?? "");
+          setErrors({ submit: /EXIST|already/i.test(`${code} ${error.message ?? ""}`) ? t("error_exists") : error.message || t("error_failed") });
           return;
         }
-        if (!data.session) {
+        if (!data?.token) {
           // E-mail confirmation is on: keep the answers, finish after confirming and logging in.
           try {
             const { password: _pw, ...rest } = draft;
@@ -230,7 +228,7 @@ function BusinessSignupForm({ initialType, signedIn, email: knownEmail, unitPric
         {step === 2 ? (
           <div>
             <label className="text-sm font-semibold text-ink/80">{t("howMany", { units: cfg.unitPlural[lang] })}
-              <input type="number" min={1} max={10000} inputMode="numeric" className={`mt-1 ${inputCls} text-2xl font-extrabold`}
+              <input type="number" min={1} max={1000} inputMode="numeric" className={`mt-1 ${inputCls} text-2xl font-extrabold`}
                 value={draft.unitCount} onChange={(e) => set({ unitCount: e.target.value })} />{err("unitCount")}</label>
             <div className="mt-4 rounded-card-lg bg-mint p-5">
               <p className="text-sm text-ink/70">{t("liveTotalLabel")}</p>

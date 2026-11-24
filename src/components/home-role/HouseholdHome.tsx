@@ -1,8 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import type { SessionUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import { profilePhotoUrl } from "@/lib/cleaners-live";
+import { all, first, json } from "@/lib/server/db";
+import { cleanerPhotoUrl } from "@/lib/server/chat/photo";
 import { SERVICE_LABELS } from "@/lib/sample-data";
 import { ButtonLink } from "@/components/ui/Button";
 import { HouseholdOnboarding } from "./HouseholdOnboarding";
@@ -11,30 +11,38 @@ import { HouseholdOnboarding } from "./HouseholdOnboarding";
 export async function HouseholdHome({ user }: { user: SessionUser }) {
   const t = await getTranslations("householdHome");
   const lang = ((await getLocale()) === "en" ? "en" : "nl") as "nl" | "en";
-  const supabase = (await createClient())!;
-
-  const [{ data: hp }, { data: conns }, { data: requests }, { count: favCount }, { data: convs }] = await Promise.all([
-    supabase.from("household_profiles").select("postcode_area, needs, home_type").eq("user_id", user.id).maybeSingle(),
-    supabase.from("connections").select("id, cleaner_id, status, started_at, household_confirmed_at, cleaner_confirmed_at").eq("household_id", user.id).in("status", ["active", "paused", "pending"]).order("started_at", { ascending: false }),
-    supabase.from("meeting_requests").select("id, cleaner_profile_id, status, created_at").eq("household_id", user.id).order("created_at", { ascending: false }).limit(5),
-    supabase.from("favourites").select("cleaner_profile_id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("conversations").select("id, cleaner_id").eq("household_id", user.id),
+  // Own rows only: everything below is filtered on the signed-in household's id.
+  const [hp, conns, requests, fav, convs] = await Promise.all([
+    first<{ postcode_area: string | null; needs: string; home_type: string | null }>(
+      "SELECT postcode_area, needs, home_type FROM household_profiles WHERE user_id = ?", user.id),
+    all<{ id: string; cleaner_id: string; status: string; started_at: string | null; household_confirmed_at: string | null; cleaner_confirmed_at: string | null }>(
+      `SELECT id, cleaner_id, status, started_at, household_confirmed_at, cleaner_confirmed_at FROM connections
+        WHERE household_id = ? AND status IN ('active','pending') ORDER BY started_at DESC`, user.id),
+    all<{ id: string; cleaner_profile_id: string; status: string; created_at: string }>(
+      "SELECT id, cleaner_profile_id, status, created_at FROM meeting_requests WHERE household_id = ? ORDER BY created_at DESC LIMIT 5", user.id),
+    first<{ n: number }>("SELECT COUNT(*) AS n FROM favourites WHERE user_id = ?", user.id),
+    all<{ id: string; cleaner_id: string }>("SELECT id, cleaner_id FROM conversations WHERE household_id = ?", user.id),
   ]);
-  const profile = hp as { postcode_area: string | null; needs: string[]; home_type: string | null } | null;
-  const convOf = new Map(((convs ?? []) as { id: string; cleaner_id: string }[]).map((c) => [c.cleaner_id, c.id]));
+  const favCount = fav?.n ?? 0;
+  const profile = hp ? { postcode_area: hp.postcode_area, needs: json<string[]>(hp.needs, []), home_type: hp.home_type } : null;
+  const convOf = new Map(convs.map((c) => [c.cleaner_id, c.id]));
 
-  // Cleaner details for connections and requests.
-  const cleanerUserIds = ((conns ?? []) as { cleaner_id: string }[]).map((c) => c.cleaner_id);
-  const requestProfileIds = ((requests ?? []) as { cleaner_profile_id: string }[]).map((r) => r.cleaner_profile_id);
-  const [{ data: cpByUser }, { data: cpById }] = await Promise.all([
-    cleanerUserIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, rate_cents, profiles!cleaner_profiles_user_id_fkey ( display_name, city )").in("user_id", cleanerUserIds) : Promise.resolve({ data: [] }),
-    requestProfileIds.length ? supabase.from("cleaner_profiles").select("id, user_id, photo_path, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", requestProfileIds) : Promise.resolve({ data: [] }),
+  // Cleaner details for connections and requests (only cleaners this household is connected to or asked).
+  type Cp = { id: string; user_id: string; photo_key: string | null; rate_cents?: number; profiles: { display_name: string; city?: string | null } | null; photo: string | null };
+  const cleanerUserIds = [...new Set(conns.map((c) => c.cleaner_id))];
+  const requestProfileIds = [...new Set(requests.map((r) => r.cleaner_profile_id))];
+  const q = (n: number) => Array.from({ length: n }, () => "?").join(",");
+  type Row = { id: string; user_id: string; photo_key: string | null; rate_cents: number; display_name: string; city: string | null };
+  const sel = "SELECT cp.id, cp.user_id, cp.photo_key, cp.rate_cents, p.display_name, p.city FROM cleaner_profiles cp JOIN profiles p ON p.id = cp.user_id";
+  const [cpByUser, cpById] = await Promise.all([
+    cleanerUserIds.length ? all<Row>(`${sel} WHERE cp.user_id IN (${q(cleanerUserIds.length)})`, ...cleanerUserIds) : Promise.resolve([] as Row[]),
+    requestProfileIds.length ? all<Row>(`${sel} WHERE cp.id IN (${q(requestProfileIds.length)})`, ...requestProfileIds) : Promise.resolve([] as Row[]),
   ]);
-  type Cp = { id: string; user_id: string; photo_path: string | null; rate_cents?: number; profiles: { display_name: string; city?: string | null } | null };
-  const byUser = new Map(((cpByUser ?? []) as unknown as Cp[]).map((c) => [c.user_id, c]));
-  const byId = new Map(((cpById ?? []) as unknown as Cp[]).map((c) => [c.id, c]));
+  const toCp = async (r: Row): Promise<Cp> => ({ id: r.id, user_id: r.user_id, photo_key: r.photo_key, rate_cents: r.rate_cents, profiles: { display_name: r.display_name, city: r.city }, photo: await cleanerPhotoUrl(r.photo_key) });
+  const byUser = new Map((await Promise.all(cpByUser.map(toCp))).map((c) => [c.user_id, c]));
+  const byId = new Map((await Promise.all(cpById.map(toCp))).map((c) => [c.id, c]));
 
-  const active = ((conns ?? []) as { id: string; cleaner_id: string; status: string; household_confirmed_at: string | null; cleaner_confirmed_at: string | null }[]);
+  const active = conns;
   const searchHref = profile?.postcode_area ? `/search?q=${profile.postcode_area}` : "/search";
 
   return (
@@ -64,9 +72,9 @@ export async function HouseholdHome({ user }: { user: SessionUser }) {
               return (
                 <li key={c.id} className="flex items-center gap-3 py-3">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint">
-                    {cp?.photo_path ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- storage URL, pre-sized
-                      <img src={profilePhotoUrl(cp.photo_path) ?? ""} alt="" className="h-full w-full object-cover" />
+                    {cp?.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- signed R2 link, pre-sized
+                      <img src={cp.photo} alt="" className="h-full w-full object-cover" />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -84,11 +92,11 @@ export async function HouseholdHome({ user }: { user: SessionUser }) {
       </section>
 
       {/* Requests */}
-      {(requests ?? []).length > 0 ? (
+      {requests.length > 0 ? (
         <section className="mt-6">
           <div className="flex items-baseline justify-between"><h2 className="headline text-xl text-ink">{t("requestsTitle")}</h2><Link href="/messages" className="text-sm font-bold text-forest underline">{t("allMessages")}</Link></div>
           <ul className="mt-2 divide-y divide-line overflow-hidden rounded-card-lg border border-line bg-white">
-            {(requests as { id: string; cleaner_profile_id: string; status: string }[]).map((r) => {
+            {requests.map((r) => {
               const cp = byId.get(r.cleaner_profile_id);
               return (
                 <li key={r.id}>
@@ -105,7 +113,7 @@ export async function HouseholdHome({ user }: { user: SessionUser }) {
 
       {/* Shortcuts */}
       <ul className="mt-6 grid grid-cols-2 gap-3">
-        <li><Link href="/favourites" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-line bg-white px-3 text-center hover:bg-mint"><span className="text-lg font-extrabold text-forest">{favCount ?? 0}</span><span className="text-xs font-semibold text-ink/70">{t("favourites")}</span></Link></li>
+        <li><Link href="/favourites" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-line bg-white px-3 text-center hover:bg-mint"><span className="text-lg font-extrabold text-forest">{favCount}</span><span className="text-xs font-semibold text-ink/70">{t("favourites")}</span></Link></li>
         <li><Link href="/search" className="flex min-h-20 flex-col items-center justify-center rounded-card-lg border border-line bg-white px-3 text-center hover:bg-mint"><span className="text-lg font-extrabold text-forest">{t("find")}</span></Link></li>
       </ul>
 

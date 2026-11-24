@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import type { SessionUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { all, first } from "@/lib/server/db";
 import { profilePhotoUrl } from "@/lib/cleaners-live";
 import { getWorkForCleaner } from "@/lib/business-data";
 import { ButtonLink } from "@/components/ui/Button";
@@ -9,14 +9,11 @@ import { ButtonLink } from "@/components/ui/Button";
 /** Cleaner dashboard: profile state, requests, clients, today's work. */
 export async function CleanerHome({ user }: { user: SessionUser }) {
   const t = await getTranslations("cleanerHome");
-  const supabase = (await createClient())!;
-
-  const { data: ad } = await supabase
-    .from("cleaner_profiles")
-    .select("id, status, photo_path, about, services, job_types, work_scope, rate_cents, availability_slots ( id )")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const adRow = ad as { id: string; status: string; photo_path: string | null; about: string | null; services: string[]; job_types: string[]; work_scope: string; rate_cents: number; availability_slots: { id: string }[] | null } | null;
+  // Everything below is the signed-in cleaner's own data (user_id / cleaner_id = session user).
+  const ad = await first<{ id: string; status: string; photo_key: string | null; about: string | null; slots: number }>(
+    `SELECT cp.id, cp.status, cp.photo_key, cp.about, (SELECT count(*) FROM availability_slots a WHERE a.cleaner_profile_id = cp.id) AS slots
+     FROM cleaner_profiles cp WHERE cp.user_id = ?`, user.id);
+  const adRow = ad ? { ...ad, photo_path: ad.photo_key, availability_slots: Array.from({ length: Number(ad.slots) }, (_, i) => ({ id: String(i) })) } : null;
 
   // Completeness: what still blocks a strong profile.
   const checks = adRow
@@ -28,16 +25,26 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
     : [];
   const completeness = adRow ? Math.round((checks.filter((c) => c.done).length / checks.length) * 100) : 0;
 
-  const [requests, conns, work] = await Promise.all([
-    adRow ? supabase.from("meeting_requests").select("id, type, proposed_weekday, proposed_block, household_id, created_at").eq("cleaner_profile_id", adRow.id).eq("status", "requested").order("created_at", { ascending: false }).limit(5) : Promise.resolve({ data: [] }),
-    supabase.from("connections").select("id, household_id, status, started_at").eq("cleaner_id", user.id).in("status", ["active", "paused", "pending"]).order("started_at", { ascending: false }),
+  const [requestRows, connRows, work] = await Promise.all([
+    adRow
+      ? all<{ id: string; type: string; proposed_weekday: number; proposed_block: string; household_id: string; created_at: string }>(
+          `SELECT id, type, proposed_weekday, proposed_block, household_id, created_at FROM meeting_requests
+           WHERE cleaner_profile_id = ? AND status = 'requested' ORDER BY created_at DESC LIMIT 5`, adRow.id)
+      : Promise.resolve([]),
+    all<{ id: string; household_id: string; status: string; started_at: string | null }>(
+      `SELECT id, household_id, status, started_at FROM connections WHERE cleaner_id = ? AND status IN ('active','pending') ORDER BY started_at DESC`, user.id),
     adRow ? getWorkForCleaner(adRow.id) : Promise.resolve([]),
   ]);
-  const households = [...new Set([...(requests.data ?? []).map((r: { household_id: string }) => r.household_id), ...(conns.data ?? []).map((c: { household_id: string }) => c.household_id)])];
-  const { data: names } = households.length ? await supabase.from("profiles").select("id, display_name").in("id", households) : { data: [] };
-  const nameOf = new Map(((names ?? []) as { id: string; display_name: string }[]).map((n) => [n.id, n.display_name]));
-  const { data: convs } = await supabase.from("conversations").select("id, household_id").eq("cleaner_id", user.id);
-  const convOf = new Map(((convs ?? []) as { id: string; household_id: string }[]).map((c) => [c.household_id, c.id]));
+  const requests = { data: requestRows };
+  const conns = { data: connRows };
+  const households = [...new Set([...requestRows.map((r) => r.household_id), ...connRows.map((c) => c.household_id)])];
+  const names = households.length
+    ? await all<{ id: string; display_name: string }>(`SELECT id, display_name FROM profiles WHERE id IN (${households.map(() => "?").join(",")})`, ...households)
+    : [];
+  const nameOf = new Map(names.map((n) => [n.id, n.display_name]));
+  const convs = await all<{ id: string; household_id: string }>("SELECT id, household_id FROM conversations WHERE cleaner_id = ?", user.id);
+  const convOf = new Map(convs.map((c) => [c.household_id, c.id]));
+  const photoUrl = adRow?.photo_path ? await profilePhotoUrl(adRow.photo_path) : null;
   // upcoming visits of awarded jobs (one-off and regular schedules)
   const upcoming = work.filter((w) => w.outcome === "scheduled" && w.scheduled_start && w.scheduled_start >= new Date().toISOString()).sort((a, b) => (a.scheduled_start ?? "").localeCompare(b.scheduled_start ?? "")).slice(0, 3);
   const fmt = (iso: string) => new Date(iso).toLocaleString("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -52,8 +59,8 @@ export async function CleanerHome({ user }: { user: SessionUser }) {
         <div className="flex items-center gap-4">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
             {adRow?.photo_path ? (
-              // eslint-disable-next-line @next/next/no-img-element -- storage URL, pre-sized
-              <img src={profilePhotoUrl(adRow.photo_path) ?? ""} alt="" className="h-full w-full object-cover" />
+              // eslint-disable-next-line @next/next/no-img-element -- signed R2 link, pre-sized
+              <img src={photoUrl ?? ""} alt="" className="h-full w-full object-cover" />
             ) : (
               <svg viewBox="0 0 24 24" className="h-9 w-9" fill="currentColor" aria-hidden="true"><circle cx="12" cy="9" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
             )}

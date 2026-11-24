@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CleanerCard } from "@/components/cleaners/CleanerCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { requireRole } from "@/lib/guard";
-import { createClient } from "@/lib/supabase/server";
+import { all } from "@/lib/server/db";
 import { fetchLiveCleaners } from "@/lib/cleaners-live";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +18,8 @@ export default async function FavouritesPage({
   const user = await requireRole(locale, ["household", "business"], "/favourites", { adminAllowed: false });
 
   // Signed in: favourites table joined with the published ads.
-  const supabase = await createClient();
-  const { data } = await supabase!.from("favourites").select("cleaner_profile_id").eq("user_id", user.id);
-  const ids = new Set((data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id));
+  const rows = await all<{ cleaner_profile_id: string }>("SELECT cleaner_profile_id FROM favourites WHERE user_id = ?", user.id);
+  const ids = new Set(rows.map((r) => r.cleaner_profile_id));
   const live = (await fetchLiveCleaners()) ?? [];
   const saved = live.filter((c) => ids.has(c.id));
 

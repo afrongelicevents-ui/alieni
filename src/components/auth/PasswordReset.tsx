@@ -1,71 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none disabled:bg-section";
 
-/** Forgot password: request the e-mail; then set a new password from the link. */
-export function PasswordReset({ mode }: { mode: "request" | "update" }) {
+/** Forgot password: request the e-mail; then set a new password from the link (Better Auth reset token). */
+export function PasswordReset({ mode, resetToken, resetError }: { mode: "request" | "update"; resetToken?: string | null; resetError?: string | null }) {
   const t = useTranslations("auth");
   const locale = useLocale();
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // The e-mailed link (Better Auth) lands on the update page with ?token=… (or ?error=INVALID_TOKEN when it expired).
   const [status, setStatus] = useState<"idle" | "busy" | "sent" | "done" | "error" | "nosession">("idle");
   const [message, setMessage] = useState("");
-
-  // The recovery link signs the browser in; without that session the form cannot work.
-  useEffect(() => {
-    if (mode !== "update" || !supabase) return;
-    let cancelled = false;
-    const check = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!cancelled && !data.session) {
-        // Give the URL-code exchange a moment, then re-check once.
-        await new Promise((r) => setTimeout(r, 1500));
-        const again = await supabase.auth.getSession();
-        if (!cancelled && !again.data.session) setStatus("nosession");
-      }
-    };
-    void check();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, [mode]);
+  const token = resetToken ?? null;
+  const linkBroken = mode === "update" && (!token || Boolean(resetError));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) return;
     setStatus("busy");
     setMessage("");
     if (mode === "request") {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/${locale}/reset-password/update`,
-      });
-      if (error && !/rate limit/i.test(error.message)) {
-        setStatus("error");
-        setMessage(error.message);
-        return;
-      }
+      await authClient.requestPasswordReset({ email: email.trim().toLowerCase(), redirectTo: `/${locale}/reset-password/update` }).catch(() => null);
       setStatus("sent"); // always "sent" so e-mail addresses cannot be probed
       return;
     }
-    const { error } = await supabase.auth.updateUser({ password });
+    if (!token) return setStatus("nosession");
+    const { error } = await authClient.resetPassword({ newPassword: password, token });
     if (error) {
+      const c = (error.code ?? "").toUpperCase();
+      if (c.includes("TOKEN")) return setStatus("nosession");
       setStatus("error");
-      setMessage(/least/i.test(error.message) ? t("errWeakPassword") : error.message);
+      setMessage(c.includes("PASSWORD") ? t("errWeakPassword") : t("networkError"));
       return;
     }
     setStatus("done");
   }
 
-  if (!supabase) return <p className="rounded-xl bg-sun/25 p-3 text-sm text-ink/80">{t("notActive")}</p>;
-
-  if (status === "nosession") {
+  if (status === "nosession" || linkBroken) {
     return (
       <div className="rounded-card-lg border border-line bg-white p-6">
         <p className="text-sm text-ink/80">{t("resetLinkInvalid")}</p>
@@ -93,7 +68,7 @@ export function PasswordReset({ mode }: { mode: "request" | "update" }) {
         {status === "sent" ? <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">{t("resetSent")}</p> : null}
         {status === "done" ? (
           <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
-            {t("resetDone")} <Link href="/account" className="underline">{t("goToAccount")}</Link>
+            {t("resetDone")} <Link href="/login" className="underline">{t("loginTitle")}</Link>
           </p>
         ) : null}
 

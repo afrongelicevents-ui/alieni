@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
+import { first, nowIso, rateLimit, run, uuid } from "@/lib/server/db";
 
 export type ReportState = { ok: boolean; error?: string };
 
@@ -16,25 +17,32 @@ const reportSchema = z.object({
 export async function submitReport(input: z.input<typeof reportSchema>): Promise<ReportState> {
   const parsed = reportSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues.some((i) => i.path[0] === "subjectId") ? "sample_subject" : "invalid" };
+  const { subjectType, subjectId, reason } = parsed.data;
   try {
-    const { supabase, userId } = await requireUser();
+    const { userId } = await requireUser();
+    if (!(await rateLimit(`report:${userId}`, 10, 60 * 60))) return { ok: false, error: "rate_limit" };
     let details = parsed.data.details || null;
-    if (parsed.data.subjectType === "message") {
-      // Only the reported message is shared with the admin: it is read here as a member of the conversation
-      // (the access rules refuse anyone else) and stored as a snapshot; admins get no access to chats.
-      const { data: msg } = await supabase.from("messages").select("sender_id, body").eq("id", parsed.data.subjectId).maybeSingle<{ sender_id: string; body: string }>();
+    if (subjectType === "message") {
+      // Only the reported message is shared with the admin: it is read here only when the reporter is a member of
+      // its conversation, and stored as a snapshot; admins get no access to chats.
+      const msg = await first<{ sender_id: string; body: string }>(
+        `SELECT m.sender_id, m.body FROM messages m JOIN conversations c ON c.id = m.conversation_id
+          WHERE m.id = ? AND (c.household_id = ? OR c.cleaner_id = ?)`, subjectId, userId, userId);
       if (!msg) return { ok: false, error: "not_found" };
       if (msg.sender_id === userId) return { ok: false, error: "own_message" };
       details = `[message] ${msg.body.slice(0, 600)}${parsed.data.details ? `\n[note] ${parsed.data.details}` : ""}`.slice(0, 1000);
+    } else {
+      // the subject must exist and be something the reporter can see
+      const visible =
+        subjectType === "cleaner_profile"
+          ? await first("SELECT 1 AS x FROM cleaner_profiles WHERE id = ? AND (status = 'published' OR user_id = ?)", subjectId, userId)
+          : subjectType === "job"
+            ? await first("SELECT 1 AS x FROM jobs WHERE id = ? AND status = 'published'", subjectId)
+            : await first("SELECT 1 AS x FROM reviews WHERE id = ? AND hidden = 0", subjectId);
+      if (!visible) return { ok: false, error: "not_found" };
     }
-    const { error } = await supabase.from("reports").insert({
-      reporter_id: userId,
-      subject_type: parsed.data.subjectType,
-      subject_id: parsed.data.subjectId,
-      reason: parsed.data.reason,
-      details,
-    });
-    if (error) return { ok: false, error: "save_failed" };
+    await run("INSERT INTO reports (id, reporter_id, subject_type, subject_id, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      uuid(), userId, subjectType, subjectId, reason, details, nowIso());
     return { ok: true };
   } catch (err) {
     return { ok: false, error: errorCode(err) };

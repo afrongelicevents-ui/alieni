@@ -250,7 +250,6 @@
     "roleHousehold": "Huishouden — ik zoek een schoonmaker",
     "roleCleaner": "Schoonmaker — ik zoek klussen",
     "roleBusiness": "Bedrijf — ik zoek schoonmaak voor mijn zaak",
-    "notActive": "Accounts zijn nog niet actief — we lanceren binnenkort. Schoonmakers kunnen hun advertentie alvast klaarzetten.",
     "cleanerCta": "Zet je advertentie alvast klaar",
     "noAccount": "Nog geen account?",
     "haveAccount": "Al een account?",
@@ -297,7 +296,11 @@
     "defaultName_household": "Klant",
     "defaultName_cleaner": "Schoonmaker",
     "defaultName_business": "Bedrijf",
-    "signupsPaused": "Aanmelden is nog niet open — we lanceren binnenkort. Heb je al een account? Log dan in. Schoonmakers kunnen hun advertentie alvast klaarzetten."
+    "signupsPaused": "Aanmelden is nog niet open — we lanceren binnenkort. Heb je al een account? Log dan in. Schoonmakers kunnen hun advertentie alvast klaarzetten.",
+    "codeIntro": "Voor dit account staat inloggen in twee stappen aan. Vul de code van 6 cijfers uit je authenticator-app in.",
+    "codeLabel": "Code van 6 cijfers",
+    "codeSubmit": "Inloggen",
+    "errBadCode": "Die code klopt niet. Controleer de tijd op je telefoon en probeer de nieuwste code."
   },
   "common": {
     "favourite": "Opslaan als favoriet",
@@ -455,7 +458,9 @@
     "error_not_configured": "Verwijderen is op dit moment niet beschikbaar.",
     "error_db_outdated": "Verwijderen is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
     "error_rate_limit": "Te vaak geprobeerd. Probeer het later opnieuw.",
-    "error_failed": "Het verwijderen is niet gelukt. Probeer het opnieuw."
+    "error_failed": "Het verwijderen is niet gelukt. Probeer het opnieuw.",
+    "twoFactorOn": "Inloggen in twee stappen: aan",
+    "twoFactorSetUp": "Inloggen in twee stappen instellen"
   },
   "deal": {
     "question": "Hebben jullie een deal?",
@@ -492,12 +497,10 @@
   },
   "admin": {
     "title": "Alieni Admin",
-    "demoBadge": "Demomodus — voorbeeldgegevens",
     "tabDashboard": "Dashboard",
     "tabReports": "Meldingen",
     "tabUsers": "Gebruikers",
     "tabAds": "Advertenties",
-    "tabPayments": "Betalingen",
     "tabSettings": "Instellingen",
     "needsYou": "Heeft jouw aandacht nodig",
     "needsYouText": "{count, plural, =0 {Geen open meldingen} one {# open melding} other {# open meldingen}}",
@@ -630,8 +633,6 @@
     "ad_removed": "verwijderd",
     "role_admin": "beheerder",
     "tabServices": "Diensten",
-    "tabPricing": "Prijzen",
-    "tabFees": "Vastgelegde kosten",
     "tabWork": "Uitgevoerd werk",
     "svcTitle": "Diensten aan/uit",
     "svcIntro": "Zet per dienst aan voor welke sectoren hij beschikbaar is. Uit = de tegel toont ‘Binnenkort’ en aanvragen worden geweigerd.",
@@ -674,7 +675,6 @@
     "colOutcome": "Uitkomst",
     "colConfirmed": "Bevestigd",
     "settingBusinessPricesMoved": "De zakelijke prijzen per eenheid worden nu beheerd onder Prijzen. Zolang daar geen actieve regel staat, wordt niets berekend.",
-    "goPricing": "Naar Prijzen",
     "model_none": "Geen",
     "model_monthly_per_unit": "Per eenheid per maand",
     "model_per_event": "Per gebeurtenis",
@@ -719,7 +719,7 @@
     "bpTitle": "Prijsmodel bedrijven",
     "bpIntro": "Kies ÉÉN prijsmodel voor bedrijven. Teksten op de website en de aanmeldschermen passen zich automatisch aan. Bedragen excl. btw. Betalingen blijven uit: dit bepaalt alleen wat getoond en berekend wordt.",
     "bp_per_location": "Vast maandbedrag per locatie",
-    "bp_per_location_hint": "Het bedrag per type bedrijf stel je in onder Prijzen.",
+    "bp_per_location_hint": "Betalingen staan uit, dus er is geen bedrag per locatie ingesteld: bedrijven zien ‘prijs volgt’.",
     "bp_per_job_post": "Bedrag per geplaatste klus",
     "bp_per_job_post_amount": "Bedrag per klus (€, excl. btw)",
     "bp_tiers": "Maandabonnementen (staffels)",
@@ -1494,5 +1494,25 @@
         "s": "Zoeken, kennismaken, afspreken"
       }
     }
+  },
+  "twoFactor": {
+    "title": "Inloggen in twee stappen",
+    "intro": "Bescherm je account met een code van 6 cijfers uit een authenticator-app (bijvoorbeeld Google Authenticator, Microsoft Authenticator of 1Password), bovenop je wachtwoord.",
+    "introAdmin": "Beheerdersaccounts moeten inloggen in twee stappen gebruiken. Stel het één keer in; daarna vul je bij elke login een code van 6 cijfers uit je authenticator-app in.",
+    "passwordLabel": "Je wachtwoord",
+    "start": "Verder",
+    "scan": "Scan deze QR-code met je authenticator-app. Typ daarna de code van 6 cijfers die de app laat zien.",
+    "qrLabel": "QR-code voor je authenticator-app",
+    "manual": "Lukt scannen niet? Vul deze sleutel in de app in:",
+    "codeLabel": "Code van 6 cijfers",
+    "turnOn": "Inloggen in twee stappen aanzetten",
+    "done": "Inloggen in twee stappen staat aan.",
+    "backupTitle": "Reservecodes",
+    "backupText": "Bewaar deze op een veilige plek. Elke code werkt één keer als je je telefoon kwijt bent. Je ziet ze alleen nu.",
+    "continue": "Verder",
+    "alreadyOn": "Inloggen in twee stappen staat al aan voor je account.",
+    "errorPassword": "Dat wachtwoord klopt niet.",
+    "errorCode": "Die code klopt niet. Probeer de nieuwste code uit de app.",
+    "errorRate": "Te veel pogingen. Wacht een minuut en probeer het opnieuw."
   }
 }

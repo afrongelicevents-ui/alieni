@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { first, json } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/auth";
 import { homeFor } from "@/lib/guard";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -20,9 +20,8 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
   // private page: signed out → log in, then come back here
   if (!user) redirect(`/${locale}/login?next=${encodeURIComponent("/account")}`);
 
-  const supabase = (await createClient())!;
-  const { data: hp } = user.role === "household" ? await supabase.from("household_profiles").select("postcode_area, needs, home_type").eq("user_id", user.id).maybeSingle() : { data: null };
-  const prefs = hp as { postcode_area: string | null; needs: string[]; home_type: string | null } | null;
+  const hp = user.role === "household" ? await first<{ postcode_area: string | null; needs: string; home_type: string | null }>("SELECT postcode_area, needs, home_type FROM household_profiles WHERE user_id = ?", user.id) : null;
+  const prefs = hp ? { ...hp, needs: json<string[]>(hp.needs, []) } : null;
 
   const rows: { href: string; label: string; strong?: boolean }[] = [
     { href: homeFor(user.role), label: t(`goHome_${user.role}` as "goHome_household"), strong: true },
@@ -31,6 +30,7 @@ export default async function AccountPage({ params }: { params: Promise<{ locale
     ...(user.role === "household" ? [{ href: "/favourites", label: t("favourites") }, { href: "/search", label: t("findCleaner") }] : []),
     { href: "/messages", label: t("messages") },
     { href: "/reset-password", label: t("changePassword") },
+    { href: "/account/two-factor", label: user.twoFactorEnabled ? t("twoFactorOn") : t("twoFactorSetUp") },
     ...(user.role === "admin" ? [{ href: "/admin", label: t("admin"), strong: true }] : []),
   ];
 

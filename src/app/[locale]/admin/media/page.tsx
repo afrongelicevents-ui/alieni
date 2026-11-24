@@ -14,7 +14,7 @@ export default async function AdminMediaPage({
   setRequestLocale(locale);
   const t = await getTranslations("admin.media");
 
-  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const configured = true; // R2 is always bound on Cloudflare
   const rows = await listSiteMedia();
 
   const slots: MediaSlotView[] = SITE_MEDIA_SLOTS.map((slot) => {

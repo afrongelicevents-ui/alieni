@@ -1,22 +1,18 @@
 import "server-only";
-import { createClient as createAnon } from "@supabase/supabase-js";
+import { first, json } from "./server/db";
 import { DEFAULT_RATE_FLOOR_CENTS } from "./validation";
 
-/** Admin → Settings values that the rules must follow (read with the public key; the settings table is public). */
+/** Admin → Settings values that the rules must follow (settings.value is JSON in D1). */
 async function setting(key: string): Promise<unknown> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return undefined;
   try {
-    const supabase = createAnon(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data } = await supabase.from("settings").select("value").eq("key", key).maybeSingle<{ value: unknown }>();
-    return data?.value;
+    const row = await first<{ value: string }>("SELECT value FROM settings WHERE key = ?", key);
+    return row ? json<unknown>(row.value, undefined) : undefined;
   } catch {
     return undefined;
   }
 }
 
-/** The hourly-rate floor in cents: the admin value, never below the hard minimum the database also enforces. */
+/** The hourly-rate floor in cents: the admin value, never below the hard minimum (€15) the database CHECK also enforces. */
 export async function getRateFloorCents(): Promise<number> {
   const v = Number(await setting("rate_floor_cents"));
   return Number.isInteger(v) && v >= DEFAULT_RATE_FLOOR_CENTS ? v : DEFAULT_RATE_FLOOR_CENTS;
@@ -43,7 +39,8 @@ export function findBannedWord(text: string, words: string[]): string | null {
  * this; otherwise it stays price-neutral.
  */
 export async function getPublicHouseholdFeeCents(): Promise<number | null> {
-  if (!(Boolean(process.env.MOLLIE_API_KEY) && process.env.PAYMENTS_ACTIVE === "true")) return null;
+  // Payments are OFF on this build: there is no payment provider, so no price is ever shown.
+  if (!(Boolean(process.env.MOLLIE_API_KEY) && String(process.env.PAYMENTS_ACTIVE) === "true")) return null;
   const v = await setting("household_fee_cents");
   const n = typeof v === "string" ? Number(v) : v;
   return typeof n === "number" && Number.isInteger(n) && n > 0 ? n : null;

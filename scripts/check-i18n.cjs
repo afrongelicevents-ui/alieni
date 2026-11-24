@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- plain Node script */
 /* Static check of translations: every literal t("key") call must exist in messages/nl.json AND messages/en.json,
  * both files must have the same keys. Dynamic keys (template strings) are listed as a count only.
  * Usage: node scripts/check-i18n.cjs */

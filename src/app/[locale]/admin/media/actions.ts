@@ -1,82 +1,71 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import sharp from "sharp";
-import { createClient } from "@/lib/supabase/server";
-import { isSiteMediaSlot, SITE_MEDIA_BUCKET, SLOT_SPEC } from "@/lib/site-media";
+import { errorCode, requireAdmin } from "@/lib/auth";
+import { first, nowIso, run } from "@/lib/server/db";
+import { deleteFile, storeImage } from "@/lib/server/files";
+import { isSiteMediaSlot } from "@/lib/site-media";
 
 export type MediaActionState = { ok: boolean; error?: string; slot?: string };
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+/** Admin (with two-step login) only; anything else gets a clear error code. */
+async function admin(): Promise<{ userId: string } | { error: string }> {
+  try {
+    const { userId } = await requireAdmin();
+    return { userId };
+  } catch (err) {
+    const code = errorCode(err);
+    return { error: code === "not_signed_in" ? "not_signed_in" : "not_admin" };
+  }
+}
 
-/** Admin check on top of RLS (RLS is the real guard; this gives a clear error). */
-async function requireAdmin() {
-  const supabase = await createClient();
-  if (!supabase) return { error: "not_configured" as const };
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return { error: "not_signed_in" as const };
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).single();
-  if (profile?.role !== "admin") return { error: "not_admin" as const };
-  return { supabase, userId: data.user.id };
+/** Admin audit log entry (best effort: never blocks the action). */
+async function audit(adminId: string, action: string, subject: string) {
+  try {
+    await run("INSERT INTO admin_audit_log (admin_id, action, subject) VALUES (?, ?, ?)", adminId, action, subject);
+  } catch {
+    // logging must not undo a done action
+  }
 }
 
 function revalidateSite() {
-  // Home + business landing pages are static; refresh every locale at once.
+  // Home + business landing pages; refresh every locale at once.
   revalidatePath("/", "layout");
 }
 
+/**
+ * The browser has already resized the photo to the slot's size and re-encoded it to WebP; the server checks the real
+ * type, strips any metadata and stores it in the private R2 bucket under site/<slot>/.
+ */
 export async function uploadSiteImage(_prev: MediaActionState, formData: FormData): Promise<MediaActionState> {
   const slot = String(formData.get("slot") ?? "");
   if (!isSiteMediaSlot(slot)) return { ok: false, error: "bad_slot" };
-
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "no_file", slot };
-  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, error: "too_large", slot };
-  if (!ALLOWED_TYPES.has(file.type)) return { ok: false, error: "bad_type", slot };
 
-  const auth = await requireAdmin();
+  const auth = await admin();
   if ("error" in auth) return { ok: false, error: auth.error, slot };
-  const { supabase, userId } = auth;
 
-  // Re-encode server-side: strips metadata, enforces size, normalises to WebP.
-  let webp: Buffer;
-  let width: number | undefined;
-  let height: number | undefined;
+  let key: string;
   try {
-    const input = Buffer.from(await file.arrayBuffer());
-    const spec = SLOT_SPEC[slot];
-    const out = await sharp(input, { limitInputPixels: 40_000_000 })
-      .rotate()
-      .resize({ width: spec.maxWidth, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer({ resolveWithObject: true });
-    webp = out.data;
-    width = out.info.width;
-    height = out.info.height;
-  } catch {
-    return { ok: false, error: "bad_image", slot };
+    key = await storeImage(file, "site", slot);
+  } catch (e) {
+    const code = errorCode(e);
+    return { ok: false, error: code === "file_too_large" ? "too_large" : code === "bad_file_type" ? "bad_type" : code === "bad_file" ? "bad_image" : "upload_failed", slot };
   }
 
-  const path = `${slot}/${Date.now().toString(36)}.webp`;
-  const { error: uploadError } = await supabase.storage
-    .from(SITE_MEDIA_BUCKET)
-    .upload(path, webp, { contentType: "image/webp", cacheControl: "31536000", upsert: false });
-  if (uploadError) return { ok: false, error: "upload_failed", slot };
-
-  const { data: previous } = await supabase.from("site_media").select("path").eq("slot", slot).maybeSingle();
-
-  const { error: dbError } = await supabase
-    .from("site_media")
-    .upsert({ slot, path, width, height, updated_at: new Date().toISOString(), updated_by: userId });
-  if (dbError) {
-    await supabase.storage.from(SITE_MEDIA_BUCKET).remove([path]);
+  const previous = await first<{ object_key: string }>("SELECT object_key FROM site_media WHERE slot = ?", slot);
+  try {
+    await run(
+      `INSERT INTO site_media (slot, object_key, updated_at, updated_by) VALUES (?, ?, ?, ?)
+       ON CONFLICT(slot) DO UPDATE SET object_key = excluded.object_key, width = NULL, height = NULL, updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
+      slot, key, nowIso(), auth.userId);
+  } catch {
+    await deleteFile(key);
     return { ok: false, error: "save_failed", slot };
   }
-
-  if (previous?.path && previous.path !== path) {
-    await supabase.storage.from(SITE_MEDIA_BUCKET).remove([previous.path]);
-  }
+  if (previous?.object_key && previous.object_key !== key) await deleteFile(previous.object_key);
+  await audit(auth.userId, "site_media_uploaded", slot);
 
   revalidateSite();
   return { ok: true, slot };
@@ -86,14 +75,17 @@ export async function removeSiteImage(_prev: MediaActionState, formData: FormDat
   const slot = String(formData.get("slot") ?? "");
   if (!isSiteMediaSlot(slot)) return { ok: false, error: "bad_slot" };
 
-  const auth = await requireAdmin();
+  const auth = await admin();
   if ("error" in auth) return { ok: false, error: auth.error, slot };
-  const { supabase } = auth;
 
-  const { data: row } = await supabase.from("site_media").select("path").eq("slot", slot).maybeSingle();
-  const { error } = await supabase.from("site_media").delete().eq("slot", slot);
-  if (error) return { ok: false, error: "save_failed", slot };
-  if (row?.path) await supabase.storage.from(SITE_MEDIA_BUCKET).remove([row.path]);
+  const row = await first<{ object_key: string }>("SELECT object_key FROM site_media WHERE slot = ?", slot);
+  try {
+    await run("DELETE FROM site_media WHERE slot = ?", slot);
+  } catch {
+    return { ok: false, error: "save_failed", slot };
+  }
+  if (row?.object_key) await deleteFile(row.object_key);
+  await audit(auth.userId, "site_media_removed", slot);
 
   revalidateSite();
   return { ok: true, slot };

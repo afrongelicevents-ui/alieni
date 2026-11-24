@@ -4,7 +4,7 @@ import { JobsBoard, type BoardJob, type Viewer } from "@/components/jobs/JobsBoa
 import { SAMPLE_JOBS } from "@/lib/jobs";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { all, first } from "@/lib/server/db";
 import { businessNames } from "@/lib/business-public";
 import { fetchPublishedJobs, toBoardJobs } from "@/lib/jobs-data";
 
@@ -22,34 +22,31 @@ export default async function JobsPage({
   const user = await getSessionUser();
   if (user?.role === "cleaner") redirect(`/${locale}/work?tab=jobs`);
   if (user?.role === "household") redirect(`/${locale}/home`);
-  const supabase = await createClient();
-
   let myCleanerProfileId: string | null = null;
   let isBusiness = false;
   let myBusinessId: string | null = null;
-  let jobs: BoardJob[] = [];
 
-  if (supabase) {
-    if (user) {
-      const [{ data: cp }, { data: bp }] = await Promise.all([
-        supabase.from("cleaner_profiles").select("id").eq("user_id", user.id).maybeSingle(),
-        supabase.from("business_profiles").select("id").eq("user_id", user.id).maybeSingle(),
-      ]);
-      myCleanerProfileId = cp?.id ?? null;
-      isBusiness = Boolean(bp);
-      myBusinessId = bp?.id ?? null;
-    }
-    const rows = await fetchPublishedJobs(supabase);
-    // company names come from the restricted public view; nothing else about a company is readable here
-    const companyOf = await businessNames(supabase, rows.map((r) => r.business_id));
-    const responderIds = [...new Set(rows.flatMap((r) => (r.job_responses ?? []).map((x) => x.cleaner_profile_id)))];
-    const nameOf = new Map<string, string>();
-    if (responderIds.length) {
-      const { data: cps } = await supabase.from("cleaner_profiles").select("id, profiles!cleaner_profiles_user_id_fkey ( display_name )").in("id", responderIds);
-      for (const c of (cps ?? []) as unknown as { id: string; profiles: { display_name: string } | null }[]) nameOf.set(c.id, c.profiles?.display_name ?? "—");
-    }
-    jobs = toBoardJobs(rows, { companyOf, nameOf, myCleanerProfileId, myBusinessId });
+  if (user) {
+    const [cp, bp] = await Promise.all([
+      first<{ id: string }>("SELECT id FROM cleaner_profiles WHERE user_id = ?", user.id),
+      first<{ id: string }>("SELECT id FROM business_profiles WHERE user_id = ?", user.id),
+    ]);
+    myCleanerProfileId = cp?.id ?? null;
+    isBusiness = Boolean(bp);
+    myBusinessId = bp?.id ?? null;
   }
+  const rows = await fetchPublishedJobs(null);
+  // company names follow the public-name rule; nothing else about a company is readable here
+  const companyOf = await businessNames(rows.map((r) => r.business_id));
+  // responder names are only needed for the business's own jobs (toBoardJobs shows quotations only there)
+  const responderIds = [...new Set(rows.filter((r) => r.business_id === myBusinessId).flatMap((r) => (r.job_responses ?? []).map((x) => x.cleaner_profile_id)))];
+  const nameOf = new Map<string, string>();
+  if (responderIds.length) {
+    const cps = await all<{ id: string; display_name: string }>(
+      `SELECT cp.id, p.display_name FROM cleaner_profiles cp JOIN profiles p ON p.id = cp.user_id WHERE cp.id IN (${responderIds.map(() => "?").join(",")})`, ...responderIds);
+    for (const c of cps) nameOf.set(c.id, c.display_name ?? "—");
+  }
+  let jobs: BoardJob[] = toBoardJobs(rows, { companyOf, nameOf, myCleanerProfileId, myBusinessId });
 
   // No real jobs yet: show labelled examples so the board is not empty.
   if (jobs.length === 0) {

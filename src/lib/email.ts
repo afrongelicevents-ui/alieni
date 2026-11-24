@@ -1,7 +1,4 @@
 import "server-only";
-import { formatEuro } from "./money";
-import { companyLine } from "./company";
-import type { Invoice } from "./invoices";
 
 /**
  * Transactional email via Resend (brief §6, §12 automations). Plain-text
@@ -37,55 +34,6 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   }
 }
 
-/** Invoice email with the 21% btw breakdown (brief §3.7, §6). */
-export function invoiceEmail(invoice: Invoice, lang: Lang = "nl"): { subject: string; text: string } {
-  return {
-    subject: pick(lang, `Factuur ${invoice.number} — Alieni`, `Invoice ${invoice.number} — Alieni`),
-    text: lang === "en"
-      ? [
-          "Hi!",
-          "",
-          "Thanks for your connection via Alieni. Here is your invoice:",
-          "",
-          `Invoice number:   ${invoice.number}`,
-          `Description:      ${invoice.description}`,
-          `Date:             ${invoice.issuedAt.slice(0, 10)}`,
-          "",
-          `Amount excl. VAT: ${formatEuro(invoice.netCents)}`,
-          `21% VAT:          ${formatEuro(invoice.btwCents)}`,
-          `Total incl. VAT:  ${formatEuro(invoice.grossCents)}`,
-          "",
-          "The amount was collected automatically via your linked payment method.",
-          "You can cancel at any time with one tap in the app — the subscription",
-          "then ends at the end of the current month.",
-          "",
-          companyLine(),
-          "Connect · Clean · Thrive",
-        ].join("\n")
-      : [
-          "Hoi!",
-          "",
-          "Bedankt voor je verbinding via Alieni. Hierbij je factuur:",
-          "",
-          `Factuurnummer:   ${invoice.number}`,
-          `Omschrijving:    ${invoice.description}`,
-          `Datum:           ${invoice.issuedAt.slice(0, 10)}`,
-          "",
-          `Bedrag excl. btw: ${formatEuro(invoice.netCents)}`,
-          `21% btw:          ${formatEuro(invoice.btwCents)}`,
-          `Totaal incl. btw: ${formatEuro(invoice.grossCents)}`,
-          "",
-          "Het bedrag is automatisch geïncasseerd via je gekoppelde betaalmethode.",
-          "Opzeggen kan altijd met één tik in de app — dan stopt het abonnement",
-          "aan het einde van de lopende maand.",
-          "",
-          companyLine(),
-          "Connect · Clean · Thrive",
-        ].join("\n"),
-  };
-}
-
-/** New meeting request notification for the cleaner (brief §3.5). */
 export function meetingRequestEmail(cleanerName: string, lang: Lang = "nl"): { subject: string; text: string } {
   return {
     subject: pick(lang, "Nieuwe kennismakingsaanvraag — Alieni", "New introduction request — Alieni"),
@@ -157,43 +105,6 @@ export function reporterUpdateEmail(outcome: "hidden" | "removed" | "dismissed",
             "",
             "Ben je het niet eens met deze beslissing? Reageer dan op deze",
             "e-mail; dan kijken we er opnieuw naar.",
-            "",
-            "Groetjes, Alieni · Connect · Clean · Thrive",
-          ].join("\n"),
-  };
-}
-
-/** SEPA debit failed or reversed (brief v2 §11): connection paused. */
-export function paymentFailedEmail(lang: Lang = "nl"): { subject: string; text: string } {
-  return {
-    subject: pick(lang, "Actie nodig: betaling mislukt — Alieni", "Action needed: payment failed — Alieni"),
-    text:
-      lang === "en"
-        ? [
-            "Hi,",
-            "",
-            "The automatic direct debit for your Alieni connection failed or",
-            "was reversed. Your connection is therefore temporarily paused and",
-            "contact details in the chat are hidden again.",
-            "",
-            "Update your payment method in the app; as soon as",
-            "the payment succeeds, everything is active again right away.",
-            "",
-            "Questions? Just reply to this e-mail.",
-            "",
-            "Cheers, Alieni · Connect · Clean · Thrive",
-          ].join("\n")
-        : [
-            "Hoi,",
-            "",
-            "De automatische incasso voor je Alieni-verbinding is mislukt of",
-            "teruggedraaid. Je verbinding is daarom tijdelijk gepauzeerd en",
-            "contactgegevens in de chat zijn weer verborgen.",
-            "",
-            "Werk je betaalmethode bij in de app; zodra de",
-            "betaling slaagt, is alles direct weer actief.",
-            "",
-            "Vragen? Reageer gerust op deze e-mail.",
             "",
             "Groetjes, Alieni · Connect · Clean · Thrive",
           ].join("\n"),

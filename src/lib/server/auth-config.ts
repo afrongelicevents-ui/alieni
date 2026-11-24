@@ -96,6 +96,9 @@ function build(e: Env) {
             const email = String(user.email ?? "").toLowerCase();
             if (!(await rateLimit("signup:global", 300, 3600))) return false;
             const admin = await first("SELECT 1 AS x FROM admin_allowlist WHERE email = ?", email);
+            // Pre-launch mode (Admin → Settings → Sign-ups) closes sign-up on the server too; allow-listed admins excepted.
+            const paused = await first<{ value: string }>("SELECT value FROM settings WHERE key = 'signups_paused'");
+            if (!admin && paused?.value === "true") return false;
             const asked = String((user as { role?: unknown }).role ?? "household");
             const role = admin ? "admin" : SELF_SERVICE_ROLES.has(asked) ? asked : "household";
             const name = String(user.name ?? "").trim().slice(0, 80) || email.split("@")[0];

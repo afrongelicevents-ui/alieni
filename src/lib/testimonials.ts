@@ -1,27 +1,15 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { all } from "./server/db";
 import type { Testimonial } from "@/components/site/home/HomeSections";
 
 /**
- * Published, consented testimonials (Admin → Testimonials). Returns an empty
- * list without Supabase or before migration 0024 has run — the homepage then
- * hides the section. Never returns sample data.
+ * Published, consented testimonials (Admin → Testimonials). Returns an empty list when there are none or the read
+ * fails — the homepage then hides the section. Never returns sample data. Unpublished or unconsented rows are never read.
  */
 export async function getPublishedTestimonials(): Promise<Testimonial[]> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return [];
   try {
-    const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await supabase
-      .from("testimonials")
-      .select("id, name, role, city, quote")
-      .eq("published", true)
-      .eq("consent", true)
-      .order("created_at", { ascending: false })
-      .limit(6);
-    if (error || !data) return [];
-    return data as Testimonial[];
+    return await all<Testimonial>(
+      "SELECT id, name, role, city, quote FROM testimonials WHERE published = 1 AND consent = 1 ORDER BY created_at DESC LIMIT 6");
   } catch {
     return [];
   }

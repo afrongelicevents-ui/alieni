@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/guard";
-import { createClient } from "@/lib/supabase/server";
+import { first, json } from "@/lib/server/db";
 import { getWorkForCleaner } from "@/lib/business-data";
 import { MyWorkList } from "@/components/cleaners/MyWorkList";
 import { businessNames } from "@/lib/business-public";
@@ -28,10 +28,11 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
   setRequestLocale(locale);
   const user = await requireRole(locale, ["cleaner"], `/work${tab !== "jobs" ? `?tab=${encodeURIComponent(tab)}` : ""}`, { adminAllowed: false });
   const t = await getTranslations("work");
-  const supabase = (await createClient())!;
 
-  const { data: cp } = await supabase.from("cleaner_profiles").select("id, status, job_types, work_scope, work_types, rate_cents").eq("user_id", user.id).maybeSingle();
-  const profile = cp as { id: string; status: string; job_types: string[]; work_scope: string; work_types: string[] | null; rate_cents: number } | null;
+  // Only the signed-in cleaner's own ad.
+  const cp = await first<{ id: string; status: string; job_types: string; work_scope: string; work_types: string; rate_cents: number }>(
+    "SELECT id, status, job_types, work_scope, work_types, rate_cents FROM cleaner_profiles WHERE user_id = ?", user.id);
+  const profile = cp ? { ...cp, job_types: json<string[]>(cp.job_types, ["household"]), work_types: json<string[]>(cp.work_types, []) } : null;
 
   if (!profile) {
     return (
@@ -61,13 +62,13 @@ export default async function WorkPage({ params, searchParams }: { params: Promi
 
   if (current === "jobs") {
     const spaceTypes = spaceTypesFor(profile.job_types);
-    const jobRows = spaceTypes.length ? await fetchPublishedJobs(supabase, { spaceTypes }) : [];
-    const companyOf = await businessNames(supabase, jobRows.map((r) => r.business_id));
+    const jobRows = spaceTypes.length ? await fetchPublishedJobs(null, { spaceTypes }) : [];
+    const companyOf = await businessNames(jobRows.map((r) => r.business_id));
     jobs = toBoardJobs(jobRows, { companyOf, myCleanerProfileId: profile.id, myBusinessId: null });
   }
   if (current === "mine") {
     work = await getWorkForCleaner(profile.id);
-    quotes = await getQuotesForCleaner(supabase, profile.id, (ids) => businessNames(supabase, ids));
+    quotes = await getQuotesForCleaner(null, profile.id, (ids) => businessNames(ids));
   }
 
   return (

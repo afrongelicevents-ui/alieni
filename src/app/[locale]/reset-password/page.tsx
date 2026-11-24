@@ -1,11 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PasswordReset } from "@/components/auth/PasswordReset";
-import { redirectIfSignedIn } from "@/lib/guard";
 
 export default async function ResetPasswordPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await redirectIfSignedIn(locale);
+  // Signed-in people may use this too ("change password" on the account page): the reset link goes to their e-mail.
   const t = await getTranslations("auth");
   return (
     <section className="mx-auto max-w-md px-4 py-10">

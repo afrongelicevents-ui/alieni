@@ -1,13 +1,13 @@
-import { paymentsActive } from "./mollie";
-import { getPublicHouseholdFeeCents } from "./site-settings";
 import "server-only";
-import { createClient } from "./supabase/server";
-import { profilePhotoUrl } from "./cleaners-live";
+import { getPublicHouseholdFeeCents } from "./site-settings";
+import { all, first } from "./server/db";
+import { cleanerPhotoUrl } from "./server/chat/photo";
+import { weekdayFromDb } from "./server/chat/weekday";
 
 /**
- * Conversations, messages, meeting requests and connections for the signed-in
- * user. Every query runs with the user's session, so RLS limits it to
- * conversations they are part of.
+ * Conversations, messages, meeting requests and connections for the signed-in user.
+ * D1 has no row-level security: every query below is limited to conversations the user is a member of
+ * (household_id = me OR cleaner_id = me). Admins get no special access to chats.
  */
 
 export type ConnectionStatus = "none" | "pending" | "active" | "ended";
@@ -41,10 +41,10 @@ export type ConversationDetail = {
     cleanerConfirmedAt: string | null;
     startedAt: string | null;
     endedAt: string | null;
-    paymentSetUp: boolean; // Mollie mandate + subscription attached
-    paused: boolean; // last direct debit failed: contacts re-masked until a new mandate
+    paymentSetUp: boolean; // always false: payments are off on this version
+    paused: boolean;
   } | null;
-  /** Mollie is configured on the server, so the household can set up payment. */
+  /** Payments are off on the Cloudflare version: the household never sees a payment step. */
   paymentsEnabled: boolean;
   /** The monthly household price to show, or null while no price is active (copy stays price-neutral). */
   householdFeeCents: number | null;
@@ -62,119 +62,123 @@ type ConvRow = {
   created_at: string;
 };
 
-function connStatus(row: { status: string; household_confirmed_at: string | null; cleaner_confirmed_at: string | null } | null | undefined): ConnectionStatus {
+type ConnRow = { id: string; status: string; household_confirmed_at: string | null; cleaner_confirmed_at: string | null; started_at: string | null; ended_at: string | null };
+
+function connStatus(row: { status: string } | null | undefined): ConnectionStatus {
   if (!row) return "none";
-  if (row.status === "active" || row.status === "paused") return "active";
+  if (row.status === "active") return "active";
   if (row.status === "ended") return "ended";
   return "pending";
 }
 
-/**
- * Payment counts as set up for a real Mollie subscription id or the
- * 'charged-no-subscription' state (already charged; ops finish the subscription).
- * 'pending' (claim in flight) and 'cancelled:…' (ended) do not count.
- */
-function subscriptionSetUp(value: string | null | undefined): boolean {
-  if (!value || value === "pending" || value.startsWith("cancelled:")) return false;
-  return true;
-}
+const placeholders = (n: number) => Array.from({ length: n }, () => "?").join(",");
 
 export async function listConversations(userId: string): Promise<ConversationSummary[] | null> {
-  const supabase = await createClient();
-  if (!supabase) return null;
-  const { data: convs, error } = await supabase
-    .from("conversations")
-    .select("id, household_id, cleaner_id, meeting_request_id, last_message_at, created_at")
-    .or(`household_id.eq.${userId},cleaner_id.eq.${userId}`)
-    .order("last_message_at", { ascending: false })
-    .limit(100);
-  if (error || !convs) return [];
-  const rows = convs as ConvRow[];
+  const rows = await all<ConvRow>(
+    `SELECT id, household_id, cleaner_id, meeting_request_id, last_message_at, created_at
+       FROM conversations WHERE household_id = ? OR cleaner_id = ?
+      ORDER BY last_message_at DESC LIMIT 100`,
+    userId, userId,
+  );
   if (rows.length === 0) return [];
 
   const otherIds = [...new Set(rows.map((c) => (c.household_id === userId ? c.cleaner_id : c.household_id)))];
-  const [{ data: profiles }, { data: cleanerProfiles }, { data: connections }, { data: lastMessages }] = await Promise.all([
-    supabase.from("profiles").select("id, display_name").in("id", otherIds),
-    supabase.from("cleaner_profiles").select("id, user_id, photo_path").in("user_id", otherIds),
-    supabase.from("connections").select("household_id, cleaner_id, status, household_confirmed_at, cleaner_confirmed_at").or(`household_id.eq.${userId},cleaner_id.eq.${userId}`),
-    supabase.from("messages").select("conversation_id, body, created_at").in("conversation_id", rows.map((c) => c.id)).order("created_at", { ascending: false }).limit(400),
+  const convIds = rows.map((c) => c.id);
+  const [profiles, cleanerProfiles, connections, lastMessages] = await Promise.all([
+    all<{ id: string; display_name: string }>(`SELECT id, display_name FROM profiles WHERE id IN (${placeholders(otherIds.length)})`, ...otherIds),
+    all<{ id: string; user_id: string; photo_key: string | null }>(`SELECT id, user_id, photo_key FROM cleaner_profiles WHERE user_id IN (${placeholders(otherIds.length)})`, ...otherIds),
+    all<{ household_id: string; cleaner_id: string; status: string }>(
+      "SELECT household_id, cleaner_id, status FROM connections WHERE household_id = ? OR cleaner_id = ?", userId, userId),
+    // last message per conversation (only conversations of this user)
+    all<{ conversation_id: string; body: string; created_at: string }>(
+      `SELECT m.conversation_id, m.body, m.created_at FROM messages m
+        WHERE m.conversation_id IN (${placeholders(convIds.length)})
+          AND m.created_at = (SELECT MAX(m2.created_at) FROM messages m2 WHERE m2.conversation_id = m.conversation_id)`,
+      ...convIds),
   ]);
-  const nameOf = new Map((profiles ?? []).map((p: { id: string; display_name: string }) => [p.id, p.display_name]));
-  const cleanerOf = new Map((cleanerProfiles ?? []).map((c: { id: string; user_id: string; photo_path: string | null }) => [c.user_id, c]));
+  const nameOf = new Map(profiles.map((p) => [p.id, p.display_name]));
+  const cleanerOf = new Map(cleanerProfiles.map((c) => [c.user_id, c]));
   const lastOf = new Map<string, { body: string; created_at: string }>();
-  for (const m of (lastMessages ?? []) as { conversation_id: string; body: string; created_at: string }[]) {
-    if (!lastOf.has(m.conversation_id)) lastOf.set(m.conversation_id, m);
-  }
+  for (const m of lastMessages) if (!lastOf.has(m.conversation_id)) lastOf.set(m.conversation_id, m);
 
-  return rows.map((c) => {
-    const role = c.household_id === userId ? "household" : "cleaner";
+  return Promise.all(rows.map(async (c) => {
+    const role: "household" | "cleaner" = c.household_id === userId ? "household" : "cleaner";
     const otherId = role === "household" ? c.cleaner_id : c.household_id;
     const cp = cleanerOf.get(c.cleaner_id);
-    const conn = (connections ?? []).find((k: { household_id: string; cleaner_id: string }) => k.household_id === c.household_id && k.cleaner_id === c.cleaner_id);
+    const conn = connections.find((k) => k.household_id === c.household_id && k.cleaner_id === c.cleaner_id);
     const last = lastOf.get(c.id);
     return {
       id: c.id,
       role,
       otherName: nameOf.get(otherId) ?? "—",
-      otherPhoto: role === "household" ? profilePhotoUrl(cp?.photo_path) : null,
+      otherPhoto: role === "household" ? await cleanerPhotoUrl(cp?.photo_key) : null,
       cleanerProfileId: cp?.id ?? null,
       lastMessage: last?.body ?? null,
       lastMessageAt: last?.created_at ?? c.last_message_at,
       connection: connStatus(conn),
     };
-  });
+  }));
+}
+
+/** Messages of a conversation the user is a member of (oldest first), optionally only those after `afterIso`. */
+export async function conversationMessages(conversationId: string, userId: string, afterIso?: string): Promise<ChatMessage[] | null> {
+  const conv = await first<{ household_id: string; cleaner_id: string }>("SELECT household_id, cleaner_id FROM conversations WHERE id = ?", conversationId);
+  if (!conv || (conv.household_id !== userId && conv.cleaner_id !== userId)) return null;
+  const rows = afterIso
+    ? await all<{ id: string; sender_id: string; body: string; masked: number; created_at: string }>(
+      "SELECT id, sender_id, body, masked, created_at FROM messages WHERE conversation_id = ? AND created_at > ? ORDER BY created_at ASC LIMIT 200",
+      conversationId, afterIso)
+    : await all<{ id: string; sender_id: string; body: string; masked: number; created_at: string }>(
+      `SELECT * FROM (SELECT id, sender_id, body, masked, created_at FROM messages WHERE conversation_id = ?
+         ORDER BY created_at DESC LIMIT 500) ORDER BY created_at ASC`,
+      conversationId);
+  return rows.map((m) => ({ id: m.id, mine: m.sender_id === userId, body: m.body, masked: m.masked === 1, at: m.created_at }));
 }
 
 export async function getConversation(id: string, userId: string): Promise<ConversationDetail | null> {
-  const supabase = await createClient();
-  if (!supabase) return null;
-  const { data: c } = await supabase
-    .from("conversations")
-    .select("id, household_id, cleaner_id, meeting_request_id, last_message_at, created_at")
-    .eq("id", id)
-    .maybeSingle();
-  if (!c) return null;
-  const conv = c as ConvRow;
-  // RLS already limits rows to members; keep an explicit check as defence in depth.
+  const conv = await first<ConvRow>(
+    "SELECT id, household_id, cleaner_id, meeting_request_id, last_message_at, created_at FROM conversations WHERE id = ?", id);
+  if (!conv) return null;
+  // members only (no row-level security in D1)
   if (conv.household_id !== userId && conv.cleaner_id !== userId) return null;
-  const role = conv.household_id === userId ? "household" : "cleaner";
+  const role: "household" | "cleaner" = conv.household_id === userId ? "household" : "cleaner";
   const otherId = role === "household" ? conv.cleaner_id : conv.household_id;
 
-  const [{ data: other }, { data: cp }, { data: meeting }, { data: conn }, { data: msgs }, { data: bp }] = await Promise.all([
-    supabase.from("profiles").select("display_name, city").eq("id", otherId).maybeSingle(),
-    supabase.from("cleaner_profiles").select("id, rate_cents, photo_path, profiles!cleaner_profiles_user_id_fkey ( city )").eq("user_id", conv.cleaner_id).maybeSingle(),
+  const [other, cleanerRow, meeting, conn, messages, bp, householdFeeCents] = await Promise.all([
+    first<{ display_name: string }>("SELECT display_name FROM profiles WHERE id = ?", otherId),
+    first<{ id: string; rate_cents: number; photo_key: string | null; city: string | null }>(
+      `SELECT cp.id, cp.rate_cents, cp.photo_key, p.city FROM cleaner_profiles cp JOIN profiles p ON p.id = cp.user_id WHERE cp.user_id = ?`,
+      conv.cleaner_id),
     conv.meeting_request_id
-      ? supabase.from("meeting_requests").select("id, type, proposed_weekday, proposed_block, status").eq("id", conv.meeting_request_id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    supabase.from("connections").select("id, status, household_confirmed_at, cleaner_confirmed_at, started_at, ended_at, mollie_subscription_id").eq("household_id", conv.household_id).eq("cleaner_id", conv.cleaner_id).maybeSingle(),
-    supabase.from("messages").select("id, sender_id, body, masked, created_at").eq("conversation_id", conv.id).order("created_at", { ascending: true }).limit(500),
-    supabase.from("business_profiles").select("id").eq("user_id", userId).maybeSingle(),
+      ? first<{ id: string; type: "in_person" | "video"; proposed_weekday: number; proposed_block: "morning" | "afternoon" | "evening"; status: string }>(
+        "SELECT id, type, proposed_weekday, proposed_block, status FROM meeting_requests WHERE id = ? AND household_id = ?",
+        conv.meeting_request_id, conv.household_id)
+      : Promise.resolve(null),
+    first<ConnRow>(
+      "SELECT id, status, household_confirmed_at, cleaner_confirmed_at, started_at, ended_at FROM connections WHERE household_id = ? AND cleaner_id = ?",
+      conv.household_id, conv.cleaner_id),
+    conversationMessages(conv.id, userId),
+    first<{ id: string }>("SELECT id FROM business_profiles WHERE user_id = ?", userId),
+    getPublicHouseholdFeeCents(),
   ]);
 
-  const cleanerRow = cp as { id: string; rate_cents: number; photo_path: string | null; profiles: { city: string | null } | null } | null;
   return {
     id: conv.id,
     role,
     myId: userId,
     otherId,
-    otherName: (other as { display_name: string } | null)?.display_name ?? "—",
-    otherPhoto: role === "household" ? profilePhotoUrl(cleanerRow?.photo_path) : null,
-    cleaner: cleanerRow ? { profileId: cleanerRow.id, rateCents: cleanerRow.rate_cents, city: cleanerRow.profiles?.city ?? "" } : null,
+    otherName: other?.display_name ?? "—",
+    otherPhoto: role === "household" ? await cleanerPhotoUrl(cleanerRow?.photo_key) : null,
+    cleaner: cleanerRow ? { profileId: cleanerRow.id, rateCents: cleanerRow.rate_cents, city: cleanerRow.city ?? "" } : null,
     meeting: meeting
-      ? { id: meeting.id, type: meeting.type, weekday: meeting.proposed_weekday, block: meeting.proposed_block, status: meeting.status }
+      ? { id: meeting.id, type: meeting.type, weekday: weekdayFromDb(meeting.proposed_weekday), block: meeting.proposed_block, status: meeting.status }
       : null,
     connection: conn
-      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: subscriptionSetUp(conn.mollie_subscription_id), paused: conn.status === "paused" }
+      ? { id: conn.id, status: connStatus(conn), householdConfirmedAt: conn.household_confirmed_at, cleanerConfirmedAt: conn.cleaner_confirmed_at, startedAt: conn.started_at, endedAt: conn.ended_at, paymentSetUp: false, paused: false }
       : null,
-    paymentsEnabled: paymentsActive(),
-    householdFeeCents: await getPublicHouseholdFeeCents(),
+    paymentsEnabled: false,
+    householdFeeCents,
     isBusiness: Boolean(bp),
-    messages: ((msgs ?? []) as { id: string; sender_id: string; body: string; masked: boolean; created_at: string }[]).map((m) => ({
-      id: m.id,
-      mine: m.sender_id === userId,
-      body: m.body,
-      masked: m.masked,
-      at: m.created_at,
-    })),
+    messages: messages ?? [],
   };
 }

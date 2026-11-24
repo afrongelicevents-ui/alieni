@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AdWizard, type ExistingAd } from "@/components/cleaners/AdWizard";
 import { requireRole } from "@/lib/guard";
-import { createClient } from "@/lib/supabase/server";
+import { all, first, json } from "@/lib/server/db";
 import { profilePhotoUrl } from "@/lib/cleaners-live";
 
 export const dynamic = "force-dynamic";
@@ -24,39 +24,36 @@ export default async function CleanerProfilePage({
   if (edit) nextQuery.set("edit", edit);
   const user = await requireRole(locale, ["cleaner"], `/profile${nextQuery.size ? `?${nextQuery}` : ""}`, { adminAllowed: false });
   const t = await getTranslations("wizard");
-  const supabase = (await createClient())!;
 
   let existing: ExistingAd | null = null;
-  const { data: ad } = await supabase
-    .from("cleaner_profiles")
-    .select("id, status, rate_cents, min_hours, services, languages, radius_km, about, photo_path, job_types, works_as, experience_years, work_scope, work_types, availability_slots ( weekday, block )")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Only the signed-in cleaner's own ad (user_id = session user); the full postcode is shown to its owner only.
+  const ad = await first<{ id: string; status: string; rate_cents: number; min_hours: number; services: string; languages: string; radius_km: number; about: string | null;
+    photo_key: string | null; job_types: string; works_as: string | null; experience_years: number | null; work_scope: string | null; work_types: string; postcode: string; city: string | null }>(
+    `SELECT cp.id, cp.status, cp.rate_cents, cp.min_hours, cp.services, cp.languages, cp.radius_km, cp.about, cp.photo_key, cp.job_types, cp.works_as,
+            cp.experience_years, cp.work_scope, cp.work_types, cp.postcode, p.city
+     FROM cleaner_profiles cp JOIN profiles p ON p.id = cp.user_id WHERE cp.user_id = ?`, user.id);
   if (ad) {
     const availability: Record<number, string[]> = {};
-    for (const s of (ad.availability_slots as { weekday: number; block: string }[]) ?? []) (availability[s.weekday] ??= []).push(s.block);
-    const { data: profile } = await supabase.from("profiles").select("city").eq("id", user.id).maybeSingle();
-    // Part 16 hides the full postcode behind this function; before it has been run the column is still readable
-    const rpcResult = await supabase.rpc("my_cleaner_postcode");
-    const ownPostcode = rpcResult.error ? (await supabase.from("cleaner_profiles").select("postcode").eq("user_id", user.id).maybeSingle()).data?.postcode : rpcResult.data;
+    for (const s of await all<{ weekday: number; block: string }>("SELECT weekday, block FROM availability_slots WHERE cleaner_profile_id = ?", ad.id)) (availability[s.weekday] ??= []).push(s.block);
+    const workTypes = json<string[]>(ad.work_types, []);
     existing = {
       adId: ad.id,
       status: ad.status,
-      photoUrl: profilePhotoUrl(ad.photo_path),
+      photoUrl: await profilePhotoUrl(ad.photo_key),
       draft: {
         name: user.displayName,
-        city: profile?.city ?? "",
+        city: ad.city ?? "",
         about: ad.about ?? "",
-        services: ad.services ?? [],
-        languages: ad.languages ?? [],
-        jobTypes: ad.job_types ?? ["household"],
+        services: json<string[]>(ad.services, []),
+        languages: json<string[]>(ad.languages, []),
+        jobTypes: json<string[]>(ad.job_types, ["household"]),
         workScope: ad.work_scope ?? "household",
-        workTypes: ad.work_types?.length ? ad.work_types : ["household_regular"],
+        workTypes: workTypes.length ? workTypes : ["household_regular"],
         experienceYears: ad.experience_years ?? null,
         worksAs: (ad.works_as ?? "") as "" | "independent" | "company",
         rateEuro: euro(ad.rate_cents),
         minHours: Number(ad.min_hours),
-        postcode: typeof ownPostcode === "string" ? ownPostcode : "",
+        postcode: ad.postcode ?? "",
         radiusKm: ad.radius_km,
         availability,
       } as ExistingAd["draft"],

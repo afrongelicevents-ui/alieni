@@ -5,7 +5,7 @@ import { BUSINESS_TYPE_KEYS, type BusinessType } from "@/lib/business";
 import { getSessionUser } from "@/lib/auth";
 import { homeFor } from "@/lib/guard";
 import { ButtonLink } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/server";
+import { first } from "@/lib/server/db";
 import { getPricingContext } from "@/lib/services";
 import { getSignupsPaused } from "@/lib/website-settings";
 
@@ -39,8 +39,7 @@ export default async function BusinessSignupPage({
         </section>
       );
     }
-    const supabase = await createClient();
-    const { data: existing } = await supabase!.from("business_profiles").select("id").eq("user_id", user.id).maybeSingle();
+    const existing = await first<{ id: string }>("SELECT id FROM business_profiles WHERE user_id = ?", user.id);
     if (existing) redirect(`/${locale}/business/dashboard`);
   }
 

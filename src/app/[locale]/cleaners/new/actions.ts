@@ -2,24 +2,32 @@
 
 import { findBannedWord, getBannedWords, getRateFloorCents } from "@/lib/site-settings";
 import { revalidatePath } from "next/cache";
-import sharp from "sharp";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
+import { batch, bool, first, nowIso, rateLimit, run, uuid } from "@/lib/server/db";
+import { deleteFile, storeImage } from "@/lib/server/files";
 import { geocodePlace } from "@/lib/geocode";
-import { dbErrorCode, detailOf } from "@/lib/db-errors";
 import { dutchPostcodeSchema, DEFAULT_RATE_FLOOR_CENTS } from "@/lib/validation";
 import { JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS } from "@/lib/sample-data";
 import { WORK_TYPES } from "@/lib/work-types";
 
 export type AdActionState = { ok: boolean; error?: string; adId?: string; status?: string; detail?: string; moderated?: boolean };
 
-type Supabase = Awaited<ReturnType<typeof requireUser>>["supabase"];
+type OwnAd = { id: string; status: string; moderated: number; photo_key: string | null };
 
-/** True when a moderator hid/removed this ad (cleaner_profiles.moderated); false before that column exists. */
-async function readModerated(supabase: Supabase, userId: string, status: string): Promise<boolean> {
-  const { data, error } = await supabase.from("cleaner_profiles").select("moderated").eq("user_id", userId).maybeSingle();
-  if (error) return false;
-  return Boolean((data as { moderated?: boolean } | null)?.moderated) && (status === "hidden" || status === "removed");
+/** The signed-in user's own ad (ownership is the WHERE clause: user_id = the session user). */
+async function ownAd(userId: string): Promise<OwnAd | null> {
+  return first<OwnAd>("SELECT id, status, moderated, photo_key FROM cleaner_profiles WHERE user_id = ?", userId);
+}
+
+/** True when a moderator hid/removed this ad: the owner can then no longer change its status. */
+const isModerated = (ad: OwnAd | null) => Boolean(ad && bool(ad.moderated) && (ad.status === "hidden" || ad.status === "removed"));
+
+/** Only cleaners write a cleaner ad. */
+async function requireCleaner(): Promise<string> {
+  const { userId, role } = await requireUser();
+  if (role !== "cleaner") throw new Error("not_allowed");
+  return userId;
 }
 
 const adSchema = z.object({
@@ -49,100 +57,107 @@ function deriveWorkTypes(chosen: string[], jobTypes: string[]): string[] {
   return [...out];
 }
 
-/** Create or update the signed-in cleaner's ad. RLS limits it to their own row. */
+/** Create or update the signed-in cleaner's ad. Only their own row (user_id = session user). */
 export async function saveCleanerAd(input: AdInput): Promise<AdActionState> {
   const parsed = adSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const ad = parsed.data;
   // an ad without availability cannot be contacted (a meeting request needs a slot): drafts may be saved without
   if (ad.publish && ad.availability.length === 0) return { ok: false, error: "no_availability" };
-  if (ad.rateCents < (await getRateFloorCents())) return { ok: false, error: "rate_floor" };
+  if (ad.rateCents < Math.max(DEFAULT_RATE_FLOOR_CENTS, await getRateFloorCents())) return { ok: false, error: "rate_floor" };
   if (findBannedWord(`${ad.name} ${ad.about}`, await getBannedWords())) return { ok: false, error: "banned_word" };
 
   try {
-    const { supabase, userId } = await requireUser();
-
-    // Only cleaners write a cleaner ad (an admin or household would otherwise get their display name changed first).
-    const { data: me } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle();
-    if (me?.role !== "cleaner") return { ok: false, error: "not_allowed" };
-
-    // Display name + city live on the profile (shown on the ad).
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({ display_name: ad.name, city: ad.city || null })
-      .eq("id", userId);
-    if (profileError) return { ok: false, error: "save_failed" };
-
+    const userId = await requireCleaner();
+    const existing = await ownAd(userId);
     const place = await geocodePlace(ad.postcode);
-    const point = place ? { lng: place.lng, lat: place.lat } : null;
-    if (!ad.city && place?.town) {
-      // town derived from the postcode, so a town search can find this cleaner
-      await supabase.from("profiles").update({ city: place.town }).eq("id", userId);
-    }
-    const row = {
-      user_id: userId,
-      status: ad.publish ? "published" : "draft",
+    const city = ad.city || place?.town || null;
+    // a moderated (hidden/removed by an admin) ad keeps its status; 'removed' is never set by the owner
+    const status = existing && (isModerated(existing) || existing.status === "removed") ? existing.status : ad.publish ? "published" : "draft";
+    const id = existing?.id ?? uuid();
+    const now = nowIso();
+    const cols = {
+      status,
       rate_cents: ad.rateCents,
       min_hours: ad.minHours,
-      services: ad.services,
-      languages: ad.languages,
+      services: JSON.stringify(ad.services),
+      languages: JSON.stringify(ad.languages),
       postcode: ad.postcode,
+      postcode_area: ad.postcode.replace(/\s/g, "").slice(0, 4),
       radius_km: ad.radiusKm,
-      // a failed lookup must not wipe a stored location
-      ...(point ? { location: `SRID=4326;POINT(${point.lng} ${point.lat})` } : {}),
       about: ad.about || null,
-      job_types: ad.jobTypes,
+      job_types: JSON.stringify(ad.jobTypes),
       work_scope: ad.workScope,
-      work_types: deriveWorkTypes(ad.workTypes, ad.jobTypes),
+      work_types: JSON.stringify(deriveWorkTypes(ad.workTypes, ad.jobTypes)),
       experience_years: ad.experienceYears,
       works_as: ad.worksAs,
-      updated_at: new Date().toISOString(),
     };
-    const { data: saved, error } = await supabase
-      .from("cleaner_profiles")
-      .upsert(row, { onConflict: "user_id" })
-      .select("id, status")
-      .single();
-    if (error || !saved) return { ok: false, error: dbErrorCode(error), detail: detailOf(error, "cleaner_profiles") };
-
-    // Availability: replace the set.
-    await supabase.from("availability_slots").delete().eq("cleaner_profile_id", saved.id);
-    if (ad.availability.length) {
-      const { error: slotError } = await supabase
-        .from("availability_slots")
-        .insert(ad.availability.map((s) => ({ cleaner_profile_id: saved.id, weekday: s.weekday, block: s.block })));
-      if (slotError) return { ok: false, error: dbErrorCode(slotError), detail: detailOf(slotError, "availability_slots") };
+    const statements: [string, ...(string | number | null)[]][] = [
+      ["UPDATE profiles SET display_name = ?, city = ? WHERE id = ?", ad.name, city, userId],
+    ];
+    if (existing) {
+      statements.push([
+        `UPDATE cleaner_profiles SET status = ?, rate_cents = ?, min_hours = ?, services = ?, languages = ?, postcode = ?, postcode_area = ?,
+           radius_km = ?, about = ?, job_types = ?, work_scope = ?, work_types = ?, experience_years = ?, works_as = ?, updated_at = ?
+           ${place ? ", lat = ?, lng = ?" : ""}
+         WHERE id = ? AND user_id = ?`,
+        cols.status, cols.rate_cents, cols.min_hours, cols.services, cols.languages, cols.postcode, cols.postcode_area, cols.radius_km,
+        cols.about, cols.job_types, cols.work_scope, cols.work_types, cols.experience_years, cols.works_as, now,
+        // a failed lookup must not wipe a stored location
+        ...(place ? [place.lat, place.lng] : []), id, userId]);
+    } else {
+      statements.push([
+        `INSERT INTO cleaner_profiles (id, user_id, status, rate_cents, min_hours, services, languages, postcode, postcode_area, radius_km, about,
+           job_types, work_scope, work_types, experience_years, works_as, lat, lng, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, userId, cols.status, cols.rate_cents, cols.min_hours, cols.services, cols.languages, cols.postcode, cols.postcode_area, cols.radius_km,
+        cols.about, cols.job_types, cols.work_scope, cols.work_types, cols.experience_years, cols.works_as, place?.lat ?? null, place?.lng ?? null, now, now]);
     }
+    // Availability: replace the set.
+    statements.push(["DELETE FROM availability_slots WHERE cleaner_profile_id = ?", id]);
+    const seen = new Set<string>();
+    for (const s of ad.availability) {
+      const k = `${s.weekday}:${s.block}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      statements.push(["INSERT INTO availability_slots (id, cleaner_profile_id, weekday, block) VALUES (?, ?, ?, ?)", uuid(), id, s.weekday, s.block]);
+    }
+    await batch(statements);
 
+    const saved = await ownAd(userId);
     revalidatePath("/", "layout");
-    // the real status: the database keeps 'hidden'/'removed' when a moderator set it
-    return { ok: true, adId: saved.id, status: saved.status, moderated: await readModerated(supabase, userId, saved.status) };
+    return { ok: true, adId: id, status: saved?.status ?? status, moderated: isModerated(saved) };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
   }
 }
 
-/** Upload (and re-encode) the cleaner's profile photo. */
+/**
+ * Store the cleaner's profile photo. The browser has already resized it and re-encoded it to WebP (which drops
+ * EXIF/GPS); the server checks the real type, strips any metadata left and keeps it in the private R2 bucket.
+ */
 export async function uploadProfilePhoto(_prev: AdActionState, formData: FormData): Promise<AdActionState> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "no_file" };
-  if (file.size > 5 * 1024 * 1024) return { ok: false, error: "too_large" };
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return { ok: false, error: "bad_type" };
+  if (file.size > 2 * 1024 * 1024) return { ok: false, error: "too_large" };
   try {
-    const { supabase, userId } = await requireUser();
-    const { data: ad } = await supabase.from("cleaner_profiles").select("id, photo_path").eq("user_id", userId).maybeSingle();
+    const userId = await requireCleaner();
+    if (!(await rateLimit(`upload:${userId}`, 20, 3600))) return { ok: false, error: "upload_failed" };
+    const ad = await ownAd(userId);
     if (!ad) return { ok: false, error: "no_ad" };
-    const webp = await sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 40_000_000 })
-      .rotate()
-      .resize({ width: 600, height: 600, fit: "cover" })
-      .webp({ quality: 82 })
-      .toBuffer();
-    const path = `${userId}/${Date.now().toString(36)}.webp`;
-    const { error: upErr } = await supabase.storage.from("profile-photos").upload(path, webp, { contentType: "image/webp", cacheControl: "31536000" });
-    if (upErr) return { ok: false, error: "upload_failed" };
-    const { error: dbErr } = await supabase.from("cleaner_profiles").update({ photo_path: path }).eq("id", ad.id);
-    if (dbErr) return { ok: false, error: "save_failed" };
-    if (ad.photo_path) await supabase.storage.from("profile-photos").remove([ad.photo_path]);
+    let key: string;
+    try {
+      key = await storeImage(file, "profile", userId);
+    } catch (e) {
+      const code = errorCode(e);
+      return { ok: false, error: code === "file_too_large" ? "too_large" : code === "bad_file_type" || code === "bad_file" ? "bad_type" : "upload_failed" };
+    }
+    const changed = await run("UPDATE cleaner_profiles SET photo_key = ?, updated_at = ? WHERE id = ? AND user_id = ?", key, nowIso(), ad.id, userId);
+    if (!changed) {
+      await deleteFile(key);
+      return { ok: false, error: "save_failed" };
+    }
+    if (ad.photo_key) await deleteFile(ad.photo_key);
     revalidatePath("/", "layout");
     return { ok: true, adId: ad.id };
   } catch (err) {
@@ -150,16 +165,19 @@ export async function uploadProfilePhoto(_prev: AdActionState, formData: FormDat
   }
 }
 
-/** Take the ad offline (status hidden) or back online. */
+/** Take the ad offline (status hidden) or back online. A moderated ad keeps the status an admin gave it. */
 export async function setAdStatus(status: "published" | "hidden"): Promise<AdActionState> {
+  if (status !== "published" && status !== "hidden") return { ok: false, error: "invalid" };
   try {
-    const { supabase, userId } = await requireUser();
-    const { data: row, error } = await supabase.from("cleaner_profiles").update({ status }).eq("user_id", userId).select("id, status").maybeSingle();
-    if (error) return { ok: false, error: "save_failed" };
-    if (!row) return { ok: false, error: "no_ad" };
+    const userId = await requireCleaner();
+    const ad = await ownAd(userId);
+    if (!ad) return { ok: false, error: "no_ad" };
+    if (!isModerated(ad) && ad.status !== "removed") {
+      await run("UPDATE cleaner_profiles SET status = ?, updated_at = ? WHERE id = ? AND user_id = ? AND moderated = 0", status, nowIso(), ad.id, userId);
+    }
+    const row = await ownAd(userId);
     revalidatePath("/", "layout");
-    // the real status: the database keeps 'hidden'/'removed' when a moderator set it
-    return { ok: true, adId: row.id, status: row.status, moderated: await readModerated(supabase, userId, row.status) };
+    return { ok: true, adId: ad.id, status: row?.status ?? ad.status, moderated: isModerated(row) };
   } catch (err) {
     return { ok: false, error: errorCode(err) };
   }

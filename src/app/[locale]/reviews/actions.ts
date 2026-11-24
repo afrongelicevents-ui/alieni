@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { errorCode, requireUser } from "@/lib/auth";
-import { dbErrorCode } from "@/lib/db-errors";
+import { first, nowIso, rateLimit, run, uuid } from "@/lib/server/db";
+import { reviewableConnection } from "@/lib/reviews-data";
+import { findBannedWord, getBannedWords } from "@/lib/site-settings";
 
 export type ReviewActionState = { ok: boolean; error?: string };
 
@@ -15,27 +17,28 @@ const reviewSchema = z.object({
 
 /**
  * A household or business reviews a cleaner after a confirmed deal (both sides confirmed). One review per
- * connection; the database rule enforces the same. The review shows the date and rating, never the author's name.
+ * connection (also a UNIQUE rule in D1). The review shows the date and rating, never the author's name.
  */
 export async function submitReview(input: z.input<typeof reviewSchema>): Promise<ReviewActionState> {
   const parsed = reviewSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "invalid" };
   const { cleanerProfileId, rating, body } = parsed.data;
+  if (body && findBannedWord(body, await getBannedWords())) return { ok: false, error: "banned_word" };
   try {
-    const { supabase, userId } = await requireUser();
-    const { data: cp } = await supabase.from("cleaner_profiles").select("user_id").eq("id", cleanerProfileId).maybeSingle();
-    if (!cp) return { ok: false, error: "not_available" };
-    const { data: conn } = await supabase
-      .from("connections")
-      .select("id")
-      .eq("household_id", userId)
-      .eq("cleaner_id", cp.user_id)
-      .not("household_confirmed_at", "is", null)
-      .not("cleaner_confirmed_at", "is", null)
-      .maybeSingle();
+    const { userId } = await requireUser();
+    if (!(await rateLimit(`review:${userId}`, 10, 60 * 60))) return { ok: false, error: "rate_limit" };
+    const exists = await first("SELECT 1 AS x FROM cleaner_profiles WHERE id = ?", cleanerProfileId);
+    if (!exists) return { ok: false, error: "not_available" };
+    const conn = await reviewableConnection(userId, cleanerProfileId);
     if (!conn) return { ok: false, error: "no_connection" };
-    const { error } = await supabase.from("reviews").insert({ connection_id: conn.id, author_id: userId, subject_id: cp.user_id, rating, body: body || null });
-    if (error) return { ok: false, error: error.code === "23505" ? "already" : dbErrorCode(error) };
+    const done = await first("SELECT 1 AS x FROM reviews WHERE connection_id = ? AND author_id = ?", conn.connectionId, userId);
+    if (done) return { ok: false, error: "already" };
+    try {
+      await run("INSERT INTO reviews (id, connection_id, author_id, subject_id, rating, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        uuid(), conn.connectionId, userId, conn.cleanerUserId, rating, body || null, nowIso());
+    } catch (e) {
+      return { ok: false, error: /UNIQUE/i.test(String(e)) ? "already" : "save_failed" };
+    }
     revalidatePath(`/cleaners/${cleanerProfileId}`);
     revalidatePath("/search");
     return { ok: true };

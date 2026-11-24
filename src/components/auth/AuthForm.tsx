@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { Turnstile } from "./Turnstile";
 
 /**
- * Login / signup form. Fully wired to Supabase Auth — until the project
- * keys are configured it shows a friendly "not active yet" state instead.
+ * Login / signup form on Better Auth (/api/auth/*). The role chosen at sign-up is only a wish: the server
+ * corrects it (admin only via the allow-list). An account with two-step login gets a 6-digit code step.
  * `paused` (Admin → Settings → Sign-ups, pre-launch mode) closes sign-up only; logging in keeps working.
  */
 /** Only same-site paths may be used as the post-login destination. */
@@ -17,84 +17,112 @@ function safeNext(next: string | undefined): string | null {
   return next;
 }
 
+type AuthError = { message?: string; code?: string; status?: number } | null | undefined;
+
 export function AuthForm({ mode, defaultRole = "household", next, paused = false }: { mode: "login" | "signup"; defaultRole?: string; next?: string; paused?: boolean }) {
   const t = useTranslations("auth");
-  const supabase = createClient();
   const locale = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [role] = useState(defaultRole);
   const [captchaToken, setCaptchaToken] = useState<string | undefined>(undefined);
-  const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "busy" | "error" | "sent" | "done" | "code">("idle");
   const [message, setMessage] = useState("");
 
-  const configured = supabase !== null;
-  const closed = mode === "signup" && paused;
-  const active = configured && !closed;
+  const active = !(mode === "signup" && paused);
   const [resent, setResent] = useState(false);
+  const fetchOptions = captchaToken ? { headers: { "x-captcha-response": captchaToken } } : undefined;
+  const destination = `/${locale}${safeNext(next) ?? "/home"}`;
 
-  /** Map Supabase's technical messages to plain language (nl/en via messages). */
-  function friendlyError(raw: string): string {
-    const m = raw.toLowerCase();
-    if (m.includes("not confirmed")) return t("errNotConfirmed");
-    if (m.includes("invalid login credentials")) return t("errBadLogin");
-    if (m.includes("rate limit")) return t("errRateLimit");
-    if (m.includes("already registered") || m.includes("already exists")) return t("alreadyRegistered");
-    if (m.includes("password") && m.includes("least")) return t("errWeakPassword");
-    return raw;
+  /** Map technical messages to plain language (nl/en via messages). */
+  function friendlyError(err: AuthError): string {
+    const c = (err?.code ?? "").toUpperCase();
+    const m = (err?.message ?? "").toLowerCase();
+    if (c === "EMAIL_NOT_VERIFIED" || m.includes("not verified") || m.includes("not confirmed")) return t("errNotConfirmed");
+    if (c === "INVALID_EMAIL_OR_PASSWORD" || m.includes("invalid email or password")) return t("errBadLogin");
+    if (err?.status === 429 || m.includes("too many")) return t("errRateLimit");
+    if (c.includes("USER_ALREADY_EXISTS") || m.includes("already exists")) return t("alreadyRegistered");
+    if (c === "PASSWORD_TOO_SHORT" || (m.includes("password") && m.includes("short"))) return t("errWeakPassword");
+    if (c.includes("INVALID") && (c.includes("CODE") || c.includes("TOTP") || c.includes("OTP"))) return t("errBadCode");
+    return t("networkError");
   }
 
   async function resendConfirmation() {
-    if (!supabase || !email) return;
-    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (!email) return;
+    const { error } = await authClient.sendVerificationEmail({ email: email.trim().toLowerCase(), callbackURL: `/${locale}/login?confirmed=1` });
     setResent(true);
-    if (error) setMessage(friendlyError(error.message));
+    if (error) setMessage(friendlyError(error));
+  }
+
+  /** Never hang: if the server does not answer within 20s, say so. */
+  function withTimeout<T>(p: Promise<T>): Promise<T> {
+    return Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 20_000))]);
+  }
+
+  function signedIn() {
+    setStatus("done");
+    // Full reload on purpose: the server must see the fresh session cookie.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full reload so the server sees the new session state
+    window.location.assign(destination);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase || !active) return;
+    if (!active) return;
     setStatus("busy");
     setMessage("");
     try {
-      const call =
-        mode === "login"
-          ? supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
-          : supabase.auth.signUp({
-              email,
-              password,
-              options: { data: { role, display_name: name.trim().slice(0, 80) || t(`defaultName_${role}` as "defaultName_household") }, captchaToken, emailRedirectTo: `${window.location.origin}/${locale}/login?confirmed=1${safeNext(next) ? `&next=${encodeURIComponent(safeNext(next) as string)}` : ""}` },
-            });
-      // Never hang: if Supabase does not answer within 20s, say so.
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 20_000),
-      );
-      const result = await Promise.race([call, timeout]);
-
-      if (result.error) {
+      if (mode === "login") {
+        const { data, error } = await withTimeout(authClient.signIn.email({ email: email.trim().toLowerCase(), password, fetchOptions }));
+        if (error) {
+          setStatus("error");
+          setMessage(friendlyError(error));
+          return;
+        }
+        if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+          setStatus("code");
+          return;
+        }
+        signedIn();
+        return;
+      }
+      // `role` is an extra sign-up field (Better Auth additionalFields); the server corrects it (never admin).
+      const body = {
+        email: email.trim().toLowerCase(),
+        password,
+        name: name.trim().slice(0, 80) || t(`defaultName_${role}` as "defaultName_household"),
+        role,
+        callbackURL: `/${locale}/login?confirmed=1${safeNext(next) ? `&next=${encodeURIComponent(safeNext(next) as string)}` : ""}`,
+        fetchOptions,
+      };
+      const { data, error } = await withTimeout(authClient.signUp.email(body as Parameters<typeof authClient.signUp.email>[0]));
+      if (error) {
         setStatus("error");
-        setMessage(friendlyError(result.error.message));
+        setMessage(friendlyError(error));
         return;
       }
-      if (result.data.session) {
-        // Signed in (login, or signup without e-mail confirmation).
-        setStatus("done");
-        // Full reload on purpose: the server must see the fresh auth cookies.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`/${locale}${safeNext(next) ?? "/home"}`);
-        return;
-      }
-      if (mode === "signup" && result.data.user && (result.data.user.identities?.length ?? 1) === 0) {
-        // Supabase returns an empty identities list when the e-mail is already registered.
-        setStatus("error");
-        setMessage(t("alreadyRegistered"));
-        return;
-      }
-      // Signup with e-mail confirmation on: tell them to check their inbox.
-      setStatus("sent");
+      // Signed in straight away (e-mail confirmation off), or: check your inbox.
+      if (data && "token" in data && data.token) signedIn();
+      else setStatus("sent");
     } catch (err) {
       setStatus("error");
+      setMessage(err instanceof Error && err.message === "timeout" ? t("timeout") : t("networkError"));
+    }
+  }
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage("");
+    try {
+      const { error } = await withTimeout(authClient.twoFactor.verifyTotp({ code: code.replace(/\s/g, ""), trustDevice: false }));
+      if (error) {
+        setMessage(friendlyError(error));
+        return;
+      }
+      signedIn();
+    } catch (err) {
       setMessage(err instanceof Error && err.message === "timeout" ? t("timeout") : t("networkError"));
     }
   }
@@ -102,11 +130,29 @@ export function AuthForm({ mode, defaultRole = "household", next, paused = false
   const inputCls =
     "min-h-11 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink focus:outline-none disabled:bg-section";
 
+  if (status === "code") {
+    return (
+      <form onSubmit={submitCode} className="rounded-card-lg border border-line bg-white p-6" data-two-factor-step>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-ink/80">{t("codeIntro")}</p>
+          <label className="text-sm font-semibold text-ink/80">
+            {t("codeLabel")}
+            <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={7} required value={code} onChange={(e) => setCode(e.target.value)} className={`mt-1 ${inputCls} tracking-[0.3em]`} />
+          </label>
+          {message ? <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800" role="alert">{message}</p> : null}
+          <button type="submit" className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest px-6 font-bold text-white transition-colors hover:bg-forest-dark">
+            {t("codeSubmit")}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={submit} className="rounded-card-lg border border-line bg-white p-6">
       {!active ? (
-        <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80" data-signup-closed={configured ? "paused" : "not-configured"}>
-          {configured ? t("signupsPaused") : t("notActive")}{" "}
+        <p className="mb-4 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80" data-signup-closed="paused">
+          {t("signupsPaused")}{" "}
           <Link href="/signup?role=cleaner" className="font-bold text-forest underline">
             {t("cleanerCta")}
           </Link>
@@ -126,15 +172,7 @@ export function AuthForm({ mode, defaultRole = "household", next, paused = false
 
         <label className="text-sm font-semibold text-ink/80">
           {t("email")}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            disabled={!active}
-            className={`mt-1 ${inputCls}`}
-          />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required disabled={!active} className={`mt-1 ${inputCls}`} />
         </label>
 
         <label className="text-sm font-semibold text-ink/80">
@@ -146,6 +184,7 @@ export function AuthForm({ mode, defaultRole = "household", next, paused = false
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
             minLength={8}
+            maxLength={128}
             disabled={!active}
             className={`mt-1 ${inputCls}`}
           />
@@ -179,7 +218,7 @@ export function AuthForm({ mode, defaultRole = "household", next, paused = false
         {status === "done" ? (
           <p className="rounded-xl bg-mint p-3 text-sm font-semibold text-forest">
             {t("redirecting")}{" "}
-            <a href={`/${locale}${safeNext(next) ?? "/home"}`} className="underline">{t("goToAccount")}</a>
+            <a href={destination} className="underline">{t("goToAccount")}</a>
           </p>
         ) : null}
 

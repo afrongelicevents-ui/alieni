@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { DEFAULT_RATE_FLOOR_CENTS, dutchPostcodeSchema } from "@/lib/validation";
 import { saveCleanerAd, setAdStatus, uploadProfilePhoto, type AdActionState, type AdInput } from "@/app/[locale]/cleaners/new/actions";
 import { BUSINESS_JOB_TYPES, JOB_TYPE_LABELS, LANGUAGE_LABELS, SERVICE_LABELS, type DayBlock, type JobType, type Weekday } from "@/lib/sample-data";
+import { resizeToWebp } from "@/lib/image-resize";
 import { HOUSEHOLD_WORK_TYPES, COMMERCIAL_WORK_TYPES, type WorkType } from "@/lib/work-types";
 
 /**
@@ -87,6 +88,24 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
   const [moderatedNotice, setModeratedNotice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoState, photoAction, photoBusy] = useActionState(uploadProfilePhoto, { ok: false } as AdActionState);
+  const [photoPrepError, setPhotoPrepError] = useState<string | null>(null);
+
+  /** Resize + re-encode to WebP in the browser (drops EXIF/GPS) before the server action stores it. */
+  async function submitPhoto(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPhotoPrepError(null);
+    const input = e.currentTarget.elements.namedItem("file") as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) { setPhotoPrepError("no_file"); return; }
+    try {
+      const small = await resizeToWebp(file, { max: 600, square: true });
+      const fd = new FormData();
+      fd.set("file", small);
+      startTransition(() => photoAction(fd));
+    } catch {
+      setPhotoPrepError("bad_type");
+    }
+  }
 
   useEffect(() => {
     if (existing) return; // the database copy wins over a stale device draft
@@ -233,13 +252,13 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
           {toggleError ? <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{toggleError}</p> : null}
         </div>
 
-        <form action={photoAction} className="rounded-card-lg border border-line bg-white p-5">
+        <form onSubmit={submitPhoto} className="rounded-card-lg border border-line bg-white p-5">
           <h3 className="font-extrabold text-ink">{t("photoTitle")}</h3>
           <p className="mt-1 text-sm text-ink/70">{t("photoHint")}</p>
           <div className="mt-3 flex flex-wrap items-center gap-4">
             <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
               {existing?.photoUrl && !photoState.ok ? (
-                // eslint-disable-next-line @next/next/no-img-element -- storage URL, already sized
+                // eslint-disable-next-line @next/next/no-img-element -- signed R2 link, already sized
                 <img src={existing.photoUrl} alt="" className="h-full w-full object-cover" />
               ) : photoState.ok ? (
                 <span className="text-xs font-bold text-forest">✓</span>
@@ -251,7 +270,7 @@ export function AdWizard({ existing, initialStep, startEditing }: { existing: Ex
             <button type="submit" disabled={photoBusy} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-bold text-white disabled:opacity-50">{photoBusy ? t("uploading") : t("uploadPhoto")}</button>
           </div>
           {photoState.ok ? <p className="mt-2 text-sm font-semibold text-forest">{t("photoSaved")}</p> : null}
-          {!photoState.ok && photoState.error ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${photoState.error}` as "error_failed")}</p> : null}
+          {photoPrepError || (!photoState.ok && photoState.error) ? <p className="mt-2 text-sm font-semibold text-red-700">{t(`error_${photoPrepError ?? photoState.error}` as "error_failed")}</p> : null}
         </form>
 
       </div>

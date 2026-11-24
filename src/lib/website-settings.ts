@@ -1,44 +1,30 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { setting } from "./server/db";
 
 /**
- * Public website settings stored in the `settings` table (readable by anyone, editable by admins):
- * the homepage video URL. Falls back to safe defaults. (Prices shown in copy come from
- * getPublicHouseholdFeeCents in ./site-settings, which stays null while payments are off.)
+ * Public website settings stored in the D1 `settings` table (editable by admins): the homepage video URL and the
+ * pre-launch switch. Falls back to safe defaults. (Prices shown in copy come from getPublicHouseholdFeeCents in
+ * ./site-settings, which stays null while payments are off.)
  */
-function anon() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-}
-
 export type WebsiteSettings = { videoUrl: string | null };
 
 export async function getWebsiteSettings(): Promise<WebsiteSettings> {
-  const fallback: WebsiteSettings = { videoUrl: null };
-  const supabase = anon();
-  if (!supabase) return fallback;
   try {
-    const { data, error } = await supabase.from("settings").select("value").eq("key", "homepage_video_url").maybeSingle<{ value: unknown }>();
-    if (error) return fallback;
-    const video = data?.value;
+    const video = await setting<unknown>("homepage_video_url", null);
     return { videoUrl: typeof video === "string" && /^https:\/\//.test(video) ? video : null };
   } catch {
-    return fallback;
+    return { videoUrl: null };
   }
 }
 
 /**
  * Pre-launch mode (Admin → Settings → Sign-ups): when the `signups_paused` setting is true, the sign-up screens show
  * "we are launching soon" and create no accounts. Logging in keeps working. Missing or unreadable → sign-ups open.
+ * NOTE: this closes the screens; the Better Auth sign-up endpoint itself is checked in auth-config (integrator).
  */
 export async function getSignupsPaused(): Promise<boolean> {
-  const supabase = anon();
-  if (!supabase) return false;
   try {
-    const { data, error } = await supabase.from("settings").select("value").eq("key", "signups_paused").maybeSingle<{ value: unknown }>();
-    return !error && data?.value === true;
+    return (await setting<unknown>("signups_paused", false)) === true;
   } catch {
     return false;
   }

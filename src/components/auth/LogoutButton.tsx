@@ -2,21 +2,18 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 export function LogoutButton() {
   const t = useTranslations("account");
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function logout() {
-    const supabase = createClient();
-    if (!supabase) return;
     setBusy(true);
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
+    await authClient.signOut().catch(() => null);
+    // Full reload: every server component must see that the session cookie is gone.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full reload so the server sees the new session state
+    window.location.assign("/");
   }
 
   return (

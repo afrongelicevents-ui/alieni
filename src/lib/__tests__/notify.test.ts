@@ -33,12 +33,7 @@ const cases: [string, (lang: "nl" | "en") => Mail][] = [
   ["reporterUpdateEmail (removed)", (l) => e.reporterUpdateEmail("removed", true, l)],
   ["reporterUpdateEmail (dismissed)", (l) => e.reporterUpdateEmail("dismissed", true, l)],
   ["reporterUpdateEmail (no content change)", (l) => e.reporterUpdateEmail("hidden", false, l)],
-  ["paymentFailedEmail", (l) => e.paymentFailedEmail(l)],
   ["checkinEmail", (l) => e.checkinEmail(l)],
-  [
-    "invoiceEmail",
-    (l) => e.invoiceEmail({ number: "2026-0001", description: "Test", issuedAt: "2026-01-02T10:00:00Z", netCents: 1000, btwCents: 210, grossCents: 1210 }, l),
-  ],
 ];
 
 const links = (m: Mail) => (m.text.match(/https?:\/\/\S+/g) ?? []).sort();
@@ -65,11 +60,11 @@ describe("e-mail builders", () => {
   it("keeps the Dutch text when no language is given", () => {
     expect(n.newMessageNotice(URL)).toEqual(n.newMessageNotice(URL, "nl"));
     expect(n.quoteReceivedNotice(URL).subject).toBe("Nieuwe offerte voor je klus — Alieni");
-    expect(e.paymentFailedEmail().subject).toBe("Actie nodig: betaling mislukt — Alieni");
+    expect(e.checkinEmail().subject).toBe(e.checkinEmail("nl").subject);
   });
 
   it("falls back to nl when the locale cannot be read", async () => {
-    // No service role key configured in tests: userLocale must not throw and answers nl.
+    // No database in unit tests: userLocale must not throw and answers nl.
     await expect(n.userLocale("00000000-0000-0000-0000-000000000000")).resolves.toBe("nl");
   });
 });

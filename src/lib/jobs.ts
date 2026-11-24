@@ -138,3 +138,19 @@ export function quoteExpired(validUntil: string | null, now: Date = new Date()):
   if (!validUntil) return false;
   return validUntil < now.toISOString().slice(0, 10);
 }
+
+/** UTC ISO time of a wall-clock moment in Amsterdam (handles summer/winter time). */
+export function amsterdamToUtcIso(date: string, hhmm: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = hhmm.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  // offset of Amsterdam at that moment, in minutes
+  const offsetAt = (t: number) => {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t));
+    const get = (k: string) => Number(parts.find((p) => p.type === k)?.value);
+    return (Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute")) - t) / 60000;
+  };
+  let t = guess - offsetAt(guess) * 60000;
+  t = guess - offsetAt(t) * 60000;
+  return new Date(t).toISOString();
+}

@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { createClient } from "./supabase/client";
+import { listMyFavourites, mergeFavourites, setFavourite } from "./server/chat/favourites-actions";
 
 /**
- * Favourites. Signed in: the `favourites` table (own rows only, RLS).
+ * Favourites. Signed in as a household or business: the `favourites` table, through server actions that only
+ * touch the signed-in user's own rows.
  * Signed out: this device only (localStorage), so browsing still works.
  */
 const KEY = "alieni.favourites";
@@ -46,52 +47,35 @@ function notify() {
 }
 
 async function loadRemote() {
-  const supabase = createClient();
-  if (!supabase) return;
-  const { data } = await supabase.from("favourites").select("cleaner_profile_id");
-  remoteIds = (data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id);
+  const ids = await listMyFavourites().catch(() => null);
+  if (ids === null) {
+    signedIn = false;
+    notify();
+    return;
+  }
+  signedIn = true;
+  remoteIds = ids;
   notify();
-  await mergeLocal(supabase);
+  await mergeLocal();
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Hearts given while signed out move into the account on sign-in (example cleaners stay on the device). */
-async function mergeLocal(supabase: NonNullable<ReturnType<typeof createClient>>) {
+async function mergeLocal() {
   const local = readLocal().filter((id) => UUID.test(id) && !(remoteIds ?? []).includes(id));
   if (!local.length) return;
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (!userId) return;
-  const { error } = await supabase.from("favourites").upsert(local.map((id) => ({ user_id: userId, cleaner_profile_id: id })), { onConflict: "user_id,cleaner_profile_id", ignoreDuplicates: true });
-  if (error) return; // not allowed for this account type: keep them on the device
-  const { data } = await supabase.from("favourites").select("cleaner_profile_id");
-  remoteIds = (data ?? []).map((r: { cleaner_profile_id: string }) => r.cleaner_profile_id);
+  const merged = await mergeFavourites(local).catch(() => null);
+  if (!merged) return; // not allowed for this account type: keep them on the device
+  remoteIds = merged;
   writeLocal(readLocal().filter((id) => !UUID.test(id)));
 }
 
 function init() {
   if (initialised) return;
   initialised = true;
-  const supabase = createClient();
-  if (!supabase) {
-    signedIn = false;
-    return;
-  }
-  supabase.auth.getSession().then(({ data }) => {
-    signedIn = Boolean(data.session);
-    if (signedIn) loadRemote();
-    else notify();
-  });
-  supabase.auth.onAuthStateChange((_event, session) => {
-    const next = Boolean(session);
-    if (next !== signedIn) {
-      signedIn = next;
-      remoteIds = null;
-      if (next) loadRemote();
-      else notify();
-    }
-  });
+  // The server says whether someone who may keep favourites is signed in (a login reloads the page).
+  void loadRemote();
 }
 
 let snapshot: { ids: string[]; signedIn: boolean | null } = { ids: EMPTY, signedIn: null };
@@ -136,16 +120,11 @@ export function useFavourites() {
     const current = getSnapshot().ids;
     const adding = !current.includes(id);
     const next = adding ? [...current, id] : current.filter((x) => x !== id);
-    const supabase = createClient();
-    if (signedIn && supabase) {
+    if (signedIn) {
       remoteIds = next; // optimistic
       notify();
-      const { data } = await supabase.auth.getUser();
-      const userId = data.user?.id;
-      const result = adding
-        ? await supabase.from("favourites").insert({ user_id: userId, cleaner_profile_id: id })
-        : await supabase.from("favourites").delete().eq("cleaner_profile_id", id);
-      if (result.error) {
+      const result = await setFavourite(id, adding).catch(() => ({ ok: false }));
+      if (!result.ok) {
         // e.g. a sample cleaner that is not in the database: keep it on the device.
         remoteIds = current;
         writeLocal(adding ? [...readLocal(), id] : readLocal().filter((x) => x !== id));

@@ -4,10 +4,8 @@ import { GET as checkins } from "../checkins/route";
 import { GET as jobs } from "../jobs/route";
 
 /**
- * Daily maintenance bundle. Vercel's Hobby plan allows only two cron jobs
- * per project, each at most once a day, so the three housekeeping tasks
- * run together here. On Vercel Pro, schedule the individual routes
- * directly at their intended frequencies (see README).
+ * Daily maintenance bundle, called once a day by the Worker's free cron trigger (worker.ts) with
+ * `Authorization: Bearer <CRON_SECRET>`: chat check-ins and job housekeeping.
  */
 export async function GET(request: Request) {
   if (!isAuthorizedCron(request)) {

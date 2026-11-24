@@ -17,6 +17,7 @@ export function AccountDanger({ email, isAdmin }: { email: string; isAdmin: bool
     const r = await deleteAccount(typed);
     setBusy(false);
     if (!r.ok) return setError(t(`error_${r.error ?? "failed"}` as "error_failed"));
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full reload so the server sees the new session state
     window.location.assign("/");
   }
 

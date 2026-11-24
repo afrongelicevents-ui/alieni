@@ -1,5 +1,5 @@
 import "server-only";
-import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+import { first } from "./server/db";
 import { headers } from "next/headers";
 import { pick, sendEmail, type Lang } from "./email";
 
@@ -10,93 +10,61 @@ type Notice = { subject: string; text: string };
 const sign = (lang: Lang) => pick(lang, "Groetjes, Alieni · Connect · Clean · Thrive", "Cheers, Alieni · Connect · Clean · Thrive");
 const hi = (lang: Lang) => pick(lang, "Hoi!", "Hi!");
 
-/** Service-role client, or null while the server is not configured (callers then skip quietly). */
-function serviceClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createSupabaseAdmin(url, key, { auth: { persistSession: false } });
-}
-
-/** Language of a user's e-mails: profiles.locale ("nl" | "en"), "nl" on any failure. Service role. */
-async function localeOf(admin: NonNullable<ReturnType<typeof serviceClient>>, userId: string): Promise<Lang> {
-  try {
-    const { data } = await admin.from("profiles").select("locale").eq("id", userId).maybeSingle();
-    return data?.locale === "en" ? "en" : "nl";
-  } catch {
-    return "nl";
-  }
-}
-
-/** Language a user wants e-mails in (profiles.locale). Falls back to "nl" when unknown or unconfigured. */
+/** Language a user wants e-mails in (profiles.locale). Falls back to "nl" when unknown. */
 export async function userLocale(userId: string): Promise<Lang> {
   try {
-    const admin = serviceClient();
-    if (!admin) return "nl";
-    return await localeOf(admin, userId);
+    const p = await first<{ locale: string }>("SELECT locale FROM profiles WHERE id = ?", userId);
+    return p?.locale === "en" ? "en" : "nl";
   } catch {
     return "nl";
   }
 }
 
 /**
- * Best-effort e-mail notification to a user id. Needs the service role key
- * (to look up the e-mail address) and RESEND_API_KEY; skips (with a short
- * warning, no personal data) otherwise and never throws. Never includes raw
- * chat text (contact masking, brief §7). Callers should await it: serverless
- * functions may freeze right after the response.
+ * Best-effort e-mail notification to a user id (address from the D1 user table). Needs RESEND_API_KEY; skips (with
+ * a short warning, no personal data) otherwise and never throws. Never includes raw chat text (contact masking,
+ * brief §7). Callers should await it: a Worker may stop right after the response.
  *
- * Two forms: `notifyUser(userId, (lang) => ({ subject, text }))` builds the
- * mail in the recipient's own language (profiles.locale); the older
- * `notifyUser(userId, subject, text)` sends exactly what it is given.
+ * Two forms: `notifyUser(userId, (lang) => ({ subject, text }))` builds the mail in the recipient's own language
+ * (profiles.locale); `notifyUser(userId, subject, text)` sends exactly what it is given.
  */
 export async function notifyUser(userId: string, build: (lang: Lang) => Notice): Promise<boolean>;
 export async function notifyUser(userId: string, subject: string, text: string): Promise<boolean>;
 export async function notifyUser(userId: string, subjectOrBuild: string | ((lang: Lang) => Notice), text?: string): Promise<boolean> {
   try {
-    const admin = serviceClient();
-    if (!admin) {
-      console.warn("notifyUser: service role key is not configured; e-mail skipped");
-      return false;
-    }
     if (!process.env.RESEND_API_KEY) {
       console.warn("notifyUser: RESEND_API_KEY is not configured; e-mail skipped");
       return false;
     }
-    const { data, error } = await admin.auth.admin.getUserById(userId);
-    if (error) console.warn("notifyUser: e-mail address lookup failed");
-    const to = data?.user?.email;
-    if (!to) return false;
+    const u = await first<{ email: string; locale: string | null; suspended_at: string | null }>(
+      'SELECT u.email, p.locale, p.suspended_at FROM "user" u LEFT JOIN profiles p ON p.id = u.id WHERE u.id = ?',
+      userId,
+    );
+    if (!u?.email || u.suspended_at) return false;
     if (typeof subjectOrBuild === "function") {
-      const mail = subjectOrBuild(await localeOf(admin, userId));
-      return await sendEmail(to, mail.subject, mail.text);
+      const mail = subjectOrBuild(u.locale === "en" ? "en" : "nl");
+      return await sendEmail(u.email, mail.subject, mail.text);
     }
-    return await sendEmail(to, subjectOrBuild, text ?? "");
+    return await sendEmail(u.email, subjectOrBuild, text ?? "");
   } catch {
     console.warn("notifyUser: unexpected failure; e-mail skipped");
     return false;
   }
 }
 
-/** Owner (user id) of a business profile. Service role: a cleaner cannot read it under RLS. Null when unknown or unconfigured. */
+/** Owner (user id) of a business profile. Server-side only; null when unknown. */
 export async function businessOwnerUserId(businessId: string): Promise<string | null> {
   try {
-    const admin = serviceClient();
-    if (!admin) return null;
-    const { data } = await admin.from("business_profiles").select("user_id").eq("id", businessId).maybeSingle();
-    return (data?.user_id as string | undefined) ?? null;
+    return (await first<{ user_id: string }>("SELECT user_id FROM business_profiles WHERE id = ?", businessId))?.user_id ?? null;
   } catch {
     return null;
   }
 }
 
-/** Owner (user id) of a cleaner profile (ad). Service role; null when unknown or unconfigured. */
+/** Owner (user id) of a cleaner profile (ad). Server-side only; null when unknown. */
 export async function cleanerOwnerUserId(cleanerProfileId: string): Promise<string | null> {
   try {
-    const admin = serviceClient();
-    if (!admin) return null;
-    const { data } = await admin.from("cleaner_profiles").select("user_id").eq("id", cleanerProfileId).maybeSingle();
-    return (data?.user_id as string | undefined) ?? null;
+    return (await first<{ user_id: string }>("SELECT user_id FROM cleaner_profiles WHERE id = ?", cleanerProfileId))?.user_id ?? null;
   } catch {
     return null;
   }
@@ -116,10 +84,10 @@ export function dealConfirmedNotice(name: string, appUrl: string, lang: Lang = "
   };
 }
 
-/** Public site URL: configured value first, then Vercel's production host, then the request host (dev only). */
+/** Public site URL: configured value first (NEXT_PUBLIC_APP_URL, then BETTER_AUTH_URL), then the request host. */
 export async function appBaseUrl(): Promise<string> {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL;
+  if (configured) return configured.replace(/\/$/, "");
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   return `${host.startsWith("localhost") ? "http" : "https"}://${host}`;

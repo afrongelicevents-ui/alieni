@@ -1,11 +1,11 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
+import { all } from "./server/db";
 import { hasPublicImage } from "./public-image";
 
 /**
- * Site photos the owner manages from Admin → Foto's. Each slot is stored in
- * the public 'site-media' bucket with a pointer row in `site_media`.
- * Without Supabase (or while a slot is empty) we fall back to a file in
+ * Site photos the owner manages from Admin → Foto's. Each slot's photo is an object in the PRIVATE R2 bucket with a
+ * pointer row in `site_media`; the Worker serves it at /api/site-media/<slot> (these are public marketing photos, so
+ * no signature is needed, and cached pages keep working). While a slot is empty we fall back to a file in
  * public/img, and finally to the design placeholder.
  */
 export const SITE_MEDIA_SLOTS = [
@@ -17,7 +17,8 @@ export const SITE_MEDIA_SLOTS = [
 ] as const;
 export type SiteMediaSlot = (typeof SITE_MEDIA_SLOTS)[number];
 
-export const SITE_MEDIA_BUCKET = "site-media";
+/** R2 key prefix for site photos (kept for callers that showed the bucket name). */
+export const SITE_MEDIA_BUCKET = "site";
 
 /** Output size per slot (WebP, longest side). Portrait for the hero. */
 export const SLOT_SPEC: Record<SiteMediaSlot, { maxWidth: number; aspect: "3/4" | "3/2" }> = {
@@ -34,31 +35,21 @@ export function isSiteMediaSlot(value: string): value is SiteMediaSlot {
 
 export type SiteMediaRow = { slot: SiteMediaSlot; path: string; updated_at: string };
 
-export function publicMediaUrl(row: Pick<SiteMediaRow, "path" | "updated_at">): string | null {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
+/** URL of an uploaded slot photo, versioned by its upload time so a new photo is never served from cache. */
+export function publicMediaUrl(row: Pick<SiteMediaRow, "path" | "updated_at"> & { slot?: string }): string | null {
+  const slot = row.slot ?? row.path.split("/")[1];
+  if (!slot || !isSiteMediaSlot(slot)) return null;
   const v = encodeURIComponent(new Date(row.updated_at).getTime().toString(36));
-  return `${base}/storage/v1/object/public/${SITE_MEDIA_BUCKET}/${row.path}?v=${v}`;
+  return `/api/site-media/${slot}?v=${v}`;
 }
 
-/** Anonymous read client (no cookies) so static pages can prerender. */
-function anonClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-}
-
-/** All uploaded slots (empty map when Supabase is not configured). */
+/** All uploaded slots (empty map when none). `path` is the R2 object key. */
 export async function listSiteMedia(): Promise<Partial<Record<SiteMediaSlot, SiteMediaRow>>> {
-  const supabase = anonClient();
-  if (!supabase) return {};
   try {
-    const { data, error } = await supabase.from("site_media").select("slot, path, updated_at");
-    if (error || !data) return {};
+    const rows = await all<{ slot: string; object_key: string; updated_at: string }>("SELECT slot, object_key, updated_at FROM site_media");
     const out: Partial<Record<SiteMediaSlot, SiteMediaRow>> = {};
-    for (const row of data as SiteMediaRow[]) {
-      if (isSiteMediaSlot(row.slot)) out[row.slot] = row;
+    for (const row of rows) {
+      if (isSiteMediaSlot(row.slot)) out[row.slot] = { slot: row.slot, path: row.object_key, updated_at: row.updated_at };
     }
     return out;
   } catch {

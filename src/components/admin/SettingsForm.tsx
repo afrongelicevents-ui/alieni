@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { saveSettings } from "@/app/[locale]/admin/actions";
 import { BUSINESS_PRICING_MODELS, MAX_TIERS, type BusinessPricingForm } from "@/lib/business-pricing";
 
@@ -20,7 +19,6 @@ export type Settings = {
   signupsPaused?: boolean;
 };
 
-const euro = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const DEFAULTS: Settings = {
   householdPriceEuro: "0,00",
   rateFloorEuro: "15,00",
@@ -34,7 +32,6 @@ const inputCls = "min-h-11 w-full rounded-xl border border-line bg-white px-3 py
 
 export function SettingsForm({ initial, demo }: { initial: Settings | null; demo: boolean }) {
   const t = useTranslations("admin");
-  const lang = (useLocale() === "en" ? "en" : "nl") as "nl" | "en";
   const [settings, setSettings] = useState<Settings>(initial ? { ...DEFAULTS, ...initial } : DEFAULTS);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,7 +101,7 @@ export function SettingsForm({ initial, demo }: { initial: Settings | null; demo
                 </label>
                 {m === "per_location" && bp.model === m ? (
                   <p className="text-xs">
-                    {t("bp_per_location_hint")} <Link href="/admin/pricing" className="font-bold text-forest underline">{t("goPricing")}</Link>
+                    {t("bp_per_location_hint")}
                   </p>
                 ) : null}
                 {m === "per_job_post" && bp.model === m ? (
