@@ -34,7 +34,8 @@ export default async function CleanerProfilePage({
   if (!cleaner) notFound();
   const notPublic = own ? own.status : null;
   // cleaners and admins cannot request a meeting or keep favourites: guests, households and businesses can
-  const canContact = !user || user.role === "household" || user.role === "business";
+  const isSample = !live && !own;
+  const canContact = !isSample && (!user || user.role === "household" || user.role === "business");
   const canReviewCleaner = live && user ? await canReview(user.id, cleaner.id) : false;
 
   return (
@@ -60,6 +61,7 @@ export default async function CleanerProfilePage({
           <div className="min-w-0 pr-10">
             <h1 className="headline flex flex-wrap items-center gap-2 break-words text-3xl text-ink">
               {cleaner.name}
+              {isSample ? <span className="rounded-full bg-sun/30 px-3 py-1 text-sm font-bold text-ink/80" data-sample-profile>{tCommon("sampleProfile")}</span> : null}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink/70">
               {cleaner.reviewCount > 0 ? (
@@ -79,11 +81,14 @@ export default async function CleanerProfilePage({
               <span className="text-sm font-medium text-ink/70">{tHome("perHour")}</span>
             </p>
             <p className="text-sm text-ink/70">
-              {t("minHours", { hours: cleaner.minHours })} · {t("travels", { km: cleaner.radiusKm, postcode: cleaner.postcode })}
+              {t("minHours", { hours: cleaner.minHours })} · {t("travels", { km: cleaner.radiusKm, postcode: isSample ? cleaner.postcode.slice(0, 4) : cleaner.postcode })}
             </p>
           </div>
         </div>
 
+        {isSample ? (
+          <p className="mt-5 rounded-xl bg-sun/25 p-3 text-sm font-medium text-ink/80">{tCommon("sampleProfileNote")}</p>
+        ) : null}
         {canContact ? (
           <div className="mt-5">
             <MeetingRequestButton cleaner={cleaner} signedIn={Boolean(user)} feeCents={await getPublicHouseholdFeeCents()} />
@@ -161,12 +166,7 @@ export default async function CleanerProfilePage({
 
       {/* report */}
       <footer className="mt-8 border-t border-line pt-6">
-        <ReportButton subjectId={cleaner.id} />
-        {!live ? (
-          <p className="mt-4 rounded-full bg-sun/30 px-3 py-1 text-center text-xs font-semibold text-ink/70">
-            {tCommon("sampleBadge")}
-          </p>
-        ) : null}
+        {isSample ? null : <ReportButton subjectId={cleaner.id} />}
       </footer>
     </article>
   );

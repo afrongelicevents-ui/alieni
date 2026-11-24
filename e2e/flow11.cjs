@@ -14,7 +14,7 @@ async function signUp(page, email, role) {
   await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|cleaners\/new|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 const tbl = async (name) => (await fetch(`${EMU}/__emu/table?name=${name}`)).json();

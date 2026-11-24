@@ -6,7 +6,7 @@ set -u
 cd "$(dirname "$0")/../.."
 OUT=${E2E_OUT:-e2e/out}; mkdir -p "$OUT"
 PORT=${PORT:-8787}
-FLOWS=${*:-flow-guest flow-auth flow-household flow-cleaner flow-business flow-admin flow-account flow-security}
+FLOWS=${*:-flow-guest flow-demo flow-auth flow-household flow-cleaner flow-business flow-admin flow-account flow-security}
 
 # stop any earlier local Worker (wrangler restarts workerd if only the port is killed)
 pkill -f "wrangler dev" >/dev/null 2>&1; pkill -f "bin/workerd" >/dev/null 2>&1; fuser -k "$PORT/tcp" >/dev/null 2>&1; sleep 2

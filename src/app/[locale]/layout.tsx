@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { getSessionUser } from "@/lib/auth";
 import { Header } from "@/components/layout/Header";
@@ -15,14 +15,15 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Alieni — schoonmakers bij jou in de buurt",
-    template: "%s · Alieni",
-  },
-  description:
-    "Alieni verbindt huishoudens en bedrijven met zelfstandige schoonmakers in Nederland.",
-};
+/** Tab title and description in the page's language (NL default, EN on /en). */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale: hasLocale(routing.locales, locale) ? locale : routing.defaultLocale, namespace: "meta" });
+  return {
+    title: { default: t("title"), template: "%s · Alieni" },
+    description: t("description"),
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0B1F4B",

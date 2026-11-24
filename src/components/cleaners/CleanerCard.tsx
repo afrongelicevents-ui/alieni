@@ -1,7 +1,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { formatHourlyRate } from "@/lib/money";
-import { SERVICE_LABELS, type SampleCleaner } from "@/lib/sample-data";
+import { SERVICE_LABELS, isSampleCleanerId, type SampleCleaner } from "@/lib/sample-data";
 import { FavouriteButton } from "./FavouriteButton";
 
 type Props = {
@@ -14,10 +14,12 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
   const t = useTranslations("home");
   const tSearch = useTranslations("search");
   const tProfile = useTranslations("profile");
+  const tCommon = useTranslations("common");
+  const isSample = isSampleCleanerId(cleaner.id);
 
   return (
-    <article className="relative flex h-full flex-col gap-3 rounded-card-lg border border-line bg-white p-5 shadow-sm">
-      <FavouriteButton cleanerId={cleaner.id} className="absolute right-4 top-4" />
+    <article className="relative flex h-full flex-col gap-3 rounded-card-lg border border-line bg-white p-5 shadow-sm" data-sample-profile={isSample ? "" : undefined}>
+      {isSample ? null : <FavouriteButton cleanerId={cleaner.id} className="absolute right-4 top-4" />}
 
       <div className="flex items-center gap-4">
         <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-mint text-forest/40">
@@ -34,6 +36,7 @@ export function CleanerCard({ cleaner, distanceKm }: Props) {
         <div className="pr-10">
           <h3 className="flex flex-wrap items-center gap-2 text-lg font-extrabold text-ink">
             {cleaner.name}
+            {isSample ? <span className="rounded-full bg-sun/30 px-2.5 py-0.5 text-xs font-bold text-ink/80">{tCommon("sampleProfile")}</span> : null}
           </h3>
           {cleaner.reviewCount > 0 ? (
             <p className="flex items-center gap-1.5 text-sm text-ink/70">

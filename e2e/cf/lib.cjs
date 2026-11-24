@@ -82,7 +82,7 @@ async function signUp(p, email, role, name = email.split("@")[0]) {
   await p.fill("input[type=email]", email);
   await p.fill("input[type=password]", PW.other);
   await p.getByRole("button", { name: "Create account" }).click();
-  await p.waitForURL(/\/en\/(home|profile)/, { timeout: 20000 });
+  await p.waitForURL(/\/en\/(home|profile|cleaners\/new)/, { timeout: 20000 });
   await p.waitForLoadState("networkidle");
 }
 
