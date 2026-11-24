@@ -137,7 +137,7 @@ const PRIVATE = [
     if (await name.count()) await name.fill("Fourteen");
     await l.fill("input[type=password]", "Test-Password-123");
     await l.getByRole("button", { name: "Create account" }).click();
-    await l.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
+    await l.waitForURL(/\/en\/(home|profile|cleaners\/new|admin|business\/dashboard)$/, { timeout: 15000 });
     await l.goto(`${APP}/en/account`, { waitUntil: "networkidle" });
     await l.getByRole("button", { name: "Log out" }).click();
     await l.waitForURL(/\/en\/?$/, { timeout: 10000 }).catch(() => {});

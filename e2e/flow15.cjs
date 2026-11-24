@@ -17,7 +17,7 @@ async function signUp(page, email, role) {
   const n = page.locator("input[autocomplete='given-name']"); if (await n.count()) await n.fill(email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|cleaners\/new|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 

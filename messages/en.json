@@ -313,7 +313,10 @@
     "day6": "Sunday",
     "morning": "Morning",
     "afternoon": "Afternoon",
-    "evening": "Evening"
+    "evening": "Evening",
+    "sampleProfile": "Sample profile",
+    "sampleProfileNote": "This is a sample profile to show how an ad on Alieni looks. You cannot contact this person.",
+    "sampleProfilesNote": "Includes sample profiles"
   },
   "footer": {
     "forHouseholds": "For households",
@@ -845,8 +848,8 @@
   },
   "business": {
     "eyebrow": "For businesses",
-    "heroTitle": "You choose the cleaner. No commission.",
-    "heroText": "Find and connect with independent cleaners for your listings, rooms or locations. You pay the cleaner directly, at their own business rate. Alieni never takes commission on their work.",
+    "heroTitle": "Find your cleaner. Pay them directly.",
+    "heroText": "One fixed fee per location. Your cleaner keeps 100% of their rate — Alieni never takes a cut.",
     "heroCta": "Create a business account",
     "browseCleaners": "Browse cleaners",
     "noCommission": "Cleaners keep 100% of their rate — no commission.",
@@ -1494,5 +1497,9 @@
         "s": "Search, meet, agree"
       }
     }
+  },
+  "meta": {
+    "title": "Alieni — cleaners near you",
+    "description": "Alieni connects households and businesses with independent cleaners in the Netherlands."
   }
 }

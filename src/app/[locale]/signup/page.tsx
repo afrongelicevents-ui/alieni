@@ -28,7 +28,7 @@ export default async function SignupPage({
           <h1 className="headline mt-1 text-3xl text-ink">{t("signupTitle")}</h1>
           <p className="mt-2 text-ink/70">{chosen === "cleaner" ? t("cleanerSignupIntro") : t("householdSignupIntro")}</p>
           <div className="mt-6">
-            <AuthForm mode="signup" defaultRole={chosen} next={next ?? (chosen === "cleaner" ? "/profile" : "/home")} paused={paused} />
+            <AuthForm mode="signup" defaultRole={chosen} next={next ?? (chosen === "cleaner" ? "/cleaners/new" : "/home")} paused={paused} />
           </div>
           <p className="mt-4 text-center text-sm"><Link href="/signup" className="font-semibold text-forest underline">{t("chooseOther")}</Link></p>
         </>

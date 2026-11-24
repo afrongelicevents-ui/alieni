@@ -14,7 +14,7 @@ async function signUp(page, email, role) {
   await page.fill("input[autocomplete='given-name']", email.split("@")[0]);
   await page.fill("input[type=password]", "Test-Password-123");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.waitForURL(/\/en\/(home|profile|admin|business\/dashboard)$/, { timeout: 15000 });
+  await page.waitForURL(/\/en\/(home|profile|cleaners\/new|admin|business\/dashboard)$/, { timeout: 15000 });
   await page.waitForLoadState("networkidle");
 }
 async function navLabels(page, mobile) {
@@ -95,7 +95,7 @@ async function restPatch(token, table, query, body) {
     // ---------- Cleaner ----------
     const cctx = await browser.newContext({ viewport }); const c = await cctx.newPage(); track(c);
     await signUp(c, `cl-${suffix}@example.com`, "cleaner");
-    ok(`[${label}] Cleaner lands on /profile (create the professional profile)`, /\/en\/profile$/.test(c.url()) && /Experience/.test(await c.textContent("main")));
+    ok(`[${label}] Cleaner lands on the ad form (/cleaners/new) after sign-up`, /\/en\/cleaners\/new$/.test(c.url()) && /Experience/.test(await c.textContent("main")));
     await c.fill("input[maxlength='80']", `Cleaner ${suffix.toUpperCase()}`);
     await c.selectOption("select >> nth=0", "5");
     await c.fill("textarea", "Ten years in homes and offices. Thorough, punctual, friendly.");

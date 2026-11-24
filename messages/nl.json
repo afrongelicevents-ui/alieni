@@ -313,7 +313,10 @@
     "day6": "Zondag",
     "morning": "Ochtend",
     "afternoon": "Middag",
-    "evening": "Avond"
+    "evening": "Avond",
+    "sampleProfile": "Voorbeeldprofiel",
+    "sampleProfileNote": "Dit is een voorbeeldprofiel om te laten zien hoe een advertentie op Alieni eruitziet. Je kunt geen contact opnemen met deze persoon.",
+    "sampleProfilesNote": "Inclusief voorbeeldprofielen"
   },
   "footer": {
     "forHouseholds": "Voor huishoudens",
@@ -845,8 +848,8 @@
   },
   "business": {
     "eyebrow": "Voor bedrijven",
-    "heroTitle": "Jij kiest de schoonmaker. Geen commissie.",
-    "heroText": "Zoek en koppel zelfstandige schoonmakers voor je listings, kamers of locaties. Je betaalt de schoonmaker rechtstreeks, tegen hun eigen zakelijke tarief. Alieni rekent nooit commissie over hun werk.",
+    "heroTitle": "Vind je schoonmaker. Betaal hen rechtstreeks.",
+    "heroText": "Eén vast bedrag per locatie. Je schoonmaker houdt 100% van het tarief — Alieni neemt geen commissie.",
     "heroCta": "Zakelijk account aanmaken",
     "browseCleaners": "Bekijk schoonmakers",
     "noCommission": "Schoonmakers houden 100% van hun tarief — geen commissie.",
@@ -1494,5 +1497,9 @@
         "s": "Zoeken, kennismaken, afspreken"
       }
     }
+  },
+  "meta": {
+    "title": "Alieni — schoonmakers bij jou in de buurt",
+    "description": "Alieni verbindt huishoudens en bedrijven met zelfstandige schoonmakers in Nederland."
   }
 }

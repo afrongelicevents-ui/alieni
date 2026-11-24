@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { parseFilters, searchCleaners } from "@/lib/cleaners";
+import { SAMPLE_CLEANERS } from "@/lib/sample-data";
 import { fetchLiveCleaners } from "@/lib/cleaners-live";
 import { getSessionUser } from "@/lib/auth";
 import { geocode } from "@/lib/geocode";
@@ -27,11 +28,14 @@ export default async function SearchPage({
     fetchLiveCleaners(),
     getSessionUser(),
   ]);
-  // Real ads only once there are any, or for every signed-in user; labelled examples for visitors while the platform is empty.
-  const showSamples = !user && (live?.length ?? 0) === 0;
-  const distances = origin && !showSamples ? await fetchDistances(origin) : undefined;
+  // Real ads first; then the eight sample profiles (marked "Voorbeeldprofiel / Sample profile" on every card),
+  // filtered the same way, so the page shows what Alieni looks like while there are few real ads.
+  const distances = origin && (live?.length ?? 0) > 0 ? await fetchDistances(origin) : undefined;
   const viewer = user?.role === "household" ? "household" : user?.role === "business" ? "business" : "any";
-  const results = searchCleaners(filters, { origin, dataset: showSamples ? undefined : (live ?? []), distances, viewer });
+  const real = searchCleaners(filters, { origin, dataset: live ?? [], distances, viewer });
+  const samples = searchCleaners(filters, { origin, dataset: SAMPLE_CLEANERS, viewer });
+  const results = [...real, ...samples];
+  const showSamples = samples.length > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-8">
@@ -39,7 +43,7 @@ export default async function SearchPage({
         <h1 className="headline text-3xl text-ink">{t("title")}</h1>
         {showSamples ? (
           <span className="rounded-full bg-sun/30 px-3 py-1 text-xs font-semibold text-ink/70">
-            {tCommon("sampleBadge")}
+            {tCommon("sampleProfilesNote")}
           </span>
         ) : null}
       </div>
